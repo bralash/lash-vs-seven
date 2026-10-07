@@ -45,6 +45,11 @@
         "type": 301
       },
       {
+        "source": "/hangman.html",
+        "destination": "/hangman",
+        "type": 301
+      },
+      {
         "source": "/sudoku.html",
         "destination": "/sudoku",
         "type": 301
@@ -82,16 +87,6 @@
       {
         "source": "/crossword",
         "destination": "/classic/crossword",
-        "type": 302
-      },
-      {
-        "source": "/hangman.html",
-        "destination": "/classic/hangman",
-        "type": 302
-      },
-      {
-        "source": "/hangman",
-        "destination": "/classic/hangman",
         "type": 302
       },
       {
