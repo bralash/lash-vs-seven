@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { freshLive, play, type Live } from '../games/connect4/engine'
+import { freshLive as dotsLive } from '../games/dots/engine'
+import { margin } from '../games/dots/DotsMatch'
+import { autoplay } from './DotsLab'
 import { drawShareCard, type CardInput } from '../match/shareCard'
 
 // Dev-only preview of result cards (route: /dev/share), with sample data for each game.
@@ -25,6 +28,17 @@ function c4Sample(moves: number[]): CardInput {
   }
 }
 
+// a full game played through the engine
+function dotsSample(n: number): CardInput {
+  const live = autoplay(dotsLive(n, 0), 0)
+  const s = [0, 1].map((k) => live.boxes.split('').filter((v) => v === String(k)).length)
+  return {
+    game: 'Dots & Boxes', winner: live.result?.winner ?? -1, scoreLine: `${s[0]} — ${s[1]}`, link: 'lash-vs-seven.web.app/dots',
+    players: players({ score: String(s[0]), meta: 'Orange · boxes' }, { score: String(s[1]), meta: 'Blue · boxes' }),
+    detail: { kind: 'dots', size: n, lines: live.lines, boxes: live.boxes, initials: ['E', 'S'], stats: [['Board', `${n}×${n}`], ['Margin', margin(s[0], s[1])]] },
+  }
+}
+
 const SAMPLES: Record<string, CardInput> = {
   wordhunt: {
     game: 'Word Hunt', winner: 0, scoreLine: '6,400 — 3,900', link: 'lash-vs-seven.web.app/wordhunt',
@@ -45,6 +59,7 @@ const SAMPLES: Record<string, CardInput> = {
     detail: { kind: 'ttt', board: '01.10.110'.split('').map((c, i) => ([0, 4, 8].includes(i) ? '0' : c)).join(''), line: [0, 4, 8], stats: [['Series', 'Best of 3'], ['Decider', 'Game 3']] },
   },
   connect4: c4Sample([3, 3, 4, 2, 2, 4, 5, 6, 1, 5, 4, 3, 2, 5, 5, 6]),
+  dots: dotsSample(5),
   draw: {
     game: 'Tic-Tac-Toe', winner: -1, scoreLine: '2 — 2', link: 'lash-vs-seven.web.app/tictactoe',
     players: players({ score: '2', meta: 'X · games' }, { score: '2', meta: 'O · games' }),

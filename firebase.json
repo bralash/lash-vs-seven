@@ -27,6 +27,11 @@
         "source": "/connect4.html",
         "destination": "/connect4",
         "type": 301
+      },
+      {
+        "source": "/dots.html",
+        "destination": "/dots",
+        "type": 301
       }
     ],
     "rewrites": [

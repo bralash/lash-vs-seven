@@ -1,0 +1,130 @@
+.dbm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 14px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.dbm > * { width: 100%; }
+
+/* ── Boxes left + whose turn (centre of the HUD) ───────── */
+.db-turn {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 84px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+}
+.db-turn .label { color: var(--paper-2); font-size: 10px; }
+.db-turn--you { background: var(--hit); }
+.db-turn--you .label { color: var(--ink); }
+.db-turn--you .db-mini { animation: pulse .6s ease-in-out infinite alternate; }
+.db-mini { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--ink); }
+.db-mini--0 { background: var(--lash); }
+.db-mini--1 { background: var(--seven); }
+.db-turn:not(.db-turn--you) .db-mini { border-color: var(--paper-2); }
+.db-mini--draw { border: 0; font-family: var(--display); font-size: 26px; line-height: 28px; text-align: center; color: var(--paper); }
+
+.db-status {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(20px, 5vw, 28px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.db-status--you { background: var(--hit); }
+.db-status--result { animation: stamp-in .35s var(--ease-snap) both; }
+
+/* ── Board ─────────────────────────────────────────────── */
+.db-stage { display: grid; justify-items: center; }
+.db-board {
+  width: min(100% - 10px, max(260px, calc(100dvh - 330px)), 520px);
+  padding: clamp(6px, 2vw, 12px);
+  background: var(--board);
+  box-shadow: var(--shadow-lg), inset 0 0 0 3px #2b2833, inset 0 0 0 4px #0b0a0e;
+}
+.db-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--paper);
+  /* presses slide to aim; never scroll or zoom the page */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.db-board--live .db-svg { cursor: pointer; }
+
+.db-dot { fill: var(--ink); }
+.db-guide { stroke: rgba(18, 16, 22, .13); stroke-width: 4; stroke-dasharray: 6 9; }
+/* every line in the colour of whoever drew it */
+.db-line { stroke-width: 11; }
+.db-line--0 { stroke: var(--lash); }
+.db-line--1 { stroke: var(--seven); }
+.db-line--last { stroke-width: 13; stroke-dasharray: 1; animation: db-draw .22s var(--ease-out) both; }
+/* the newest line sits on a yellow glow */
+.db-glow { stroke: var(--hit); stroke-width: 30; stroke-linecap: round; animation: fade .3s both; }
+@keyframes db-draw { from { stroke-dashoffset: 1; } }
+
+/* your aim: faint while hovering with a mouse, solid while pressed */
+.db-aim { stroke-width: 13; opacity: .4; pointer-events: none; }
+.db-aim--0 { stroke: var(--lash); }
+.db-aim--1 { stroke: var(--seven); }
+.db-aim--pressed { opacity: 1; stroke-width: 15; }
+
+/* claimed boxes: a light tint, so the coloured lines around them stay readable */
+.db-box--0 rect { fill: color-mix(in srgb, var(--lash) 24%, var(--paper)); }
+.db-box--1 rect { fill: color-mix(in srgb, var(--seven) 22%, var(--paper)); }
+.db-box text { font-family: var(--display); font-size: 44px; pointer-events: none; }
+.db-box--0 text { fill: var(--lash); }
+.db-box--1 text { fill: var(--seven); }
+.db-box--new { transform-box: fill-box; transform-origin: center; animation: db-claim .38s var(--ease-snap) both; }
+@keyframes db-claim { from { transform: scale(.3); opacity: 0; } 60% { transform: scale(1.08); } }
+
+/* after the last box: the loser's boxes step back */
+.db-box--lost { opacity: .45; transition: opacity .35s .6s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .db-line--last, .db-box--new { animation: none; }
+}
+
+/* ── Results ───────────────────────────────────────────── */
+.dbm-results { gap: 24px; padding-top: clamp(8px, 4vh, 40px); }
+.dbm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.dbm-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.dbm-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+.dbm-results__line { font-family: var(--display); font-size: clamp(24px, 5vw, 32px); }
+.dbm-results__line span { color: var(--dim); }
+.dbm-results__cards { align-items: center; }
+
+/* ── Phones during the match: pinned to one screen ─────── */
+@media (width < 900px) {
+  html.scroll-locked .dbm {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 12px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  html.scroll-locked .db-stage { align-self: center; }
+  html.scroll-locked .dbm .mt-score { padding-block: 6px 8px; }
+}

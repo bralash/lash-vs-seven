@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Link, RouterProvider, type RouteObject } from 'react-router-dom'
 import { Anagram } from './games/anagram/Anagram'
 import { ConnectFour } from './games/connect4/ConnectFour'
+import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
 import { TicTacToe } from './games/tictactoe/TicTacToe'
 import { WordHunt } from './games/wordhunt/WordHunt'
 import { SoundProvider } from './lib/sound'
@@ -12,6 +13,7 @@ const BoardLab = import.meta.env.DEV ? lazy(() => import('./dev/BoardLab')) : nu
 const TttLab = import.meta.env.DEV ? lazy(() => import('./dev/TttLab')) : null
 const ShareLab = import.meta.env.DEV ? lazy(() => import('./dev/ShareLab')) : null
 const C4Lab = import.meta.env.DEV ? lazy(() => import('./dev/C4Lab')) : null
+const DotsLab = import.meta.env.DEV ? lazy(() => import('./dev/DotsLab')) : null
 
 // A data router (rather than <BrowserRouter>) so games can block navigation mid-match with useBlocker.
 const routes: RouteObject[] = [
@@ -20,10 +22,12 @@ const routes: RouteObject[] = [
   { path: '/anagram', element: <Anagram /> },
   { path: '/tictactoe', element: <TicTacToe /> },
   { path: '/connect4', element: <ConnectFour /> },
+  { path: '/dots', element: <DotsAndBoxes /> },
   ...(BoardLab ? [{ path: '/dev/board', element: <Suspense><BoardLab /></Suspense> }] : []),
   ...(TttLab ? [{ path: '/dev/ttt', element: <Suspense><TttLab /></Suspense> }] : []),
   ...(ShareLab ? [{ path: '/dev/share', element: <Suspense><ShareLab /></Suspense> }] : []),
   ...(C4Lab ? [{ path: '/dev/c4', element: <Suspense><C4Lab /></Suspense> }] : []),
+  ...(DotsLab ? [{ path: '/dev/dots', element: <Suspense><DotsLab /></Suspense> }] : []),
   { path: '*', element: <NotFound /> },
 ]
 const router = createBrowserRouter(routes)

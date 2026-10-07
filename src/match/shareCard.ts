@@ -21,6 +21,8 @@ export type CardDetail =
   | { kind: 'ttt'; board: string; line?: number[]; stats: [string, string][] }
   /** Connect Four: the deciding 7×6 board with the winning four struck through, plus stats */
   | { kind: 'c4'; board: string; line?: number[]; stats: [string, string][] }
+  /** Dots & Boxes: the final board with every box in its owner's colour, plus stats */
+  | { kind: 'dots'; size: number; lines: string; boxes: string; initials: [string, string]; stats: [string, string][] }
 
 export interface CardInput {
   game: string
@@ -285,6 +287,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
     })
     return
   }
+  if (d.kind === 'dots') {
+    drawDots(ctx, d, x, y, h, pad)
+    return
+  }
   if (d.kind === 'c4') {
     drawC4(ctx, d, x, y, h, pad)
     return
@@ -425,6 +431,77 @@ function drawC4(ctx: Ctx, d: Extract<CardDetail, { kind: 'c4' }>, x: number, y: 
     }
   }
   statLines(ctx, d.stats, bx + bw + 56, y + 86)
+}
+
+/** Dots & Boxes: the final board drawn like the in-game one — coloured lines, tinted boxes with initials. */
+function drawDots(ctx: Ctx, d: Extract<CardDetail, { kind: 'dots' }>, x: number, y: number, h: number, pad: number) {
+  const n = d.size
+  const frame = 12
+  const s = h - 2 * 21 // board side, frame included
+  const bx = x + pad
+  const by = y + (h - s) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, s, s)
+  ctx.strokeStyle = '#2b2833'
+  ctx.lineWidth = 3
+  ctx.strokeRect(bx + 1.5, by + 1.5, s - 3, s - 3)
+  const px = bx + frame
+  const py = by + frame
+  const ps = s - 2 * frame
+  ctx.fillStyle = C.paper
+  ctx.fillRect(px, py, ps, ps)
+
+  // same proportions as the in-game SVG: 100 units a box, 26 of margin
+  const k = ps / (n * 100 + 52)
+  const u = 100 * k
+  const ox = px + 26 * k
+  const oy = py + 26 * k
+  const h0 = n * (n + 1)
+
+  // boxes: a light tint of the owner's colour with their initial, like the in-game board
+  for (let b = 0; b < n * n; b++) {
+    const v = d.boxes[b]
+    if (v === '.') continue
+    const seat = Number(v)
+    const cx = ox + (b % n) * u
+    const cy = oy + Math.floor(b / n) * u
+    ctx.fillStyle = tint(SEAT[seat], seat === 0 ? 0.24 : 0.22)
+    ctx.fillRect(cx, cy, u, u)
+    const size = Math.round(44 * k)
+    text(ctx, d.initials[seat], cx + u / 2, cy + u / 2 + size * 0.36, size, SEAT[seat], { align: 'center' })
+  }
+
+  // every line in the colour of whoever drew it
+  ctx.lineWidth = 11 * k
+  ctx.lineCap = 'butt'
+  for (let i = 0; i < d.lines.length; i++) {
+    if (d.lines[i] === '.') continue
+    const horizontal = i < h0
+    const j = horizontal ? i : i - h0
+    const r = horizontal ? Math.floor(j / n) : Math.floor(j / (n + 1))
+    const c = horizontal ? j % n : j % (n + 1)
+    const x1 = ox + c * u
+    const y1 = oy + r * u
+    ctx.strokeStyle = SEAT[Number(d.lines[i])]
+    ctx.beginPath()
+    ctx.moveTo(x1, y1)
+    ctx.lineTo(horizontal ? x1 + u : x1, horizontal ? y1 : y1 + u)
+    ctx.stroke()
+  }
+
+  const dot = 22 * k
+  ctx.fillStyle = C.ink
+  for (let r = 0; r <= n; r++) for (let c = 0; c <= n; c++) ctx.fillRect(ox + c * u - dot / 2, oy + r * u - dot / 2, dot, dot)
+
+  statLines(ctx, d.stats, bx + s + 56, y + 86)
+}
+
+/** A seat colour mixed into the paper colour, as CSS color-mix(in srgb, colour amount, paper) does. */
+function tint(hex: string, amount: number) {
+  const rgb = (h: string) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16))
+  const a = rgb(hex)
+  const p = rgb(C.paper)
+  return `rgb(${a.map((v, k) => Math.round(v * amount + p[k] * (1 - amount))).join(', ')})`
 }
 
 /** Label/value pairs stacked vertically on the dark panel. */
