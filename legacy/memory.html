@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>Memory — Lash vs Seven</title>
+<meta name="description" content="Flip cards and find matching pairs. More matches wins. Play online or pass-and-play.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="https://lash-vs-seven.web.app/memory">
+<meta property="og:title"       content="Memory — Lash vs Seven">
+<meta property="og:description" content="Flip cards and find matching pairs. More matches wins.">
+<meta property="og:image"       content="https://lash-vs-seven.web.app/og-image.svg">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Memory — Lash vs Seven">
+<meta name="twitter:description" content="Flip cards and find matching pairs. More matches wins.">
+<meta name="twitter:image"       content="https://lash-vs-seven.web.app/og-image.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="css/lvs-global.css">
+<link rel="stylesheet" href="css/memory.css?v=3">
+</head>
+<body>
+
+<!-- confetti -->
+<canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+
+<!-- ============================================================
+     SCREEN: LOBBY
+     ============================================================ -->
+<div id="screen-lobby" class="screen active">
+  <div class="game-card">
+    <div class="lobby-hero">
+      <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+      <div class="lobby-title">Memory</div>
+      <div class="lobby-sub">Flip &amp; Match &nbsp;·&nbsp; Two players &nbsp;·&nbsp; Most pairs wins</div>
+      <div class="lobby-ornament" style="margin-top:14px">◆ &nbsp; ◆ &nbsp; ◆</div>
+    </div>
+    <div class="lobby-actions">
+      <button class="btn btn-fleet btn-full" onclick="showScreen('welcome')">Pass &amp; Play →</button>
+      <button class="btn btn-ghost btn-full" onclick="showScreen('online')">Play Online →</button>
+    </div>
+    <button class="btn-text rules-link" onclick="lvsShowRules(GAME_RULES)">How to play</button>
+      <a href="index.html" class="lobby-back-home">← All Games</a>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: ONLINE LOBBY
+     ============================================================ -->
+<div id="screen-online" class="screen">
+  <div class="game-card">
+    <div class="topbar">
+      <div class="brand"><i data-lucide="brain"></i> Memory</div>
+      <button class="btn-text" onclick="showScreen('lobby')">← Back</button>
+    </div>
+    <div class="welcome-body">
+      <div class="hero-title">Play Online</div>
+      <div class="hero-sub">Play against a friend anywhere</div>
+      <div class="welcome-form">
+        <div class="form-row">
+          <label class="form-label" for="host-name-input">Your Name</label>
+          <input type="text" class="text-input" id="host-name-input"
+                 oninput="document.getElementById('guest-name-input').value=this.value"
+                 placeholder="Your name" maxlength="18" autocomplete="off">
+          <input type="hidden" id="guest-name-input">
+        </div>
+        <button class="btn btn-fleet btn-full" onclick="openCreateLobby()">Create Room →</button>
+        <div class="divider-row"><span>or join</span></div>
+        <div class="form-row">
+          <label class="form-label" for="join-code-input">Room Code</label>
+          <div class="join-row">
+            <input type="text" class="text-input code-input" id="join-code-input" placeholder="ABCD" maxlength="6"
+                   oninput="this.value=this.value.toUpperCase()">
+            <button class="btn btn-ghost" onclick="joinBattle()">Join →</button>
+          </div>
+        </div>
+        <div id="join-error" class="form-msg" style="display:none;color:var(--orange)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: LOBBY — CREATE (waiting)
+     ============================================================ -->
+<div id="screen-lobby-create" class="screen">
+  <div class="game-card">
+    <div class="topbar">
+      <div class="brand"><i data-lucide="brain"></i> Memory</div>
+      <button class="btn-text" onclick="showScreen('online')">← Back</button>
+    </div>
+    <div class="waiting-body">
+      <div class="waiting-sub">Share this code with your opponent</div>
+      <div class="room-code-badge" id="room-code-display">----</div>
+      <div id="host-name-section">
+        <button class="btn btn-fleet btn-full" onclick="hostStartWaiting()">Start Waiting →</button>
+      </div>
+      <div id="lobby-create-waiting" style="display:none">
+        <div class="waiting-dots"><span></span><span></span><span></span></div>
+        <p id="waiting-status-text" class="waiting-sub">Awaiting your opponent…</p>
+        <button class="btn btn-ghost btn-sm" id="copy-link-btn" onclick="copyCode()">Copy Link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: WELCOME (local)
+     ============================================================ -->
+<div id="screen-welcome" class="screen">
+  <div class="game-card">
+    <div class="topbar">
+      <div class="brand"><i data-lucide="brain"></i> Memory</div>
+      <button class="btn-text" onclick="showScreen('lobby')">← Back</button>
+    </div>
+    <div class="welcome-body">
+      <div class="hero-title">Pass &amp; Play</div>
+      <div class="hero-sub">Pass the screen between turns</div>
+      <div class="welcome-form">
+        <div class="form-row">
+          <label class="form-label" for="local-name-0">Player 1</label>
+          <input type="text" class="text-input" id="local-name-0" placeholder="Lash" maxlength="18">
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="local-name-1">Player 2</label>
+          <input type="text" class="text-input" id="local-name-1" placeholder="Seven" maxlength="18">
+        </div>
+        <button class="btn btn-fleet btn-full" onclick="startLocalGame()">Start Game →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: GAME
+     ============================================================ -->
+<div id="screen-game" class="screen">
+  <div class="game-card game-card-wide">
+
+    <!-- topbar -->
+    <div class="topbar">
+      <div class="topbar-back">
+        <button onclick="backToLobby()">← Quit</button>
+      </div>
+      <div class="topbar-scores">
+        <div class="topbar-player">
+          <div class="topbar-name" id="name-0">Player 1</div>
+          <div class="topbar-score" id="score-0">0</div>
+        </div>
+        <div class="topbar-divider">–</div>
+        <div class="topbar-player">
+          <div class="topbar-name" id="name-1">Player 2</div>
+          <div class="topbar-score" id="score-1">0</div>
+        </div>
+      </div>
+      <button id="sound-btn" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:2px 0 0;color:var(--ink-muted)">🔊</button>
+    </div>
+
+    <!-- turn indicator -->
+    <div class="turn-bar" id="turn-bar">
+      <span class="turn-dot"></span>
+      <span id="turn-name">Player 1's turn</span>
+    </div>
+
+    <!-- card grid -->
+    <div class="memory-grid" id="memory-grid"></div>
+
+    <!-- footer actions -->
+    <div class="game-footer">
+      <button class="btn btn-ghost btn-sm" onclick="backToLobby()">← Lobby</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: WIN
+     ============================================================ -->
+<div id="screen-win" class="screen">
+  <div class="game-card" style="align-items:center;text-align:center;padding-top:36px;padding-bottom:32px;gap:6px">
+    <div class="win-label" id="win-label">Wins!</div>
+    <div class="win-mark" id="win-mark" style="display:none">—</div>
+    <div class="win-name" id="win-name">Player 1</div>
+    <div class="win-score" id="win-score">8 – 0</div>
+    <div class="win-score-label">pairs matched</div>
+    <div class="win-actions">
+      <button class="btn btn-fleet btn-full" id="play-again-btn" onclick="onPlayAgain()">Play Again</button>
+      <button class="btn btn-ghost btn-full" onclick="backToLobby()">← Back to Lobby</button>
+      <button class="btn btn-ghost btn-full" onclick="lvsDownloadCard({game:'Memory',names:state.players,winner:state.winner==='draw'?2:state.winner,scores:state.scores,scoreLabel:'pairs'})">Download Result Card</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- Lucide icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<!-- Shared utilities -->
+<script src="js/lvs-utils.js"></script>
+<!-- Game logic -->
+<script src="js/memory.js"></script>
+
+</body>
+</html>

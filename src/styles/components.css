@@ -1,0 +1,203 @@
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 26px;
+  border: var(--edge) solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  font-family: var(--display);
+  font-size: 22px;
+  text-transform: uppercase;
+  text-decoration: none;
+  line-height: 1;
+  transition: transform .12s var(--ease-out), box-shadow .12s var(--ease-out), background .12s;
+}
+.btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
+.btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 2px 2px 0 var(--ink); }
+.btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: var(--shadow-sm); }
+
+.btn--primary { background: var(--hit); }
+.btn--lg { font-size: clamp(26px, 4vw, 40px); padding: 18px 30px; box-shadow: var(--shadow-lg); }
+.btn--lg:hover:not(:disabled) { box-shadow: 12px 12px 0 var(--ink); }
+.btn--block { width: 100%; }
+
+/* the little ↵ key cap inside primary buttons */
+.keycap {
+  display: inline-grid;
+  place-items: center;
+  width: 1.1em; height: 1.3em;
+  border: 2px solid currentColor;
+  font-family: var(--mono);
+  font-size: .55em;
+  opacity: .75;
+}
+
+/* square icon buttons in the top bar */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px; height: 44px;
+  padding: 0 12px;
+  gap: 8px;
+  grid-auto-flow: column;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: transform .12s var(--ease-out), box-shadow .12s var(--ease-out);
+}
+.icon-btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.icon-btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.icon-btn svg { width: 20px; height: 20px; }
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 0;
+}
+.topbar__side { display: flex; align-items: center; gap: 12px; }
+.topbar__title { font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+
+/* ── Logo ────────────────────────────────────────────────── */
+.logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo__mark { width: 40px; height: 40px; flex: none; }
+.logo__word {
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: .9;
+  text-transform: uppercase;
+}
+.logo__word span { display: block; }
+.logo__word .vs { color: var(--lash); -webkit-text-stroke: 0; }
+
+/* ── Text field (big yellow "YOUR NAME" card) ────────────── */
+.field-card {
+  position: relative;
+  padding: 18px 22px 20px;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+}
+.field-card .label { color: var(--ink); }
+.field-card input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 2px 0 8px;
+  border: 0;
+  border-bottom: var(--edge) solid var(--ink);
+  background: transparent;
+  font-family: var(--display);
+  font-size: clamp(32px, 6vw, 52px);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  outline: none;
+}
+.field-card input::placeholder { color: color-mix(in srgb, var(--ink) 62%, var(--hit)); }
+.field-card:focus-within { outline: 3px solid var(--seven); outline-offset: 4px; }
+
+/* ── Messages ───────────────────────────────────────────── */
+.hint { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.error-text { color: var(--strike); font-weight: 500; }
+
+/* ── Stamp ("SOON", "LIVE", "#1") ───────────────────────── */
+.stamp {
+  display: inline-block;
+  padding: 3px 8px 2px;
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--display);
+  font-size: 12px;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+}
+.stamp--live { background: var(--hit); color: var(--ink); }
+
+/* ── Modal ──────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  padding: var(--gutter);
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  z-index: 200; /* above the fullscreen countdown (100) — a Back press mid-countdown must show its confirm */
+  animation: fade .2s ease both;
+}
+.modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(86dvh, 760px);
+  display: flex; flex-direction: column;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow-lg);
+  animation: pop .28s var(--ease-snap) both;
+}
+.modal__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 24px 12px; }
+.modal__head h2 { font-size: clamp(28px, 5vw, 40px); }
+.modal__body { padding: 4px 24px 28px; overflow-y: auto; }
+
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.steps li { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; }
+.steps .num {
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  font-family: var(--display);
+  font-size: 15px;
+}
+.steps h3 { font-size: 17px; text-transform: none; letter-spacing: 0; margin-bottom: 4px; }
+.steps p { font-size: 14px; color: var(--ink-soft); }
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+
+/* ── Toast ──────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  left: 50%; bottom: 28px;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border: var(--edge) solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-sm);
+  z-index: 210;
+  animation: pop .25s var(--ease-snap) both;
+}
+
+@media (width <= 480px) {
+  .hide-sm { display: none; }
+  .topbar__title { font-size: 11px; letter-spacing: .1em; white-space: nowrap; }
+}
+
+/* ── Leave / destructive actions ───────────────────────── */
+/* Top-bar Leave: set apart from the other controls and turns red on hover so it reads as an exit. */
+.icon-btn--leave { margin-left: 6px; color: var(--strike); }
+.icon-btn--leave:hover { background: var(--strike); color: var(--paper); }
+
+/* Secondary-but-dangerous: outlined in red so it's clearly not the default choice. */
+.btn--danger { color: var(--strike); border-color: var(--strike); box-shadow: var(--shadow-sm); }
+.btn--danger svg { width: 20px; height: 20px; }
+.btn--danger:hover:not(:disabled) { background: var(--strike); color: var(--paper); border-color: var(--ink); }
+.btn--danger:disabled { opacity: .45; }
+
+.confirm__body { margin-bottom: 24px; color: var(--ink-soft); }
+.confirm__actions { display: flex; flex-wrap: wrap; gap: 14px; }
+.confirm__actions .btn { flex: 1 1 200px; font-size: 18px; padding: 14px 18px; }

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- background -->
+  <rect width="1200" height="630" fill="#1A0D04"/>
+  <!-- subtle radial glow from bottom -->
+  <radialGradient id="glow" cx="50%" cy="100%" r="65%">
+    <stop offset="0%" stop-color="#6B2800" stop-opacity="0.7"/>
+    <stop offset="100%" stop-color="#1A0D04" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- anchor logo (centered top area) -->
+  <g transform="translate(600,175)" stroke="#e17055" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="0" cy="-48" r="18"/>
+    <line x1="0" y1="-30" x2="0" y2="50"/>
+    <line x1="-46" y1="-4" x2="46" y2="-4"/>
+    <path d="M-46 -4 C-56 18 -46 48 -26 48"/>
+    <path d="M46 -4 C56 18 46 48 26 48"/>
+  </g>
+
+  <!-- top ornament -->
+  <text x="600" y="290" text-anchor="middle"
+        font-family="Georgia, serif" font-size="18" font-weight="400"
+        letter-spacing="14" fill="#e17055" opacity="0.8">◆   ◆   ◆</text>
+
+  <!-- main title -->
+  <text x="600" y="378" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-size="96" font-weight="700"
+        letter-spacing="6" fill="#FDF8EE">LASH VS SEVEN</text>
+
+  <!-- subtitle -->
+  <text x="600" y="430" text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="400"
+        letter-spacing="10" fill="#A07060" text-transform="uppercase">GAME NIGHT</text>
+
+  <!-- bottom divider -->
+  <line x1="490" y1="468" x2="710" y2="468" stroke="#6B4230" stroke-width="1" opacity="0.6"/>
+
+  <!-- game names -->
+  <text x="600" y="510" text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="400"
+        letter-spacing="5" fill="#6B4230">BATTLESHIP · TIC-TAC-TOE · CHECKERS · DOTS &amp; BOXES</text>
+</svg>

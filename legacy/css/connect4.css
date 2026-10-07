@@ -1,0 +1,224 @@
+/* ============================================================
+   CONNECT FOUR — local overrides only
+   Global palette, reset, body, screens, topbar, buttons,
+   lobby, forms, waiting, turn-pill, score-strip, game-msg,
+   game-actions, win-screen, confetti, and responsive lobby/win
+   padding are all handled by lvs-global.css.
+   ============================================================ */
+
+:root {
+  --p0:   #e17055;
+  --p1:   #74b9ff;
+  --cell: 44px;
+  --gap:  6px;
+}
+
+body {
+  background-image: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(100,40,10,0.5) 0%, transparent 70%);
+}
+
+/* ============================================================
+   GAME CARD
+   ============================================================ */
+.game-card {
+  background: var(--card);
+  border-radius: var(--card-radius);
+  border: 2.5px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+}
+.game-card-wide { max-width: 520px; }
+
+/* ============================================================
+   WELCOME BODY — connect4-specific hero pieces
+   ============================================================ */
+.hero-pieces {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.hero-piece {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.25);
+}
+.hero-piece.p0 { background: var(--p0); }
+.hero-piece.p1 { background: var(--p1); }
+.hero-vs {
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+
+/* ============================================================
+   SCORE STRIP — color swatches (local, global handles layout)
+   ============================================================ */
+.score-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.score-dot.p0 { background: var(--p0); }
+.score-dot.p1 { background: var(--p1); }
+.score-num {
+  font-size: 1.4rem;
+  color: var(--ink);
+  line-height: 1;
+}
+
+/* ── Turn dot color ── */
+.turn-dot { background: var(--p0); }
+
+/* ── Board area ── */
+.board-area {
+  padding: 16px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Preview row */
+.c4-preview-row {
+  display: flex;
+  gap: var(--gap);
+  padding: 0 0 2px;
+}
+.c4-preview-cell {
+  width: var(--cell);
+  height: calc(var(--cell) * 0.55);
+  border-radius: 50%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: opacity 0.1s;
+}
+.c4-preview-cell .c4-arrow {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  transform: translateY(4px);
+}
+.c4-preview-cell.active .c4-arrow {
+  opacity: 0.75;
+  transform: translateY(0);
+}
+.c4-preview-cell.p0 .c4-arrow { background: var(--p0); }
+.c4-preview-cell.p1 .c4-arrow { background: var(--p1); }
+
+/* Board grid */
+.c4-board {
+  display: grid;
+  grid-template-columns: repeat(7, var(--cell));
+  grid-template-rows:    repeat(6, var(--cell));
+  gap: var(--gap);
+  padding: 12px;
+  background: #110800;
+  border-radius: 8px;
+  border: 2px solid rgba(0,0,0,0.6);
+  box-shadow: inset 0 4px 16px rgba(0,0,0,0.7), 0 4px 0 rgba(0,0,0,0.3);
+  overflow: hidden; /* clip pieces falling in from above */
+}
+
+/* Cells */
+.c4-cell {
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: 50%;
+  background: rgba(253,248,238,0.14);
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.06);
+  transition: background 0.12s;
+  cursor: default;
+}
+.c4-cell.p0 { background: var(--p0); box-shadow: inset 0 -3px 0 rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.12); }
+.c4-cell.p1 { background: var(--p1); box-shadow: inset 0 -3px 0 rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.1); }
+
+/* Column hover highlight */
+.c4-board.my-turn .c4-cell.hover-col:not(.p0):not(.p1) {
+  background: rgba(253,248,238,0.18);
+}
+
+/* Drop animation — piece falls from the board's top edge to the destination row */
+@keyframes c4Drop {
+  0%   { transform: translateY(calc(-1 * var(--drop-dist, 260px))); }
+  74%  { transform: translateY(6px); }
+  87%  { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
+}
+.c4-cell.dropping {
+  animation: c4Drop var(--drop-dur, 280ms) ease-in forwards;
+}
+
+/* Winning cell pulse */
+@keyframes c4Win {
+  0%, 100% { transform: scale(1);    filter: brightness(1); }
+  50%       { transform: scale(1.12); filter: brightness(1.3); }
+}
+.c4-cell.winning {
+  animation: c4Win 0.65s ease-in-out infinite;
+  z-index: 2;
+  position: relative;
+}
+
+/* ============================================================
+   WIN SCREEN — connect4-specific win piece
+   ============================================================ */
+.win-piece {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  margin: 8px 0 4px;
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.22);
+}
+.win-piece.p0 { background: var(--p0); }
+.win-piece.p1 { background: var(--p1); }
+
+/* ============================================================
+   RESPONSIVE — connect4-specific cell/gap breakpoints only
+   ============================================================ */
+@media (max-width: 480px) {
+  :root { --cell: 38px; --gap: 5px; }
+}
+@media (max-width: 360px) {
+  :root { --cell: 32px; --gap: 4px; }
+}
+
+/* ── Fullscreen layout ── */
+body.is-fullscreen #screen-game .game-card {
+  max-width: 100vw;
+  width: 100vw;
+  height: 100dvh;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+body.is-fullscreen #screen-game {
+  --cell: min(calc((100vw - 80px) / 7), calc((100dvh - 250px) / 6));
+  --gap: 8px;
+}
+body.is-fullscreen #screen-game .board-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 20px;
+  min-height: 0;
+}
+body.is-fullscreen #screen-game .c4-preview-cell .c4-arrow {
+  width: calc(var(--cell) * 0.32);
+  height: calc(var(--cell) * 0.32);
+}
+body.is-fullscreen #screen-game .topbar       { padding: 16px 28px; }
+body.is-fullscreen #screen-game .score-strip  { padding: 12px 28px; }
+body.is-fullscreen #screen-game .game-msg     { font-size: 1rem; padding: 8px 28px; }
+body.is-fullscreen #screen-game .game-actions { padding: 10px 28px 16px; }

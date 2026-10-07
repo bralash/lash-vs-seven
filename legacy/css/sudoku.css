@@ -1,0 +1,360 @@
+/* ============================================================
+   SUDOKU-SPECIFIC TOKENS
+   ============================================================ */
+:root {
+  --su-given:    #1A0D04;
+  --su-user:     #2563eb;
+  --su-error:    #dc2626;
+  --su-sel:      #c8e6fa;
+  --su-hi:       #edf5fb;
+  --su-same:     #b3d9f5;
+}
+
+body {
+  background-image: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(100,40,10,0.5) 0%, transparent 70%);
+}
+
+/* ============================================================
+   GAME CARD
+   ============================================================ */
+.game-card {
+  background: var(--card);
+  border-radius: var(--card-radius);
+  border: 2.5px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+}
+.game-card-wide { max-width: 540px; }
+
+/* ============================================================
+   SUDOKU WELCOME — HERO GRID
+   ============================================================ */
+.su-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  grid-template-rows: repeat(3, 32px);
+  gap: 3px;
+  margin-bottom: 6px;
+  border: 2px solid var(--ink);
+  padding: 4px;
+  border-radius: 3px;
+  background: var(--card);
+}
+.su-hero-grid span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+.su-hero-grid span:empty { color: transparent; background: rgba(232,90,37,0.06); }
+
+/* ============================================================
+   GAME SCREEN — PLAYER STRIP
+   ============================================================ */
+.su-player-strip {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.su-strip-local {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--ink-mid);
+}
+.su-strip-sep { color: var(--ink-muted); }
+.su-timer {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--ink);
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.su-strip-online {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.su-prog-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.su-prog-name {
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.su-prog-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(26,13,4,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.su-prog-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--orange);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.su-prog-bar-opp {
+  background: #2563eb;
+}
+.su-prog-count {
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   SUDOKU BOARD
+   ============================================================ */
+.su-board-wrap {
+  padding: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.su-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+  border: 2.5px solid var(--ink);
+  padding: 3px;
+  background: var(--ink);
+  border-radius: 2px;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1;
+}
+
+.su-box {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(26,13,4,0.25);
+  padding: 1px;
+}
+
+.su-cell {
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
+  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+  font-weight: 800;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  touch-action: manipulation;
+  transition: background 0.08s;
+  aspect-ratio: 1;
+}
+.su-cell:focus { outline: none; }
+
+.su-cell.given {
+  color: var(--su-given);
+  cursor: default;
+}
+.su-cell.user {
+  color: var(--su-user);
+}
+.su-cell.error {
+  color: var(--su-error);
+  background: rgba(220,38,38,0.08);
+}
+.su-cell.selected {
+  background: var(--su-sel) !important;
+}
+.su-cell.highlight {
+  background: var(--su-hi);
+}
+.su-cell.same-num {
+  background: var(--su-same);
+}
+
+/* Notes mini-grid */
+.su-notes {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 1px;
+}
+.su-note-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
+  font-size: clamp(0.42rem, 1.4vw, 0.6rem);
+  font-weight: 700;
+  color: #4a5c6e;
+  line-height: 1;
+}
+.su-note-cell:empty { color: transparent; }
+
+/* ============================================================
+   NUMBER PAD
+   ============================================================ */
+.su-numpad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  padding: 0 14px 10px;
+}
+.su-num-btn {
+  font-family: 'Nunito', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  min-height: 44px;
+  border: 1.5px solid rgba(26,13,4,0.2);
+  border-radius: 3px;
+  background: rgba(26,13,4,0.04);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, transform 0.08s;
+  touch-action: manipulation;
+}
+.su-num-btn:hover {
+  background: rgba(26,13,4,0.1);
+  transform: translateY(-1px);
+}
+.su-num-btn:active {
+  transform: translateY(0);
+}
+.su-erase-btn {
+  font-size: 1rem;
+  color: var(--orange);
+  border-color: rgba(232,90,37,0.3);
+}
+.su-notes-btn {
+  font-size: 1rem;
+  color: var(--ink-muted);
+  letter-spacing: 0;
+}
+.su-notes-btn.notes-active {
+  background: rgba(232,90,37,0.12);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* ============================================================
+   ACTION ROW
+   ============================================================ */
+.su-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 14px;
+}
+.su-diff-badge {
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  border: 1.5px solid rgba(26,13,4,0.15);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* ============================================================
+   PASS SCREEN
+   ============================================================ */
+.pass-body {
+  padding: 52px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.pass-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(232,90,37,0.12);
+  border: 2.5px solid var(--orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  color: var(--orange);
+  margin: 8px 0 4px;
+}
+.pass-msg {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.pass-sub {
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+
+/* ============================================================
+   WIN SCREEN — SUDOKU-SPECIFIC
+   ============================================================ */
+.win-times {
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.85rem;
+  color: var(--ink-mid);
+  line-height: 1.8;
+  margin-bottom: 4px;
+}
+
+/* ============================================================
+   RESPONSIVE — SUDOKU-SPECIFIC
+   ============================================================ */
+@media (max-width: 520px) {
+  .game-card-wide { max-width: 100%; }
+  .su-board { max-width: 100%; }
+  .su-numpad { gap: 4px; padding: 0 10px 8px; }
+  .su-num-btn { font-size: 0.95rem; min-height: 40px; }
+}

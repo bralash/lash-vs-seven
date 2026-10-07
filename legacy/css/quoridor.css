@@ -1,0 +1,202 @@
+/* ============================================================
+   QUORIDOR — Lash vs Seven
+   Game-specific styles only. Global tokens/reset in lvs-global.css
+   ============================================================ */
+
+:root {
+  --cell:   38px;
+  --gap:    12px;
+
+  --board-bg:    #2e1a0b;
+  --cell-bg:     #c49a6c;
+  --cell-hover:  #d4b080;
+  --wall-color:  #FDF8EE;
+  --wall-prev:   rgba(232,90,37,0.8);
+  --wall-bad:    rgba(200,40,40,0.7);
+
+  --p0-color:  #E85A25;
+  --p1-color:  #1A0D04;
+}
+
+/* ── Local background override ── */
+body {
+  background-image: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(100,40,10,.5) 0%, transparent 70%);
+}
+
+/* ── Game card ── */
+.game-card {
+  background: var(--card);
+  border-radius: var(--card-radius);
+  border: 2.5px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden; width: 100%; max-width: 560px;
+}
+
+/* ── Topbar ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid rgba(0,0,0,.07);
+}
+.brand { font-size:.95rem; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink); }
+.brand .lucide { width:14px;height:14px;stroke-width:2;vertical-align:middle;margin-right:4px; }
+.turn-pill {
+  display:flex;align-items:center;gap:7px;
+  background:rgba(232,90,37,.08);border:1px solid rgba(232,90,37,.25);
+  border-radius:40px;padding:5px 14px;font-size:.8rem;font-weight:700;
+  color:var(--orange);letter-spacing:.5px;
+}
+.turn-dot { width:8px;height:8px;border-radius:50%;background:var(--p0-color);animation:blink 1.1s step-end infinite; }
+.turn-dot.p1 { background:#4a2e1a; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── Message bar ── */
+.msg-bar {
+  padding:10px 20px;font-size:.87rem;font-weight:500;color:var(--ink-mid);
+  border-bottom:1px solid rgba(0,0,0,.06);min-height:42px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+}
+.msg-bar.warn { background:rgba(255,185,0,.09);color:#b07800;font-weight:700; }
+
+/* ── Board ── */
+.board-wrap { display:flex;justify-content:center;padding:14px 12px 10px;overflow-x:auto; }
+
+.quoridor-board {
+  display: grid;
+  grid-template-columns: var(--cell) repeat(8, var(--gap) var(--cell));
+  grid-template-rows:    var(--cell) repeat(8, var(--gap) var(--cell));
+  background: var(--board-bg);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.qr-cell {
+  background: var(--cell-bg);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.qr-cell.goal-p0 { background: rgba(232,90,37,.12); }
+.qr-cell.goal-p1 { background: rgba(26,13,4,.14); }
+.qr-cell.has-move { cursor: pointer; }
+.qr-cell.has-move:hover { background: var(--cell-hover); }
+.qr-cell.has-move::after {
+  content:''; position:absolute; width:38%;height:38%;border-radius:50%;
+  background:rgba(232,90,37,.35);pointer-events:none;
+}
+
+.qr-hslot { background: var(--board-bg); cursor:default; }
+.qr-vslot { background: var(--board-bg); cursor:default; }
+.qr-cross { background: var(--board-bg); }
+
+.qr-hslot.w-active, .qr-vslot.w-active { cursor: pointer; }
+
+.qr-hslot.w-preview,
+.qr-hslot.w-active:hover { background: var(--wall-prev); box-shadow: 0 2px 6px rgba(232,90,37,0.5); }
+.qr-vslot.w-preview,
+.qr-vslot.w-active:hover { background: var(--wall-prev); box-shadow: 2px 0 6px rgba(232,90,37,0.5); }
+.qr-cross.w-preview      { background: var(--wall-prev); }
+
+.qr-hslot.w-bad          { background: var(--wall-bad); }
+.qr-vslot.w-bad          { background: var(--wall-bad); }
+.qr-cross.w-bad          { background: var(--wall-bad); }
+
+.qr-hslot.wall-h {
+  background: var(--wall-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.15);
+}
+.qr-vslot.wall-v {
+  background: var(--wall-color);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.6), -1px 0 0 rgba(255,255,255,0.15);
+}
+.qr-cross.wall-hv { background: var(--wall-color); }
+
+/* ── Pawns ── */
+.qr-pawn {
+  width:66%;height:66%;border-radius:50%;flex-shrink:0;
+  box-shadow:0 3px 0 rgba(0,0,0,.5),inset 0 -2px 4px rgba(0,0,0,.35),inset 0 2px 4px rgba(255,255,255,.12);
+  transition:transform .12s;
+  position:relative;z-index:2;
+}
+.qr-pawn.p0 { background:radial-gradient(circle at 38% 32%,#f2874e,var(--p0-color) 55%,#b03810); }
+.qr-pawn.p1 {
+  background:radial-gradient(circle at 38% 32%,#503828,var(--p1-color) 55%,#060302);
+  box-shadow:0 3px 0 rgba(0,0,0,.6),inset 0 -2px 4px rgba(0,0,0,.4),inset 0 2px 4px rgba(255,255,255,.08);
+}
+.qr-pawn.active-pawn {
+  box-shadow:0 0 0 3px var(--orange),0 3px 0 rgba(0,0,0,.5);
+  animation:pawnPulse 1s ease-in-out infinite;
+}
+@keyframes pawnPulse{0%,100%{box-shadow:0 0 0 3px var(--orange),0 3px 0 rgba(0,0,0,.5)}50%{box-shadow:0 0 0 5px rgba(232,90,37,.4),0 3px 0 rgba(0,0,0,.5)}}
+
+/* ── Mode bar ── */
+.mode-bar {
+  display:flex;gap:6px;padding:10px 16px;border-top:1px solid rgba(0,0,0,.07);
+  background:rgba(26,13,4,.03);
+}
+.mode-btn {
+  flex:1;padding:8px 4px;border:1.5px solid rgba(26,13,4,.25);
+  background:transparent;border-radius:3px;
+  font-size:.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink-mid);cursor:pointer;transition:all .12s;line-height:1.3;
+}
+.mode-btn:hover:not(:disabled) { border-color:var(--orange);color:var(--orange); }
+.mode-btn.active { background:var(--orange);border-color:var(--ink);color:#fff; }
+.mode-btn:disabled { opacity:.35;cursor:default; }
+.mode-btn .wall-count { display:block;font-size:.62rem;font-weight:400;opacity:.8;margin-top:2px; }
+
+/* ── Wall count row ── */
+.wall-row {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 20px 4px;font-size:.72rem;
+  letter-spacing:1px;text-transform:uppercase;color:var(--ink-muted);
+}
+.wall-pip { display:inline-block;width:10px;height:10px;background:var(--ink);border-radius:1px;margin:0 1px; }
+.wall-pip.used { opacity:.18; }
+
+/* ── Game actions ── */
+.game-actions { display:flex;gap:8px;padding:10px 16px 14px; }
+
+/* ── Lobby ── */
+#screen-lobby .game-card,
+#screen-welcome .game-card,
+#screen-online .game-card { max-width:420px; }
+
+/* ── Welcome / Online screens ── */
+.hero-pieces { display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:14px; }
+.hero-piece { width:40px;height:40px;border-radius:50%;box-shadow:0 3px 0 rgba(0,0,0,.45); }
+.hero-piece.p0 { background:radial-gradient(circle at 38% 32%,#f2874e,var(--p0-color) 55%,#b03810); }
+.hero-piece.p1 { background:radial-gradient(circle at 38% 32%,#503828,var(--p1-color) 55%,#060302); }
+.hero-vs { font-size:1rem;font-weight:700;color:var(--ink-muted);letter-spacing:2px; }
+.join-row { display:flex;gap:8px; }
+.join-row input { flex:1;text-transform:uppercase;letter-spacing:6px;text-align:center;font-weight:700;font-size:max(16px,1rem); }
+
+/* ── My badge ── */
+.my-badge { display:none;align-items:center;padding:3px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fff;white-space:nowrap; }
+.my-badge.p0 { background:var(--p0-color); }
+.my-badge.p1 { background:#4a2e1a; }
+
+/* ── Win screen ── */
+#screen-win .game-card { max-width:400px;text-align:center;padding:48px 36px;position:relative; }
+.win-pawn-wrap { display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:20px; }
+.win-pawn { width:64px;height:64px;border-radius:50%;flex-shrink:0; }
+.win-pawn.p0 { background:radial-gradient(circle at 38% 32%,#f2874e,var(--p0-color) 55%,#b03810); box-shadow:0 4px 0 rgba(0,0,0,.4); }
+.win-pawn.p1 { background:radial-gradient(circle at 38% 32%,#503828,var(--p1-color) 55%,#060302); box-shadow:0 4px 0 rgba(0,0,0,.5); }
+.win-label { font-size:.72rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--ink-muted);margin-bottom:4px; }
+.win-name  { font-size:clamp(2rem,7vw,3.5rem);font-weight:900;color:var(--ink);margin-bottom:6px; }
+.win-sub   { font-size:.85rem;color:var(--ink-muted);margin-bottom:28px; }
+.confetti-canvas { position:fixed;inset:0;pointer-events:none;z-index:10; }
+
+/* ── Responsive ── */
+@media (max-width:580px) {
+  :root {
+    --cell: max(28px,calc((100vw - 80px) / 9));
+    --gap:  max(5px, calc((100vw - 80px) / 9 * 0.2));
+  }
+  .topbar    { padding:10px 12px; }
+  .brand     { font-size:.78rem;letter-spacing:1px; }
+  .turn-pill { font-size:.7rem;padding:4px 10px; }
+  .mode-bar  { padding:8px 10px;gap:4px; }
+  .mode-btn  { font-size:.62rem;padding:7px 2px; }
+  .game-actions { padding:8px 12px 12px; }
+}

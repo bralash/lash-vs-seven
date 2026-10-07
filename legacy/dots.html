@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>Dots &amp; Boxes — Lash vs Seven</title>
+<meta name="description" content="Draw lines between dots, complete a box to claim it. Most boxes wins the grid. Play online or pass-and-play.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="https://lash-vs-seven.web.app/dots">
+<meta property="og:title"       content="Dots &amp; Boxes — Lash vs Seven">
+<meta property="og:description" content="Draw lines between dots, complete a box to claim it. Most boxes wins the grid.">
+<meta property="og:image"       content="https://lash-vs-seven.web.app/og-image.svg">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Dots &amp; Boxes — Lash vs Seven">
+<meta name="twitter:description" content="Draw lines between dots, complete a box to claim it. Most boxes wins the grid.">
+<meta name="twitter:image"       content="https://lash-vs-seven.web.app/og-image.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="css/lvs-global.css">
+<link rel="stylesheet" href="css/dots.css?v=3">
+</head>
+<body>
+
+<!-- ============================================================
+     SCREEN: LOBBY
+     ============================================================ -->
+<div id="screen-lobby" class="screen active">
+  <div class="game-card">
+    <div class="lobby-hero">
+      <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+      <div class="lobby-title">Dots &amp; Boxes</div>
+      <div class="lobby-sub">Connect dots &nbsp;·&nbsp; Claim boxes &nbsp;·&nbsp; Rule the grid</div>
+      <div class="lobby-ornament" style="margin-top:14px">◆ &nbsp; ◆ &nbsp; ◆</div>
+    </div>
+    <div class="lobby-actions">
+      <button class="btn btn-fleet btn-full" onclick="showScreen('welcome')">Pass & Play →</button>
+      <button class="btn btn-ghost btn-full" onclick="showScreen('online')">Play Online →</button>
+    </div>
+    <button class="btn-text rules-link" onclick="lvsShowRules(GAME_RULES)">How to play</button>
+      <a href="index.html" class="lobby-back-home">← All Games</a>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: WELCOME (Local)
+     ============================================================ -->
+<div id="screen-welcome" class="screen">
+  <div class="game-card">
+    <div class="topbar">
+      <div class="brand"><i data-lucide="grid-2x2"></i> Dots &amp; Boxes</div>
+      <button class="btn-text" onclick="showScreen('lobby')">← Back</button>
+    </div>
+    <div class="welcome-body">
+      <svg width="72" height="72" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+        <rect x="16" y="16" width="32" height="32" fill="#E85A25" opacity="0.22"/>
+        <rect x="48" y="48" width="32" height="32" fill="#1A0D04" opacity="0.25"/>
+        <line x1="16" y1="16" x2="48" y2="16" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="48" y1="16" x2="80" y2="16" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="16" y1="48" x2="48" y2="48" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="48" y1="48" x2="80" y2="48" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="16" y1="80" x2="48" y2="80" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="48" y1="80" x2="80" y2="80" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="16" y1="16" x2="16" y2="48" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="16" y1="48" x2="16" y2="80" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="48" y1="16" x2="48" y2="48" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="48" y1="48" x2="48" y2="80" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="80" y1="16" x2="80" y2="48" stroke="#1A0D04" stroke-width="4" stroke-linecap="round"/>
+        <line x1="80" y1="48" x2="80" y2="80" stroke="#E85A25" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="5" fill="#1A0D04"/>
+        <circle cx="48" cy="16" r="5" fill="#1A0D04"/>
+        <circle cx="80" cy="16" r="5" fill="#1A0D04"/>
+        <circle cx="16" cy="48" r="5" fill="#1A0D04"/>
+        <circle cx="48" cy="48" r="5" fill="#1A0D04"/>
+        <circle cx="80" cy="48" r="5" fill="#1A0D04"/>
+        <circle cx="16" cy="80" r="5" fill="#1A0D04"/>
+        <circle cx="48" cy="80" r="5" fill="#1A0D04"/>
+        <circle cx="80" cy="80" r="5" fill="#1A0D04"/>
+      </svg>
+      <div class="hero-title">Pass &amp; Play</div>
+      <div class="hero-sub">Pass the screen between turns</div>
+      <div class="welcome-form">
+        <div class="form-row">
+          <label class="form-label" for="p1-name">Orange — Player 1</label>
+          <input type="text" class="text-input" id="p1-name" placeholder="Player 1" maxlength="18">
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="p2-name">Dark — Player 2</label>
+          <input type="text" class="text-input" id="p2-name" placeholder="Player 2" maxlength="18">
+        </div>
+        <button class="btn btn-fleet btn-full" onclick="startGame()">Connect the Dots →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: ONLINE LOBBY
+     ============================================================ -->
+<div id="screen-online" class="screen">
+  <div class="game-card">
+    <div class="topbar">
+      <div class="brand"><i data-lucide="grid-2x2"></i> Dots &amp; Boxes</div>
+      <button class="btn-text" onclick="showScreen('lobby')">← Back</button>
+    </div>
+    <div class="welcome-body">
+      <div class="hero-title">Play Online</div>
+      <div class="hero-sub">Play against a friend anywhere</div>
+      <div class="welcome-form">
+        <div class="form-row">
+          <label class="form-label" for="online-name">Your Name</label>
+          <input type="text" class="text-input" id="online-name" placeholder="Your name" maxlength="18">
+        </div>
+        <button class="btn btn-fleet btn-full" onclick="createRoom()">Create Room →</button>
+        <div class="divider-row"><span>or join</span></div>
+        <div class="join-row">
+          <input type="text" class="text-input code-input" id="join-code" placeholder="ABCD" maxlength="4"
+                 oninput="this.value=this.value.toUpperCase()"
+                 onkeydown="if(event.key==='Enter')joinRoom()">
+          <button class="btn btn-ghost" onclick="joinRoom()">Join →</button>
+        </div>
+        <div id="online-msg" class="online-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: WAITING
+     ============================================================ -->
+<div id="screen-waiting" class="screen">
+  <div class="game-card" style="max-width:400px;text-align:center;">
+    <div class="waiting-body">
+      <div class="waiting-label">Share this code with your opponent</div>
+      <div class="room-code-big" id="waiting-code">XXXX</div>
+      <div class="waiting-sub">
+        Waiting for opponent<span class="waiting-dots"></span>
+      </div>
+      <div class="waiting-actions">
+        <button class="btn btn-ghost btn-sm" id="copy-btn" onclick="copyCode()">Copy Link</button>
+        <button class="btn btn-ghost btn-sm" onclick="backToLobby()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: GAME
+     ============================================================ -->
+<div id="screen-game" class="screen">
+  <div class="game-card">
+    <div class="topbar">
+      <div class="brand"><i data-lucide="anchor"></i> Lash vs Seven</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="my-badge" id="my-color-badge"></div>
+        <div class="turn-pill">
+          <div class="turn-dot" id="turn-dot"></div>
+          <span id="turn-label">Player 1's Turn</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="message-bar" class="msg-bar">Click a line to draw it</div>
+
+    <div class="board-wrap">
+      <svg id="dots-board" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="score-row">
+      <div class="score-player left">
+        <div class="sc-dot p0"></div>
+        <span class="sc-name" id="name-0">Player 1</span>
+      </div>
+      <div class="score-center">
+        <span class="sc-num" id="score-0">0</span>
+        <span class="sc-dash">—</span>
+        <span class="sc-num" id="score-1">0</span>
+      </div>
+      <div class="score-player right">
+        <span class="sc-name" id="name-1">Player 2</span>
+        <div class="sc-dot p1"></div>
+      </div>
+    </div>
+
+    <div class="game-actions">
+      <button class="btn btn-ghost btn-sm" id="restart-btn" onclick="handleRestart()">Restart</button>
+      <button class="btn btn-ghost btn-sm" onclick="backToLobby()">Exit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: WIN
+     ============================================================ -->
+<div id="screen-win" class="screen">
+  <canvas class="confetti-canvas" id="confetti-canvas"></canvas>
+  <div class="game-card">
+    <div class="win-box-wrap" id="win-box-wrap"></div>
+    <div class="win-label" id="win-label">Winner</div>
+    <div class="win-name" id="win-name">Player 1</div>
+    <div class="win-sub" id="win-sub">Boxes: 10 – 6</div>
+    <div style="display:flex;gap:10px;width:100%;margin-top:8px">
+      <button id="win-again-btn" class="btn btn-fleet btn-full" onclick="playAgain()">Play Again</button>
+      <button class="btn btn-ghost btn-full" onclick="backToLobby()">Lobby</button>
+    </div>
+    <button class="btn btn-ghost btn-full" style="margin-top:6px;opacity:0.6;font-size:0.82rem" onclick="downloadResultCard()">Download result card</button>
+  </div>
+</div>
+
+<button id="sound-btn" class="lvs-sound-btn" onclick="toggleSound()" title="Toggle sound"><i data-lucide="volume-2"></i></button>
+<style>.lvs-sound-btn{position:fixed;top:14px;right:14px;z-index:999;background:rgba(253,248,238,0.88);border:1.5px solid rgba(26,13,4,0.18);border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);line-height:1;padding:0;}.brand .lucide{width:14px;height:14px;stroke-width:2;vertical-align:middle;margin-right:4px}.lvs-sound-btn .lucide{width:18px;height:18px;stroke-width:2}</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="js/lvs-utils.js"></script>
+<script src="js/dots.js"></script>
+</body>
+</html>

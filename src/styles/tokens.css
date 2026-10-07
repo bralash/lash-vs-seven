@@ -1,0 +1,44 @@
+/* Design tokens — every component reads from these. */
+:root {
+  color-scheme: light;
+
+  /* surfaces */
+  --paper: #f3ead8;
+  --paper-2: #e8dcc2;
+  --slot: #fbf7ee;
+  --board: #17151c;
+  --tile: #25222c;
+  --tile-hi: #2f2b38;
+
+  /* ink */
+  --ink: #121016;
+  --ink-soft: #3b3742;
+  --dim: #6f6a7a;
+
+  /* accents */
+  --hit: #ffd23f;        /* primary action / highlight */
+  --hit-deep: #f5b800;
+  --lash: #ff5a1f;       /* player one */
+  --seven: #2d5bff;      /* player two */
+  --good: #1f9d55;
+  --strike: #e8291c;
+
+  /* type */
+  --display: "Bowlby One", "Arial Black", Impact, sans-serif;
+  --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* shape */
+  --edge: 3px;
+  --shadow-sm: 4px 4px 0 var(--ink);
+  --shadow: 6px 6px 0 var(--ink);
+  --shadow-lg: 10px 10px 0 var(--ink);
+  --grain: radial-gradient(color-mix(in srgb, var(--ink) 9%, transparent) 1px, transparent 1.4px);
+
+  /* motion */
+  --ease-out: cubic-bezier(.2, 0, 0, 1);
+  --ease-snap: cubic-bezier(.3, 1.5, .5, 1);
+
+  /* layout */
+  --gutter: clamp(16px, 3vw, 40px);
+  --max: 1120px;
+}

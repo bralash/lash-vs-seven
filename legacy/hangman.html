@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>Hangman — Lash vs Seven</title>
+  <meta name="description" content="Asymmetric 2-player Hangman. One player sets the word, the other guesses. Swap roles and settle the match.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/lvs-global.css">
+  <link rel="stylesheet" href="css/hangman.css?v=2">
+</head>
+<body>
+
+  <!-- ── LOBBY ── -->
+  <div id="screen-lobby" class="screen active">
+    <div class="game-card">
+      <div class="lobby-hero">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div class="lobby-title">Hangman</div>
+        <div class="lobby-sub">Asymmetric &nbsp;·&nbsp; Two Rounds &nbsp;·&nbsp; Setter vs Guesser</div>
+        <div class="lobby-ornament" style="margin-top:14px">◆ &nbsp; ◆ &nbsp; ◆</div>
+      </div>
+      <div class="lobby-actions">
+        <button class="btn btn-fleet btn-full" onclick="showScreen('welcome')">Pass & Play →</button>
+        <button class="btn btn-ghost btn-full" onclick="showScreen('online')">Online Battle →</button>
+      </div>
+      <button class="btn-text rules-link" onclick="lvsShowRules(GAME_RULES)">How to play</button>
+      <a href="index.html" class="lobby-back-home">← All Games</a>
+    </div>
+  </div>
+
+  <!-- ── WELCOME (LOCAL) ── -->
+  <div id="screen-welcome" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="skull"></i> Hangman</div>
+        <button class="btn-text" onclick="showScreen('lobby')">← Back</button>
+      </div>
+      <div class="welcome-body">
+        <div class="hero-title">Pass &amp; Play</div>
+        <div class="hero-sub">Pass the screen between turns</div>
+        <div class="welcome-form">
+          <div class="form-row">
+            <label class="form-label">Player 1 Name</label>
+            <input id="local-name-0" class="text-input" type="text" placeholder="Player 1" maxlength="16" autocomplete="off">
+          </div>
+          <div class="form-row">
+            <label class="form-label">Player 2 Name</label>
+            <input id="local-name-1" class="text-input" type="text" placeholder="Player 2" maxlength="16" autocomplete="off">
+          </div>
+          <div class="toggle-row">
+            <label class="toggle-label">
+              <span class="toggle-text">Hints</span>
+              <span class="toggle-sub">Setter enters a short category clue</span>
+            </label>
+            <button id="hint-toggle-local" class="toggle-btn toggle-off" onclick="toggleHint('local')">OFF</button>
+          </div>
+          <button class="btn btn-fleet btn-full" onclick="startLocalFlow()">Start Match →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COVER ── -->
+  <div id="screen-cover" class="screen">
+    <div class="game-card">
+      <div class="cover-body">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div class="cover-icon"><i data-lucide="lock"></i></div>
+        <div id="cover-text" class="cover-text">Pass to Player 2</div>
+        <button id="cover-btn" class="btn btn-fleet btn-full" onclick="coverReady()">I'm ready →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SET WORD ── -->
+  <div id="screen-set-word" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="skull"></i> Hangman</div>
+        <div id="set-round-pill" class="round-pill">Round 1</div>
+      </div>
+      <div class="set-word-body">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div id="set-word-header" class="set-word-header">Set Your Word</div>
+        <div id="set-word-sub" class="set-word-sub">Enter any word (up to 20 letters). Your opponent will try to guess it.</div>
+        <input id="set-word-input" class="text-input set-word-input" type="text" placeholder="secret word…"
+               maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <div id="set-hint-row" class="set-hint-row" style="display:none">
+          <label class="form-label" style="margin-bottom:5px">Category Hint (short)</label>
+          <input id="set-hint-input" class="text-input" type="text" placeholder="e.g. Animal, City, Movie…"
+                 maxlength="32" autocomplete="off">
+        </div>
+        <div id="set-word-msg" class="set-word-msg"></div>
+        <button id="confirm-word-btn" class="btn btn-fleet btn-full" onclick="confirmWord()">Lock it in →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GAME ── -->
+  <div id="screen-game" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="skull"></i> Hangman</div>
+        <div id="game-round-pill" class="round-pill">Round 1</div>
+      </div>
+
+      <!-- Gallows + status -->
+      <div class="game-upper">
+        <div class="gallows-wrap">
+          <svg id="gallows-svg" class="gallows-svg" viewBox="0 0 160 180" xmlns="http://www.w3.org/2000/svg">
+            <!-- Static structure -->
+            <line x1="20"  y1="170" x2="140" y2="170" stroke="var(--ink)" stroke-width="5"  stroke-linecap="round"/>
+            <line x1="50"  y1="170" x2="50"  y2="10"  stroke="var(--ink)" stroke-width="5"  stroke-linecap="round"/>
+            <line x1="50"  y1="10"  x2="100" y2="10"  stroke="var(--ink)" stroke-width="4"  stroke-linecap="round"/>
+            <line x1="100" y1="10"  x2="100" y2="30"  stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/>
+            <!-- Body parts (hidden, drawn in by JS adding .visible class) -->
+            <circle id="hm-head"       cx="100" cy="44"  r="14"  fill="none" stroke="var(--ink)" stroke-width="3.5" class="hm-part"/>
+            <line   id="hm-body"       x1="100" y1="58"  x2="100" y2="108" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round" class="hm-part"/>
+            <line   id="hm-arm-left"   x1="100" y1="72"  x2="75"  y2="94"  stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round" class="hm-part"/>
+            <line   id="hm-arm-right"  x1="100" y1="72"  x2="125" y2="94"  stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round" class="hm-part"/>
+            <line   id="hm-leg-left"   x1="100" y1="108" x2="76"  y2="136" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round" class="hm-part"/>
+            <line   id="hm-leg-right"  x1="100" y1="108" x2="124" y2="136" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round" class="hm-part"/>
+          </svg>
+        </div>
+        <div class="game-right">
+          <div id="game-players-pill" class="players-pill"></div>
+          <div id="hint-display" class="hint-display" style="display:none"></div>
+          <div id="word-blanks" class="word-blanks"></div>
+          <div id="wrong-letters" class="wrong-letters"></div>
+          <div id="game-msg" class="game-msg"></div>
+        </div>
+      </div>
+
+      <!-- Keyboard -->
+      <div id="game-keyboard" class="hm-keyboard"></div>
+
+      <div class="game-actions">
+        <button class="btn btn-ghost btn-sm" onclick="backToLobby()">Exit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ROUND END ── -->
+  <div id="screen-round-end" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="skull"></i> Hangman</div>
+        <div id="re-round-pill" class="round-pill">Round 1</div>
+      </div>
+      <div class="round-end-body">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div id="re-outcome" class="re-outcome">Escaped!</div>
+        <div id="re-word-reveal" class="re-word-reveal"></div>
+        <div id="re-score" class="re-score"></div>
+        <div id="re-next-btn-wrap" class="re-actions">
+          <button id="re-next-btn" class="btn btn-fleet btn-full" onclick="nextRound()">Round 2 →</button>
+          <button class="btn btn-ghost btn-sm" onclick="backToLobby()">Exit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MATCH RESULT ── -->
+  <div id="screen-result" class="screen">
+    <div class="game-card win-card">
+      <canvas id="confetti-canvas"></canvas>
+      <div class="win-body">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div id="result-name" class="win-name">Player 1 wins!</div>
+        <div id="result-sub"  class="win-sub">Won both rounds</div>
+        <div id="result-rounds" class="result-rounds"></div>
+        <div class="win-actions">
+          <button id="win-again-btn" class="btn btn-fleet btn-full" onclick="playAgain()">Play Again →</button>
+          <button class="btn btn-ghost btn-full" onclick="backToLobby()">Back to Lobby</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ONLINE LOBBY ── -->
+  <div id="screen-online" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="skull"></i> Hangman</div>
+        <button class="btn-text" onclick="showScreen('lobby')">← Back</button>
+      </div>
+      <div class="welcome-body">
+        <div class="hero-title">Play Online</div>
+        <div class="hero-sub">Play against a friend anywhere</div>
+        <div class="welcome-form">
+          <div class="form-row">
+            <label class="form-label">Your Name</label>
+            <input id="online-name" class="text-input" type="text" placeholder="Your name" maxlength="16" autocomplete="off">
+          </div>
+          <div class="toggle-row">
+            <label class="toggle-label">
+              <span class="toggle-text">Hints</span>
+              <span class="toggle-sub">Setter enters a short category clue</span>
+            </label>
+            <button id="hint-toggle-online" class="toggle-btn toggle-off" onclick="toggleHint('online')">OFF</button>
+          </div>
+          <button class="btn btn-fleet btn-full" onclick="createRoom()">Create Room →</button>
+          <div class="divider-row"><span>or join</span></div>
+          <div class="form-row">
+            <label class="form-label">Room Code</label>
+            <input id="join-code" class="text-input code-input" type="text" placeholder="ABCD" maxlength="4"
+                   oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+          </div>
+          <button class="btn btn-ghost btn-full" onclick="joinRoom()">Join Room →</button>
+          <div id="online-msg" class="form-msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WAITING ── -->
+  <div id="screen-waiting" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="skull"></i> Hangman</div>
+        <button class="btn-text" onclick="backToLobby()">← Exit</button>
+      </div>
+      <div class="waiting-body">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div class="waiting-title">Waiting for Opponent</div>
+        <div class="waiting-sub">Share this code:</div>
+        <div id="waiting-code" class="room-code-badge">——</div>
+        <button id="waiting-copy-btn" class="btn btn-ghost" onclick="copyCode()">Copy Link</button>
+        <div class="waiting-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ONLINE SET WORD ── -->
+  <div id="screen-online-set" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="skull"></i> Hangman</div>
+        <div id="online-set-round-pill" class="round-pill">Round 1</div>
+      </div>
+      <div class="set-word-body">
+        <div id="online-set-role-tag" class="online-role-tag">You are the Setter</div>
+        <div id="online-set-header" class="set-word-header">Set Your Word</div>
+        <div id="online-set-body" class="online-set-body">
+          <input id="online-set-input" class="text-input set-word-input" type="text" placeholder="secret word…"
+                 maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <div id="online-hint-row" class="set-hint-row" style="display:none">
+            <label class="form-label" style="margin-bottom:5px">Category Hint (short)</label>
+            <input id="online-hint-input" class="text-input" type="text" placeholder="e.g. Animal, City, Movie…"
+                   maxlength="32" autocomplete="off">
+          </div>
+          <div id="online-set-msg" class="set-word-msg"></div>
+          <button id="online-confirm-btn" class="btn btn-fleet btn-full" onclick="confirmOnlineWord()">Lock it in →</button>
+        </div>
+        <div id="online-waiting-set" class="online-waiting-set" style="display:none">
+          <div class="waiting-dots"><span></span><span></span><span></span></div>
+          <div class="set-word-msg">Waiting for opponent to set their word…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="sound-btn" class="lvs-sound-btn" onclick="toggleSound()" title="Toggle sound"><i data-lucide="volume-2"></i></button>
+  <style>.lvs-sound-btn{position:fixed;top:14px;right:14px;z-index:999;background:rgba(253,248,238,0.88);border:1.5px solid rgba(26,13,4,0.18);border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);line-height:1;padding:0;}.brand .lucide{width:14px;height:14px;stroke-width:2;vertical-align:middle;margin-right:4px}.cover-icon .lucide{width:48px;height:48px;stroke-width:1.5}.lvs-sound-btn .lucide{width:18px;height:18px;stroke-width:2}</style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="js/lvs-utils.js"></script>
+  <script src="js/hangman.js"></script>
+</body>
+</html>

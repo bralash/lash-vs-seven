@@ -1,0 +1,527 @@
+/* ============================================================
+   TIC-TAC-TOE — Lash vs Seven
+   Game-specific styles only. Global tokens/reset in lvs-global.css
+   ============================================================ */
+
+:root {
+  --anchor-col: #E85A25;
+  --skull-col:  #1A0D04;
+}
+
+/* ── GAME CARD ── */
+.game-card {
+  background: var(--card);
+  border: 2.5px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 6px 6px 0 var(--ink);
+  width: 100%;
+  max-width: min(420px, 100%);
+  overflow: hidden;
+  padding: 28px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Lobby/welcome/online screens: no card padding so topbar goes edge-to-edge */
+#screen-lobby .game-card,
+#screen-welcome .game-card,
+#screen-online .game-card,
+#screen-lobby-create .game-card {
+  padding: 0;
+}
+
+/* ── ROOM CODE ── */
+.room-code-badge {
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: 14px;
+  color: var(--ink);
+  background: rgba(26,13,4,0.05);
+  border: 2px dashed rgba(26,13,4,0.18);
+  border-radius: 4px;
+  padding: 10px 24px 10px 38px;
+  text-align: center;
+  width: 100%;
+}
+
+/* ── CODE INPUT ── */
+.code-input {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  width: 100%;
+  padding: 10px 16px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  background: rgba(26,13,4,0.04);
+  color: var(--ink);
+  outline: none;
+}
+
+.code-input:focus { border-color: var(--orange); }
+
+/* Inside a join row the input shares space with a button — reset standalone sizing */
+.join-row .code-input {
+  width: auto;
+  font-size: max(16px, 1rem);
+  letter-spacing: 6px;
+}
+
+
+/* ── BACK HOME LINK ── */
+.lobby-back-home {
+  display: block;
+  text-align: center;
+  padding: 24px 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.lobby-back-home:hover { color: var(--ink-mid); }
+
+/* ── WELCOME SCREEN — game-specific ── */
+.hero-pieces {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 6px;
+  margin-bottom: 4px;
+  color: var(--ink-mid);
+}
+
+/* ── TOPBAR — game screen only (card has padding, so no horizontal padding here) ── */
+#screen-game .topbar {
+  padding: 0 0 14px 0;
+  border-bottom: 1.5px solid var(--line);
+  margin-bottom: 14px;
+}
+
+.turn-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  white-space: nowrap;
+}
+
+.turn-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--orange);
+  animation: blink 1.2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── MESSAGE BAR ── */
+.msg-bar {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  text-align: center;
+  min-height: 20px;
+  margin-bottom: 20px;
+}
+
+/* ── BOARD ── */
+.board-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.ttt-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  width: 100%;
+  max-width: min(300px, 100%);
+  border: 2.5px solid var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ttt-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  transition: background 0.12s;
+  position: relative;
+  user-select: none;
+  touch-action: manipulation;
+  padding: 14%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ttt-cell:hover:not(.taken) {
+  background: rgba(232,90,37,0.06);
+}
+
+.ttt-cell.taken { cursor: default; }
+
+.ttt-cell.win-cell {
+  background: rgba(232,90,37,0.12);
+}
+
+/* ── SVG PIECES ── */
+.piece-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.piece-svg-large {
+  width: 72px;
+  height: 72px;
+}
+
+/* X — orange strokes, draw one line then the other */
+.x-stroke {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: 63;
+  stroke-dashoffset: 63;
+}
+.x-1 { animation: ink-draw 0.18s ease-out forwards; }
+.x-2 { animation: ink-draw 0.18s ease-out 0.13s forwards; }
+
+/* O — dark ink circle, traces from 12 o'clock */
+.o-stroke {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 158;
+  stroke-dashoffset: 158;
+  animation: ink-draw 0.38s ease-out forwards;
+}
+
+@keyframes ink-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Static (no animation) — existing pieces and score row icons */
+.no-anim .x-stroke,
+.no-anim .o-stroke,
+.score-icon .x-stroke,
+.score-icon .o-stroke {
+  animation: none;
+  stroke-dashoffset: 0;
+}
+
+/* ── SCORE ROW ── */
+.score-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 0 8px;
+  border-top: 1.5px solid var(--line);
+  margin-bottom: 4px;
+}
+
+.score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.score-piece {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-name {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.score-val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.score-divider {
+  font-size: 1rem;
+  color: var(--line);
+  align-self: center;
+}
+
+/* ── GAME ACTIONS ── */
+.game-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ── LOBBY HERO / ORNAMENT ── */
+.lobby-hero {
+  text-align: center;
+  padding: 36px 24px 24px;
+}
+
+.lobby-ornament {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 10px;
+}
+
+.lobby-title {
+  font-size: clamp(2.4rem, 9vw, 3.6rem);
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.lobby-sub {
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ── WIN SCREEN ── */
+.confetti-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#screen-win .game-card {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.win-piece {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.win-draw-mark {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.win-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.win-name {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.win-sub {
+  font-size: 0.85rem;
+  color: var(--ink-mid);
+  margin-bottom: 8px;
+}
+
+/* ── SERIES PICKER ── */
+.series-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.series-btn {
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px 0;
+  border: 2px solid rgba(26,13,4,0.25);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-mid);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.series-btn.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--card);
+}
+
+.series-btn:hover:not(.active) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* ── SCORE TARGET LABEL ── */
+.score-target {
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: center;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+
+/* ── ROUND OVER ── */
+.ro-card {
+  text-align: center;
+  align-items: center;
+  gap: 6px;
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+
+.ro-piece {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.ro-label-tag {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ro-winner {
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.ro-score {
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: 8px;
+  color: var(--ink);
+  line-height: 1;
+  margin: 4px 0;
+}
+
+.ro-next {
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+
+.ro-bar-wrap {
+  width: 100%;
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+.ro-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--orange);
+  border-radius: 2px;
+  animation: ro-fill 2.2s linear forwards;
+}
+
+@keyframes ro-fill {
+  to { width: 100%; }
+}
+
+/* ── MOBILE ── */
+
+/* Edge-to-edge card on narrow screens — removes side borders and the 6px
+   box-shadow that would otherwise cause horizontal overflow */
+@media (max-width: 480px) {
+  .game-card {
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* Win and round-over cards are compact centred cards — keep their frame */
+  #screen-win .game-card,
+  #screen-roundover .game-card {
+    border: 2.5px solid var(--ink);
+    border-radius: 4px;
+    box-shadow: 4px 4px 0 var(--ink);
+    max-width: 340px;
+  }
+  /* Slightly reduce code badge so it doesn't overflow on 375px */
+  .room-code-badge {
+    font-size: 2.2rem;
+    letter-spacing: 10px;
+    padding: 10px 20px 10px 30px;
+  }
+}
+
+@media (max-width: 380px) {
+  .ttt-cell     { font-size: 2rem; }
+  .game-card    { padding: 18px 14px 16px; }
+  .welcome-body { padding: 16px; }
+  .hero-title   { font-size: 1.5rem; }
+  .series-btn   { font-size: 0.68rem; letter-spacing: 1px; }
+  .room-code-badge {
+    font-size: 1.9rem;
+    letter-spacing: 8px;
+    padding: 8px 16px 8px 24px;
+  }
+}

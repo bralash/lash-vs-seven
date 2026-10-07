@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>Word Hunt — Lash vs Seven</title>
+  <meta name="description" content="Same 4×4 letter grid. 80 seconds. Find as many words as you can by connecting adjacent letters.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta property="og:type"        content="website">
+  <meta property="og:url"         content="https://lash-vs-seven.web.app/wordhunt">
+  <meta property="og:title"       content="Word Hunt — Lash vs Seven">
+  <meta property="og:description" content="Same grid. 80 seconds. Find the most words.">
+  <meta property="og:image"       content="https://lash-vs-seven.web.app/og-image.svg">
+  <meta name="twitter:card"        content="summary_large_image">
+  <meta name="twitter:title"       content="Word Hunt — Lash vs Seven">
+  <meta name="twitter:description" content="Same grid. 80 seconds. Find the most words.">
+  <meta name="twitter:image"       content="https://lash-vs-seven.web.app/og-image.svg">
+  <link rel="stylesheet" href="css/lvs-global.css">
+  <link rel="stylesheet" href="css/wordhunt.css?v=2">
+</head>
+<body>
+
+  <!-- ── LOBBY ── -->
+  <div id="screen-lobby" class="screen active">
+    <div class="game-card">
+      <div class="lobby-hero">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div class="lobby-title">Word Hunt</div>
+        <div class="lobby-sub">Same grid · 80 seconds · Most words wins</div>
+        <div class="lobby-ornament" style="margin-top:14px">◆ &nbsp; ◆ &nbsp; ◆</div>
+      </div>
+      <div class="lobby-actions">
+        <button class="btn btn-fleet btn-full" onclick="showScreen('online')">Online Battle →</button>
+      </div>
+      <button class="btn-text rules-link" onclick="lvsShowRules(GAME_RULES)">How to play</button>
+      <a href="index.html" class="lobby-back-home">← All Games</a>
+    </div>
+  </div>
+
+  <!-- ── ONLINE LOBBY ── -->
+  <div id="screen-online" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="search"></i> Word Hunt</div>
+        <button class="btn-text" onclick="showScreen('lobby')">← Back</button>
+      </div>
+      <div class="welcome-body">
+        <div class="hero-title">Play Online</div>
+        <div class="hero-sub">Play against a friend anywhere</div>
+        <div class="welcome-form">
+          <div class="form-row">
+            <label class="form-label">Your Name</label>
+            <input id="online-name" class="text-input" type="text" placeholder="Your name" maxlength="16" autocomplete="off">
+          </div>
+          <button class="btn btn-fleet btn-full" onclick="createRoom()">Create Room →</button>
+          <div class="divider-row"><span>or join</span></div>
+          <div class="form-row">
+            <label class="form-label">Room Code</label>
+            <input id="join-code" class="text-input code-input" type="text" placeholder="ABCD" maxlength="4"
+                   oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+          </div>
+          <button class="btn btn-ghost btn-full" onclick="joinRoom()">Join Room →</button>
+          <div id="online-msg" class="form-msg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WAITING ── -->
+  <div id="screen-waiting" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="search"></i> Word Hunt</div>
+        <button class="btn-text" onclick="backToLobby()">← Exit</button>
+      </div>
+      <div class="waiting-body">
+        <div class="lobby-ornament">◆ &nbsp; ◆ &nbsp; ◆</div>
+        <div class="waiting-title">Waiting for Opponent</div>
+        <div class="waiting-sub">Share this code:</div>
+        <div id="waiting-code" class="room-code-badge">——</div>
+        <button id="waiting-copy-btn" class="btn btn-ghost" onclick="copyCode()">Copy Link</button>
+        <div class="waiting-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GAME ── -->
+  <div id="screen-game" class="screen">
+    <div class="game-card">
+      <div class="topbar">
+        <div class="brand"><i data-lucide="search"></i> Word Hunt</div>
+        <div id="wh-timer-pill" class="round-pill">0:80</div>
+      </div>
+
+      <div class="score-strip">
+        <div class="score-player" id="wh-score-p0">
+          <span class="score-name" id="wh-name-0">Player 1</span>
+          <span class="score-num" id="wh-score-0">0</span>
+        </div>
+        <div class="score-divider">—</div>
+        <div class="score-player right" id="wh-score-p1">
+          <span class="score-num" id="wh-score-1">0</span>
+          <span class="score-name" id="wh-name-1">Player 2</span>
+        </div>
+      </div>
+
+      <div class="wh-grid-wrap">
+        <div id="wh-grid" class="wh-grid"></div>
+        <svg id="wh-svg" xmlns="http://www.w3.org/2000/svg">
+          <path id="wh-path" fill="none" stroke="var(--orange)"
+                stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>
+        </svg>
+      </div>
+
+      <div id="wh-current-word" class="wh-current-word"></div>
+
+      <div class="timer-wrap">
+        <div class="timer-bar-bg">
+          <div id="wh-timer-bar" class="timer-bar"></div>
+        </div>
+        <div id="wh-timer-label" class="timer-label">80</div>
+      </div>
+
+      <div id="wh-words-strip" class="wh-words-strip"></div>
+
+      <div class="game-actions">
+        <button class="btn btn-ghost btn-sm" onclick="quitGame()">Exit Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RESULTS ── -->
+  <div id="screen-results" class="screen">
+    <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+    <div class="game-card res-card">
+      <div id="res-headline" class="res-headline">Time's Up!</div>
+      <div id="res-sub" class="res-sub">—</div>
+
+      <div class="wh-results-cols">
+        <div class="wh-result-col" id="res-col-0">
+          <div class="wh-result-name" id="res-name-0">P1</div>
+          <div class="wh-result-score" id="res-score-0">0</div>
+          <div class="wh-result-words" id="res-words-0"></div>
+        </div>
+        <div class="wh-result-col" id="res-col-1">
+          <div class="wh-result-name" id="res-name-1">P2</div>
+          <div class="wh-result-score" id="res-score-1">0</div>
+          <div class="wh-result-words" id="res-words-1"></div>
+        </div>
+      </div>
+
+      <div class="win-actions" style="padding:20px 24px 28px;gap:10px">
+        <button id="win-again-btn" class="btn btn-fleet btn-full" onclick="playAgain()">Play Again</button>
+        <button class="btn btn-ghost btn-full" onclick="backToLobby()">Back to Lobby</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="sound-btn" class="lvs-sound-btn" onclick="toggleSound()" title="Toggle sound"><i data-lucide="volume-2"></i></button>
+  <style>
+    .lvs-sound-btn{position:fixed;top:14px;right:14px;z-index:999;background:rgba(253,248,238,0.88);border:1.5px solid rgba(26,13,4,0.18);border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);line-height:1;padding:0;}
+    .brand .lucide{width:14px;height:14px;stroke-width:2;vertical-align:middle;margin-right:4px}
+    .lvs-sound-btn .lucide{width:18px;height:18px;stroke-width:2}
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="js/lvs-utils.js"></script>
+  <script src="js/wordhunt-words.js"></script>
+  <script src="js/wordhunt.js"></script>
+</body>
+</html>

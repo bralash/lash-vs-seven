@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- background -->
+  <rect width="64" height="64" rx="13" fill="#1A0D04"/>
+  <!-- anchor -->
+  <g stroke="#e17055" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- ring -->
+    <circle cx="32" cy="18" r="6.5"/>
+    <!-- stem -->
+    <line x1="32" y1="24.5" x2="32" y2="51"/>
+    <!-- crossbar -->
+    <line x1="17" y1="34" x2="47" y2="34"/>
+    <!-- left hook -->
+    <path d="M17 34 C12 41 17 50 25 50"/>
+    <!-- right hook -->
+    <path d="M47 34 C52 41 47 50 39 50"/>
+  </g>
+</svg>

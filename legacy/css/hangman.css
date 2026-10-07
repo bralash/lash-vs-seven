@@ -1,0 +1,420 @@
+/* ── TOKENS ── */
+:root {
+  --correct:     #4D7C3F;
+  --wrong:       #5C3D28;
+}
+
+/* ── CARD ── */
+.game-card {
+  background: var(--card);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--card-radius);
+  box-shadow: 6px 6px 0 var(--ink);
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  position: relative;
+}
+
+.round-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(232,90,37,0.08);
+  border: 1px solid rgba(232,90,37,0.25);
+  border-radius: 40px;
+  padding: 5px 13px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* ── HINT TOGGLE ── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(26,13,4,0.03);
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+}
+.toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toggle-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.toggle-sub {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+.toggle-btn {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 6px 14px;
+  border: 2px solid;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.toggle-off {
+  background: transparent;
+  color: var(--ink-muted);
+  border-color: rgba(160,112,96,0.4);
+}
+.toggle-on {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+}
+
+/* ── COVER ── */
+.cover-body {
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+.cover-icon { font-size: 3rem; line-height: 1; }
+.cover-text {
+  font-weight: 900;
+  font-size: 1.6rem;
+  color: var(--ink);
+  max-width: 280px;
+}
+
+/* ── SET WORD ── */
+.set-word-body {
+  padding: 20px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+.set-word-header {
+  font-weight: 900;
+  font-size: 1.6rem;
+  color: var(--ink);
+  text-align: center;
+}
+.set-word-sub {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+.set-word-input {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-align: center;
+  text-transform: lowercase;
+}
+.set-hint-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.set-word-msg {
+  min-height: 20px;
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+/* ── GAME SCREEN ── */
+.game-upper {
+  display: flex;
+  gap: 0;
+  border-bottom: 1.5px solid var(--line);
+}
+
+.gallows-wrap {
+  flex-shrink: 0;
+  padding: 14px 6px 14px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1.5px solid var(--line);
+}
+
+.gallows-svg {
+  width: 120px;
+  height: 135px;
+}
+
+/* Hangman body parts — hidden by default, draw-in animation on .visible */
+.hm-part {
+  opacity: 0;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+}
+.hm-part.visible {
+  opacity: 1;
+  animation: drawIn 0.35s ease forwards;
+}
+@keyframes drawIn {
+  from { stroke-dashoffset: 200; opacity: 1; }
+  to   { stroke-dashoffset: 0;   opacity: 1; }
+}
+
+/* Head uses different dasharray since it's a circle (~88px circumference) */
+#hm-head {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+.game-right {
+  flex: 1;
+  padding: 14px 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.players-pill {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.hint-display {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  background: rgba(232,90,37,0.07);
+  border: 1px solid rgba(232,90,37,0.2);
+  border-radius: 3px;
+  padding: 5px 10px;
+}
+
+.word-blanks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.blank-tile {
+  width: 26px;
+  height: 32px;
+  border-bottom: 3px solid var(--ink);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+.blank-tile.revealed {
+  animation: letterPop 0.25s ease;
+}
+
+@keyframes letterPop {
+  0%   { transform: translateY(-6px) scale(1.2); }
+  60%  { transform: translateY(1px)  scale(0.96); }
+  100% { transform: translateY(0)    scale(1); }
+}
+
+.wrong-letters {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--ink-muted);
+  min-height: 18px;
+  text-transform: uppercase;
+  word-break: break-all;
+}
+
+.game-actions {
+  padding: 8px 14px 12px;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── ALPHABET KEYBOARD ── */
+.hm-keyboard {
+  padding: 10px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1.5px solid var(--line);
+}
+
+.hm-key-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.hm-key {
+  width: 34px;
+  height: 38px;
+  border: 1.5px solid rgba(26,13,4,0.25);
+  border-radius: 3px;
+  background: #fff;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s, transform 0.08s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hm-key:active { transform: scale(0.92); }
+
+.hm-key.correct {
+  background: var(--correct);
+  color: #fff;
+  border-color: var(--correct);
+  cursor: default;
+}
+
+.hm-key.wrong {
+  background: var(--wrong);
+  color: rgba(255,255,255,0.6);
+  border-color: var(--wrong);
+  cursor: default;
+}
+
+/* ── ROUND END ── */
+.round-end-body {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.re-outcome {
+  font-weight: 900;
+  font-size: clamp(2rem, 8vw, 3rem);
+  color: var(--ink);
+  line-height: 1;
+}
+
+.re-word-reveal {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 4px;
+  color: var(--orange);
+  text-transform: uppercase;
+}
+
+.re-score {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.re-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ── WIN / RESULT ── */
+.win-card { overflow: hidden; }
+
+#confetti-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.result-rounds {
+  display: flex;
+  gap: 12px;
+  background: rgba(26,13,4,0.04);
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  padding: 14px 20px;
+  width: 100%;
+  justify-content: center;
+}
+
+.result-round-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.result-round-label {
+  font-size: 0.58rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.result-round-winner {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--orange);
+  letter-spacing: 1px;
+}
+
+/* ── ONLINE SET SCREEN ── */
+.online-role-tag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: center;
+  padding: 6px 0 0;
+}
+
+.online-waiting-set {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 420px) {
+  body { padding: 12px 10px 32px; }
+  .gallows-svg { width: 100px; height: 113px; }
+  .blank-tile { width: 22px; height: 28px; font-size: 0.92rem; }
+  .hm-key { width: 29px; height: 34px; font-size: 0.72rem; }
+  .hm-key-row { gap: 3px; }
+  .room-code-badge { font-size: 2.2rem; letter-spacing: 8px; padding: 12px 20px 12px 28px; }
+}

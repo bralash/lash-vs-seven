@@ -1,0 +1,357 @@
+/* ============================================================
+   OTHELLO — Lash vs Seven
+   Game-specific styles only. Global tokens/reset in lvs-global.css
+   ============================================================ */
+
+:root {
+  --ot-cell:   50px;
+  --ot-board:  #1e4a2a;
+  --ot-line:   #144020;
+  --p0-color:  #E85A25;
+  --p1-color:  #1A0D04;
+}
+
+/* ── Local background override ── */
+body {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(100,40,10,0.5) 0%, transparent 70%);
+}
+
+/* ── GAME CARD ── */
+.game-card {
+  background: var(--card);
+  border-radius: var(--card-radius);
+  border: 2.5px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  overflow: hidden;
+  width: 100%;
+  max-width: 520px;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+.brand {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.turn-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(232,90,37,0.08);
+  border: 1px solid rgba(232,90,37,0.25);
+  border-radius: 40px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 0.5px;
+}
+.turn-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--p0-color);
+  animation: blink 1.1s step-end infinite;
+  transition: background 0.2s;
+}
+.turn-dot.p1 { background: #4a2e1a; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── MESSAGE BAR ── */
+.msg-bar {
+  padding: 10px 20px;
+  font-size: 0.87rem;
+  font-weight: 500;
+  color: var(--ink-mid);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background 0.25s, color 0.25s;
+}
+.msg-bar.pass-msg { background: rgba(255,185,0,0.09); color: #b07800; font-weight: 700; }
+
+/* ── OTHELLO BOARD ── */
+.board-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 16px 16px 12px;
+  overflow-x: auto;
+}
+
+.othello-board {
+  display: grid;
+  grid-template-columns: repeat(8, var(--ot-cell));
+  grid-template-rows:    repeat(8, var(--ot-cell));
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  background: var(--ot-line);
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.ot-cell {
+  width: var(--ot-cell);
+  height: var(--ot-cell);
+  background: var(--ot-board);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.ot-cell.has-move {
+  cursor: pointer;
+}
+.ot-cell.has-move:hover {
+  background: #26593a;
+}
+
+/* ── PIECES ── */
+.ot-piece {
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow:
+    0 3px 0 rgba(0,0,0,0.5),
+    inset 0 -2px 4px rgba(0,0,0,0.35),
+    inset 0 2px 4px rgba(255,255,255,0.12);
+  transition: transform 0.12s;
+}
+.ot-piece.p0 {
+  background: radial-gradient(circle at 38% 32%, #f2874e, var(--p0-color) 55%, #b03810);
+}
+.ot-piece.p1 {
+  background: radial-gradient(circle at 38% 32%, #503828, var(--p1-color) 55%, #060302);
+  box-shadow:
+    0 3px 0 rgba(0,0,0,0.6),
+    inset 0 -2px 4px rgba(0,0,0,0.4),
+    inset 0 2px 4px rgba(255,255,255,0.08);
+}
+
+/* ── VALID MOVE DOTS ── */
+.ot-dot {
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  pointer-events: none;
+  transition: background 0.1s;
+}
+.ot-cell.has-move:hover .ot-dot {
+  background: rgba(255,255,255,0.42);
+}
+
+/* ── SCORE ROW ── */
+.score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-top: 1px solid rgba(0,0,0,0.07);
+}
+.piece-count {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.piece-count.right { flex-direction: row-reverse; }
+.mini-piece {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.4);
+}
+.mini-piece.p0 { background: var(--p0-color); }
+.mini-piece.p1 { background: var(--p1-color); }
+.count-name {
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#count-val-0, #count-val-1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── GAME ACTIONS ── */
+.game-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px 16px;
+}
+
+/* ── LOBBY SCREENS ── */
+#screen-lobby .game-card,
+#screen-welcome .game-card,
+#screen-online .game-card { max-width: 420px; }
+
+.lobby-hero {
+  padding: 40px 32px 28px;
+  text-align: center;
+  border-bottom: 2px dashed rgba(26,13,4,0.2);
+}
+.lobby-title {
+  font-size: 4rem;
+  font-weight: 900;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 14px 0 10px;
+}
+.lobby-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-mid);
+  margin-top: 10px;
+}
+.lobby-ornament {
+  font-size: 0.8rem;
+  color: var(--orange);
+  letter-spacing: 10px;
+}
+.lobby-actions {
+  padding: 24px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lobby-back-home {
+  display: block;
+  text-align: center;
+  padding: 14px 0 20px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+.lobby-back-home:hover { color: var(--ink-mid); }
+
+/* ── WELCOME SCREEN ── */
+.hero-pieces {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.hero-vs {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+  letter-spacing: 2px;
+}
+.hero-piece {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.45);
+}
+.hero-piece.p0 { background: radial-gradient(circle at 38% 32%, #f2874e, var(--p0-color) 55%, #b03810); }
+.hero-piece.p1 { background: radial-gradient(circle at 38% 32%, #503828, var(--p1-color) 55%, #060302); }
+
+/* ── JOIN ROW ── */
+.join-row {
+  display: flex;
+  gap: 8px;
+}
+.join-row input {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 6px;
+  text-align: center;
+  font-weight: 700;
+  font-size: max(16px, 1rem);
+}
+
+/* ── WIN SCREEN ── */
+#screen-win .game-card {
+  max-width: 400px;
+  text-align: center;
+  padding: 48px 36px;
+  position: relative;
+}
+.win-piece-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.ot-piece.win-disc {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+.win-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+.win-name {
+  font-size: clamp(2rem, 7vw, 3.5rem);
+  font-weight: 900;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.win-sub {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  margin-bottom: 28px;
+}
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+
+/* ── ONLINE COLOUR BADGE ── */
+.my-badge {
+  display: none;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+}
+.my-badge.p0 { background: var(--p0-color); }
+.my-badge.p1 { background: #4a2e1a; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 520px) {
+  :root { --ot-cell: max(36px, calc((100vw - 64px) / 8)); }
+
+  .topbar      { padding: 10px 14px; }
+  .brand       { font-size: 0.78rem; letter-spacing: 1px; }
+  .turn-pill   { font-size: 0.7rem; padding: 4px 10px; }
+  .score-row   { padding: 10px 14px; }
+  .game-actions { padding: 10px 14px 14px; }
+}
