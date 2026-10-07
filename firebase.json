@@ -1,6 +1,7 @@
 {
   "hosting": {
     "public": "dist",
+    "predeploy": ["npm run build"],
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -36,6 +37,11 @@
       {
         "source": "/othello.html",
         "destination": "/othello",
+        "type": 301
+      },
+      {
+        "source": "/oware.html",
+        "destination": "/oware",
         "type": 301
       },
       {
@@ -106,16 +112,6 @@
       {
         "source": "/memory",
         "destination": "/classic/memory",
-        "type": 302
-      },
-      {
-        "source": "/oware.html",
-        "destination": "/classic/oware",
-        "type": 302
-      },
-      {
-        "source": "/oware",
-        "destination": "/classic/oware",
         "type": 302
       },
       {

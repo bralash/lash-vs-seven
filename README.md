@@ -6,7 +6,7 @@ Two-player games you play with a friend over a link. Vite + React + TypeScript, 
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # type-check + production build into dist/
-firebase deploy --only hosting   # needs: npm i -g firebase-tools && firebase login
+firebase deploy --only hosting   # builds first (predeploy); needs: npm i -g firebase-tools && firebase login
 ```
 
 ## Layout

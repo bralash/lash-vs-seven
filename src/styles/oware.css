@@ -1,0 +1,175 @@
+.owm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 14px;
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.owm > * { width: 100%; }
+
+/* ── "First to 25" (centre of the HUD) ─────────────────── */
+.ow-goal {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-width: 84px;
+  padding: 6px 10px;
+  background: var(--board);
+  color: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+.ow-goal .label { color: var(--paper-2); font-size: 10px; }
+.ow-goal strong { font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.1; }
+.ow-goal--you { background: var(--hit); color: var(--ink); }
+.ow-goal--you .label { color: var(--ink); }
+
+.ow-status {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(18px, 4.6vw, 28px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.ow-status--you { background: var(--hit); }
+.ow-status--result { animation: stamp-in .35s var(--ease-snap) both; }
+
+/* ── Board ─────────────────────────────────────────────── */
+.ow-stage { display: grid; justify-items: center; gap: 12px; }
+.ow-board {
+  width: min(100% - 10px, 600px);
+  display: grid;
+  gap: clamp(10px, 3vw, 18px);
+  padding: clamp(10px, 3vw, 18px);
+  background: var(--board);
+  box-shadow: var(--shadow-lg), inset 0 0 0 3px #2b2833, inset 0 0 0 4px #0b0a0e;
+}
+.ow-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: clamp(5px, 1.6vw, 10px);
+  position: relative;
+}
+/* each row's owner colour along its outer edge */
+.ow-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--lash);
+}
+.ow-row--1::before { background: var(--seven); }
+.ow-row:first-child::before { top: calc(-1 * clamp(7px, 2vw, 12px)); }
+.ow-row:last-child::before { bottom: calc(-1 * clamp(7px, 2vw, 12px)); }
+
+.ow-pit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: inset 0 -3px 0 #cbbd9f;
+  color: var(--ink);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, transform .15s var(--ease-snap);
+}
+.ow-pit:disabled { cursor: default; }
+.ow-board--live .ow-pit:disabled { opacity: .55; }
+.ow-pit--legal { cursor: pointer; background: #fff6d6; box-shadow: inset 0 0 0 3px var(--hit), inset 0 -3px 0 var(--hit-deep); }
+@media (hover: hover) {
+  .ow-pit--legal:hover { transform: translateY(-3px); background: var(--hit); }
+}
+.ow-pit:focus-visible { outline: 3px solid var(--hit); outline-offset: 2px; }
+
+/* sowing: the pit it came from, the pit that just got a seed, the last move once it settles */
+.ow-pit--from { background: var(--paper-2); box-shadow: inset 0 0 0 3px var(--dim); }
+.ow-pit--lit { animation: ow-drop .22s var(--ease-snap); background: var(--hit); }
+@keyframes ow-drop { from { transform: scale(1.12); } }
+.ow-pit--last { box-shadow: inset 0 0 0 3px var(--dim), inset 0 -3px 0 #cbbd9f; }
+/* captured pits flash in the capturer's colour, then empty */
+.ow-pit--take { animation: ow-take .65s ease-in both; }
+.ow-pit--take-0 { --take: var(--lash); }
+.ow-pit--take-1 { --take: var(--seven); }
+@keyframes ow-take {
+  0%, 60% { background: var(--take); transform: scale(1.08); }
+  100% { background: var(--take); transform: scale(.85); opacity: .4; }
+}
+
+/* the seeds themselves */
+.ow-seeds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  gap: 8%;
+  width: 78%;
+  height: 78%;
+}
+.ow-seeds i {
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .25);
+}
+.ow-seeds--few i { width: 30%; }
+.ow-seeds--lots { gap: 5%; }
+.ow-seeds--lots i { width: 19%; }
+.ow-pit--take .ow-seeds i { background: #fff; }
+.ow-pit__big { font-family: var(--display); font-size: clamp(20px, 6vw, 34px); }
+.ow-pit__n {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: clamp(9px, 2.4vw, 12px);
+  color: var(--dim);
+}
+.ow-pit:has(.ow-pit__big) .ow-pit__n { display: none; }
+
+.ow-hint { font-family: var(--mono); font-size: 13px; color: var(--ink-soft); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ow-pit--lit, .ow-pit--take { animation: none; }
+}
+
+/* ── Results ───────────────────────────────────────────── */
+.owm-results { gap: 24px; padding-top: clamp(8px, 4vh, 40px); }
+.owm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.owm-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.owm-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+.owm-results__line { max-width: 40ch; font-family: var(--mono); font-size: 14px; color: var(--ink-soft); }
+.owm-results__cards { align-items: center; }
+
+/* ── Phones during the match: pinned to one screen ─────── */
+@media (width < 900px) {
+  html.scroll-locked .owm {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 12px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  html.scroll-locked .ow-stage { align-self: center; }
+  html.scroll-locked .owm .mt-score { padding-block: 6px 8px; }
+}

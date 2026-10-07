@@ -4,6 +4,7 @@ import { Anagram } from './games/anagram/Anagram'
 import { ConnectFour } from './games/connect4/ConnectFour'
 import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
 import { Othello } from './games/othello/Othello'
+import { Oware } from './games/oware/Oware'
 import { Checkers } from './games/checkers/Checkers'
 import { Sudoku } from './games/sudoku/Sudoku'
 import { TicTacToe } from './games/tictactoe/TicTacToe'
@@ -30,6 +31,7 @@ const routes: RouteObject[] = [
   { path: '/connect4', element: <ConnectFour /> },
   { path: '/dots', element: <DotsAndBoxes /> },
   { path: '/othello', element: <Othello /> },
+  { path: '/oware', element: <Oware /> },
   { path: '/sudoku', element: <Sudoku /> },
   { path: '/checkers', element: <Checkers /> },
   ...(BoardLab ? [{ path: '/dev/board', element: <Suspense><BoardLab /></Suspense> }] : []),

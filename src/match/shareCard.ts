@@ -27,6 +27,8 @@ export type CardDetail =
   | { kind: 'sudoku'; puzzle: string; solution: string; seat: Seat01; stats: [string, string][] }
   /** Othello: the final board, with the last square played marked, plus stats */
   | { kind: 'othello'; board: string; last?: number; stats: [string, string][] }
+  /** Oware: the final pits (seat 1's row across the top, right to left), plus stats */
+  | { kind: 'oware'; pits: number[]; stats: [string, string][] }
   /** Dots & Boxes: the final board with every box in its owner's colour, plus stats */
   | { kind: 'dots'; size: number; lines: string; boxes: string; initials: [string, string]; stats: [string, string][] }
 
@@ -307,6 +309,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
     drawSudoku(ctx, d, x, y, h, pad)
     return
   }
+  if (d.kind === 'oware') {
+    drawOware(ctx, d, x, y, h, pad)
+    return
+  }
   if (d.kind === 'othello') {
     drawOthello(ctx, d, x, y, h, pad)
     return
@@ -562,6 +568,53 @@ function drawOthello(ctx: Ctx, d: Extract<CardDetail, { kind: 'othello' }>, x: n
     ctx.stroke()
   }
   statLines(ctx, d.stats, bx + side + 56, y + 86)
+}
+
+/** Oware: two rows of six pits as they ended — seeds drawn loose, the count in the corner. */
+function drawOware(ctx: Ctx, d: Extract<CardDetail, { kind: 'oware' }>, x: number, y: number, h: number, pad: number) {
+  const cell = 62
+  const gap = 8
+  const inset = 14
+  const bar = 6
+  const w = cell * 6 + gap * 5 + inset * 2
+  const hh = cell * 2 + gap + inset * 2 + bar * 2
+  const bx = x + pad
+  const by = y + (h - hh) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, w, hh)
+  const rows: [number, number[]][] = [
+    [1, [11, 10, 9, 8, 7, 6]],
+    [0, [0, 1, 2, 3, 4, 5]],
+  ]
+  rows.forEach(([seat, pits], r) => {
+    const ry = by + inset + r * (cell + gap + bar * 2)
+    // the owner's colour along the outside edge of their row
+    ctx.fillStyle = SEAT[seat]
+    ctx.fillRect(bx + inset, r === 0 ? ry - bar - 2 : ry + cell + 2, w - inset * 2, bar)
+    pits.forEach((i, k) => {
+      const cx = bx + inset + k * (cell + gap)
+      ctx.fillStyle = C.paper
+      ctx.fillRect(cx, ry, cell, cell)
+      ctx.fillStyle = C.tileEdge
+      ctx.fillRect(cx, ry + cell - 3, cell, 3)
+      const n = d.pits[i]
+      if (n > 12) {
+        text(ctx, String(n), cx + cell / 2, ry + cell / 2 + 12, 32, C.ink, { align: 'center' })
+        return
+      }
+      // seeds on a little grid so they don't overlap
+      const per = n > 6 ? 4 : 3
+      const sr = n > 6 ? 5 : 6.5
+      const step = (cell - 16) / per
+      for (let j = 0; j < n; j++) {
+        const sx = cx + 8 + step * (j % per) + step / 2
+        const sy = ry + 8 + step * Math.floor(j / per) + step / 2
+        disc(ctx, sx, sy, sr, C.ink)
+      }
+      if (n) text(ctx, String(n), cx + cell - 5, ry + cell - 7, 14, C.dim, { family: MONO, weight: 500, align: 'right' })
+    })
+  })
+  statLines(ctx, d.stats, bx + w + 56, y + 86)
 }
 
 /** Sudoku: the solved grid — clues in ink, the squares the winner filled in their colour. */
