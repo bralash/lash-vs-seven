@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useBlocker, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { HowToPlay } from '../components/HowToPlay'
 import { ArrowLeft, Copy, Exit } from '../components/Icons'
@@ -22,6 +22,7 @@ import {
   type Room,
 } from './rooms'
 import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
+import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -71,11 +72,14 @@ type Invite =
   | { state: 'ok'; hostName: string; rejoin: boolean }
   | { state: 'bad'; error: JoinFailure }
 
-/** Set by the room while leaving would cost someone something (a live match, or a guest waiting on the host). */
+/** Set while leaving would cost someone something (a live match, or a guest waiting on the host). */
 interface LeaveGuard {
   kind: LeaveKind
   other: string | null
-  room: Room
+  /** identifies the match, so the back-buffer below is pushed once per match */
+  key: string
+  /** what confirming does: end the online match, or drop the pass-and-play game */
+  leave: () => void
 }
 
 export function Lobby({ game, renderGame, initialState, option }: Props) {
@@ -88,6 +92,21 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
   const [asking, setAsking] = useState(false)
   const leaving = useRef(false)
   const bufferedFor = useRef<string | null>(null)
+
+  // Pass-and-play: games that support it can also be played by two people on this device.
+  const canLocal = game.modes !== 'online'
+  const [local, setLocal] = useState<LocalMatch | null>(() => (canLocal ? loadLocal(game.slug) : null))
+  const [setup, setSetup] = useState(false)
+  const endLocal = useCallback(() => {
+    saveLocal(game.slug, null)
+    setLocal(null)
+    setSetup(false)
+  }, [game.slug])
+  const keepLocal = useCallback((m: LocalMatch) => saveLocal(game.slug, m), [game.slug])
+  useEffect(() => {
+    if (local) setGuard({ kind: 'local', other: null, key: 'local', leave: endLocal })
+    else setGuard((g) => (g?.kind === 'local' ? null : g))
+  }, [local, endLocal])
 
   // Rooms need a player id, which comes from a silent anonymous sign-in (instant on return visits).
   const [auth, setAuth] = useState<'pending' | 'ready' | 'failed'>('pending')
@@ -127,7 +146,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
   // Players who arrive by invite link have no in-app page behind them, so their first Back
   // would leave the site before the app could ask. Push one same-URL entry when a match starts
   // so that first Back is an in-app navigation the blocker can catch.
-  const inMatchCode = guard?.kind === 'match' ? guard.room.code : null
+  const inMatchCode = guard?.kind === 'match' || guard?.kind === 'local' ? guard.key : null
   useEffect(() => {
     if (!inMatchCode || bufferedFor.current === inMatchCode) return
     bufferedFor.current = inMatchCode
@@ -174,8 +193,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
     if (!guard) return
     leaving.current = true
     setAsking(false)
-    leaveRoom(game.slug, guard.room)
-    markLeft(game.slug, guard.room.code)
+    guard.leave()
     // Heading somewhere else (link, logo): let that navigation through.
     // Leave button, or Back onto our same-URL buffer: stay on this game and drop the room from the URL.
     if (blocker.state === 'blocked' && blocker.location.pathname !== location.pathname) {
@@ -193,10 +211,33 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
     </button>
   ) : null
 
-  const inMatch = guard?.kind === 'match'
+  const inMatch = guard?.kind === 'match' || guard?.kind === 'local'
 
   let screen: ReactNode
-  if (auth !== 'ready') {
+  if (local) {
+    screen = (
+      <LocalGame
+        game={game}
+        match={local}
+        onChange={keepLocal}
+        exit={{ request: () => setAsking(true), now: endLocal }}
+        renderGame={renderGame}
+      />
+    )
+  } else if (setup) {
+    screen = (
+      <LocalSetup
+        game={game}
+        option={option}
+        initialState={initialState}
+        onStart={(m) => {
+          saveLocal(game.slug, m)
+          setLocal(m)
+        }}
+        onBack={() => setSetup(false)}
+      />
+    )
+  } else if (auth !== 'ready') {
     screen =
       auth === 'failed' ? (
         <main className="lobby__main screen-in">
@@ -229,7 +270,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
   } else if (urlCode && invite) {
     screen = <InviteScreen game={game} code={urlCode} invite={invite} onJoined={enterRoom} onDismiss={exitRoom} />
   } else {
-    screen = <StartScreen game={game} onEnter={enterRoom} />
+    screen = <StartScreen game={game} onEnter={enterRoom} onLocal={canLocal ? () => setSetup(true) : undefined} />
   }
 
   return (
@@ -240,7 +281,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
             // mid-match the only way out is the Leave button, so there's no back arrow to mis-tap
             <span className="topbar__title">
               {game.name}
-              <span className="hide-sm"> · Room {inRoom}</span>
+              <span className="hide-sm">{local ? ' · Pass & play' : ` · Room ${inRoom}`}</span>
             </span>
           ) : (
             <>
@@ -310,7 +351,7 @@ function NameField({
 
 /* ── Start: create a room or join with a code ───────────────────────────── */
 
-function StartScreen({ game, onEnter }: { game: GameMeta; onEnter: (code: string) => void }) {
+function StartScreen({ game, onEnter, onLocal }: { game: GameMeta; onEnter: (code: string) => void; onLocal?: () => void }) {
   const { name, setName, commit } = useSavedName()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState<'create' | 'join' | null>(null)
@@ -388,6 +429,15 @@ function StartScreen({ game, onEnter }: { game: GameMeta; onEnter: (code: string
       </form>
 
       <p className="lobby__error error-text" role="alert">{error}</p>
+
+      {onLocal && (
+        <>
+          <div className="divider" role="separator"><span>or on one device</span></div>
+          <button type="button" className="btn btn--block lobby__local" onClick={onLocal}>
+            Pass &amp; play
+          </button>
+        </>
+      )}
     </main>
   )
 }
@@ -534,11 +584,15 @@ function WaitingRoom({
     const mine = snapshot?.players?.[pid]
     if (!snapshot || !mine) return onGuard(null)
     const other = Object.entries(snapshot.players).find(([id]) => id !== pid)?.[1]?.name ?? null
+    const leave = () => {
+      leaveRoom(game.slug, snapshot)
+      markLeft(game.slug, snapshot.code)
+    }
     if (snapshot.status === 'abandoned') onGuard(null) // match already over — nothing to protect
-    else if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, room: snapshot })
-    else if (snapshot.hostId === pid && other) onGuard({ kind: 'close', other, room: snapshot })
+    else if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, key: snapshot.code, leave })
+    else if (snapshot.hostId === pid && other) onGuard({ kind: 'close', other, key: snapshot.code, leave })
     else onGuard(null)
-  }, [snapshot, pid, onGuard])
+  }, [snapshot, pid, onGuard, game.slug])
   useEffect(() => () => onGuard(null), [onGuard])
 
   if (live.status === 'loading') {

@@ -19,6 +19,8 @@ export function save(key: string, value: string | null) {
 // Same keys as the legacy site so returning players keep their name and sound setting.
 export const KEYS = {
   name: 'lvs_name_0',
+  /** the second player's name in pass-and-play */
+  name2: 'lvs_name_1',
   sound: 'lvs_sound',
 } as const
 

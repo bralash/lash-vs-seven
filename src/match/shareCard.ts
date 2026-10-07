@@ -21,6 +21,8 @@ export type CardDetail =
   | { kind: 'ttt'; board: string; line?: number[]; stats: [string, string][] }
   /** Connect Four: the deciding 7×6 board with the winning four struck through, plus stats */
   | { kind: 'c4'; board: string; line?: number[]; stats: [string, string][] }
+  /** Othello: the final board, with the last square played marked, plus stats */
+  | { kind: 'othello'; board: string; last?: number; stats: [string, string][] }
   /** Dots & Boxes: the final board with every box in its owner's colour, plus stats */
   | { kind: 'dots'; size: number; lines: string; boxes: string; initials: [string, string]; stats: [string, string][] }
 
@@ -287,6 +289,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
     })
     return
   }
+  if (d.kind === 'othello') {
+    drawOthello(ctx, d, x, y, h, pad)
+    return
+  }
   if (d.kind === 'dots') {
     drawDots(ctx, d, x, y, h, pad)
     return
@@ -341,6 +347,30 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
   statLines(ctx, d.stats, gx + size * 3 + gap * 2 + 64, y + 86)
 }
 
+/** The part of a circle not covered by the same circle shifted by dy: a crescent, for shading. */
+function crescent(ctx: Ctx, cx: number, cy: number, r: number, dy: number, colour: string) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.arc(cx, cy + dy, r, 0, Math.PI * 2)
+  ctx.fillStyle = colour
+  ctx.fill('evenodd')
+  ctx.restore()
+}
+
+/** A game disc like the in-game ones: flat colour, a highlight on top, a shade underneath (rim drawn by the caller). */
+function disc(ctx: Ctx, cx: number, cy: number, r: number, colour: string) {
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.fillStyle = colour
+  ctx.fill()
+  crescent(ctx, cx, cy, r, 3, 'rgba(255, 255, 255, .35)')
+  crescent(ctx, cx, cy, r, -4, 'rgba(18, 16, 22, .2)')
+}
+
 /** Connect Four, drawn like the in-game board. */
 function drawC4(ctx: Ctx, d: Extract<CardDetail, { kind: 'c4' }>, x: number, y: number, h: number, pad: number) {
   // framed board, recessed paper holes, rimmed discs, yellow-rimmed winners
@@ -361,28 +391,6 @@ function drawC4(ctx: Ctx, d: Extract<CardDetail, { kind: 'c4' }>, x: number, y: 
     bx + inset + (i % 7) * (cell + gap) + cell / 2,
     by + inset + Math.floor(i / 7) * (cell + gap) + cell / 2,
   ]
-  // the part of a circle not covered by the same circle shifted by dy: a crescent for shading
-  const crescent = (cx: number, cy: number, r: number, dy: number, colour: string) => {
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.clip()
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.arc(cx, cy + dy, r, 0, Math.PI * 2)
-    ctx.fillStyle = colour
-    ctx.fill('evenodd')
-    ctx.restore()
-  }
-  const disc = (cx: number, cy: number, r: number, v: number) => {
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.fillStyle = SEAT[v]
-    ctx.fill()
-    crescent(cx, cy, r, 3, 'rgba(255, 255, 255, .35)')
-    crescent(cx, cy, r, -4, 'rgba(18, 16, 22, .2)')
-  }
-
   const r = cell / 2
   const dr = cell * 0.44
   for (let i = 0; i < 42; i++) {
@@ -393,9 +401,9 @@ function drawC4(ctx: Ctx, d: Extract<CardDetail, { kind: 'c4' }>, x: number, y: 
     ctx.arc(cx, cy, r, 0, Math.PI * 2)
     ctx.fillStyle = win ? C.hit : C.paper2
     ctx.fill()
-    if (!win) crescent(cx, cy, r, 3, 'rgba(18, 16, 22, .28)')
+    if (!win) crescent(ctx, cx, cy, r, 3, 'rgba(18, 16, 22, .28)')
     if (v === '.') continue
-    disc(cx, cy, dr, Number(v))
+    disc(ctx, cx, cy, dr, SEAT[Number(v)])
     ctx.beginPath()
     if (win) {
       ctx.arc(cx, cy, dr - 1, 0, Math.PI * 2)
@@ -502,6 +510,40 @@ function tint(hex: string, amount: number) {
   const a = rgb(hex)
   const p = rgb(C.paper)
   return `rgb(${a.map((v, k) => Math.round(v * amount + p[k] * (1 - amount))).join(', ')})`
+}
+
+/** Othello: the final 8×8 board drawn like the in-game one, the last square played in yellow. */
+function drawOthello(ctx: Ctx, d: Extract<CardDetail, { kind: 'othello' }>, x: number, y: number, h: number, pad: number) {
+  const cell = 30
+  const gap = 3
+  const inset = 10
+  const side = cell * 8 + gap * 7 + inset * 2
+  const bx = x + pad
+  const by = y + (h - side) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, side, side)
+  ctx.strokeStyle = '#2b2833'
+  ctx.lineWidth = 3
+  ctx.strokeRect(bx + 1.5, by + 1.5, side - 3, side - 3)
+  for (let i = 0; i < 64; i++) {
+    const cx = bx + inset + (i % 8) * (cell + gap)
+    const cy = by + inset + Math.floor(i / 8) * (cell + gap)
+    const last = i === d.last
+    ctx.fillStyle = last ? C.hit : C.paper
+    ctx.fillRect(cx, cy, cell, cell)
+    ctx.fillStyle = last ? C.hitDeep : C.tileEdge
+    ctx.fillRect(cx, cy + cell - 2, cell, 2)
+    const v = d.board[i]
+    if (v === '.') continue
+    const r = cell * 0.42
+    disc(ctx, cx + cell / 2, cy + cell / 2, r, SEAT[Number(v)])
+    ctx.beginPath()
+    ctx.arc(cx + cell / 2, cy + cell / 2, r - 1, 0, Math.PI * 2)
+    ctx.strokeStyle = C.ink
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+  statLines(ctx, d.stats, bx + side + 56, y + 86)
 }
 
 /** Label/value pairs stacked vertically on the dark panel. */

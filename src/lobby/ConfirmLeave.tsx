@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Exit } from '../components/Icons'
 import { Modal } from '../components/Modal'
 
-export type LeaveKind = 'match' | 'close'
+/** an online match, a waiting room with a guest, or a pass-and-play game on this device */
+export type LeaveKind = 'match' | 'close' | 'local'
 
 interface Props {
   kind: LeaveKind
@@ -24,7 +25,14 @@ export function ConfirmLeave({ kind, other, onStay, onLeave }: Props) {
 
   const them = other ?? (kind === 'match' ? 'Your opponent' : 'Your guest')
   const copy =
-    kind === 'match'
+    kind === 'local'
+      ? {
+          title: 'End this game?',
+          body: 'The board and score won’t be saved.',
+          stay: 'Keep playing',
+          leave: 'End game',
+        }
+      : kind === 'match'
       ? {
           title: 'Leave the match?',
           body: `This ends the match for ${them} too.`,

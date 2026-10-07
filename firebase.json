@@ -32,6 +32,11 @@
         "source": "/dots.html",
         "destination": "/dots",
         "type": 301
+      },
+      {
+        "source": "/othello.html",
+        "destination": "/othello",
+        "type": 301
       }
     ],
     "rewrites": [

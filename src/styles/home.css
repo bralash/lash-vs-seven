@@ -223,7 +223,8 @@
 
 @media (width <= 640px) {
   .games-head { align-items: stretch; flex-direction: column; }
-  .seg { width: 100%; }
-  .seg__btn { flex: 1; justify-content: center; padding: 8px 6px; font-size: 13px; }
+  /* scoped to the homepage so it beats the shared .seg styles, which load after this file */
+  .games-head .seg { width: 100%; }
+  .games-head .seg__btn { flex: 1; min-width: 0; justify-content: center; gap: 5px; padding: 8px 4px; font-size: 13px; }
   .hero__seven { text-shadow: 3px 3px 0 var(--ink); }
 }

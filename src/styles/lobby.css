@@ -180,3 +180,13 @@
 .lobby-option { display: grid; justify-items: center; gap: 8px; }
 .lobby-option .seg { width: 100%; }
 .lobby-option .seg__btn { flex: 1; justify-content: center; }
+
+/* ── Pass & play setup: one card per player, in their seat colour ── */
+/* scoped under .local-names so these beat the shared .field-card styles, which load after this file */
+.local-names { display: grid; gap: 16px; }
+.local-names .local-name { padding: 12px 18px 14px; background: var(--slot); border-top-width: 10px; }
+.local-names .local-name--0 { border-top-color: var(--lash); }
+.local-names .local-name--1 { border-top-color: var(--seven); }
+.local-names .local-name input { font-size: clamp(26px, 6vw, 40px); }
+.local-names .local-name input::placeholder { color: color-mix(in srgb, var(--ink) 35%, var(--slot)); }
+.lobby__local { justify-content: center; }

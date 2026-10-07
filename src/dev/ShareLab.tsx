@@ -3,6 +3,9 @@ import { freshLive, play, type Live } from '../games/connect4/engine'
 import { freshLive as dotsLive } from '../games/dots/engine'
 import { margin } from '../games/dots/DotsMatch'
 import { autoplay } from './DotsLab'
+import { freshLive as othelloLive } from '../games/othello/engine'
+import { margin as discMargin } from '../games/othello/OthelloMatch'
+import { autoplay as othelloPlay } from './OthelloLab'
 import { drawShareCard, type CardInput } from '../match/shareCard'
 
 // Dev-only preview of result cards (route: /dev/share), with sample data for each game.
@@ -39,6 +42,17 @@ function dotsSample(n: number): CardInput {
   }
 }
 
+// a full game played through the engine
+function othelloSample(): CardInput {
+  const live = othelloPlay(othelloLive(0), 0)
+  const s = [0, 1].map((k) => live.board.split('').filter((v) => v === String(k)).length)
+  return {
+    game: 'Othello', winner: live.result?.winner ?? -1, scoreLine: `${s[0]} — ${s[1]}`, link: 'lash-vs-seven.web.app/othello',
+    players: players({ score: String(s[0]), meta: 'Orange · discs' }, { score: String(s[1]), meta: 'Blue · discs' }),
+    detail: { kind: 'othello', board: live.board, last: live.last, stats: [['Margin', discMargin(s[0], s[1])], ['Squares filled', `${64 - live.board.split('').filter((v) => v === '.').length} / 64`]] },
+  }
+}
+
 const SAMPLES: Record<string, CardInput> = {
   wordhunt: {
     game: 'Word Hunt', winner: 0, scoreLine: '6,400 — 3,900', link: 'lash-vs-seven.web.app/wordhunt',
@@ -60,6 +74,7 @@ const SAMPLES: Record<string, CardInput> = {
   },
   connect4: c4Sample([3, 3, 4, 2, 2, 4, 5, 6, 1, 5, 4, 3, 2, 5, 5, 6]),
   dots: dotsSample(5),
+  othello: othelloSample(),
   draw: {
     game: 'Tic-Tac-Toe', winner: -1, scoreLine: '2 — 2', link: 'lash-vs-seven.web.app/tictactoe',
     players: players({ score: '2', meta: 'X · games' }, { score: '2', meta: 'O · games' }),
