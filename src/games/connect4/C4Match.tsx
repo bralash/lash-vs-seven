@@ -16,28 +16,31 @@ import { applyMove } from '../../match/turns'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
-import { Mark, TttBoard } from './Board'
-import { MARK, RESULT_MS, freshLive, next, play, type Live } from './engine'
-import '../../styles/tictactoe.css'
+import { C4Board, Disc } from './Board'
+import { RESULT_MS, dropRow, freshLive, next, play, type Live } from './engine'
+import '../../styles/connect4.css'
 
-const GAME = 'tictactoe'
+const GAME = 'connect4'
+const COLOUR = ['Orange', 'Blue'] as const
+/** "Single game" / "Best of 3" from the number of wins needed */
+export const seriesLabel = (target: number) => (target === 1 ? 'Single game' : `Best of ${target * 2 - 1}`)
 
-export interface TttState {
-  /** games needed to win the series (best of 3 → 2) */
+export interface C4State {
+  /** games needed to win the series (single game → 1, best of 3 → 2) */
   target: number
   match: number
   live: Live
   ready?: Record<string, boolean>
 }
 
-export function initialTttState(target = 2, match = 1): TttState {
+export function initialC4State(target = 2, match = 1): C4State {
   // the opener of game 1 alternates between matches
   const starter = (match % 2 === 1 ? 0 : 1) as Seat
   return { target, match, live: freshLive(starter, 1) }
 }
 
-export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }) {
-  const st = room.state as unknown as TttState
+export function C4Match({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }) {
+  const st = room.state as unknown as C4State
   const live = st.live
   const { play: sound } = useSound()
   const seats = playersBySeat(room)
@@ -56,10 +59,10 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
 
   const myTurn = inMatch && !live.result && live.turn === me.seat
 
-  const tap = (cell: number) => {
-    if (!myTurn || live.board[cell] !== '.') return
+  const drop = (col: number) => {
+    if (!myTurn || dropRow(live.board, col) < 0) return
     sound('tap')
-    applyMove<Live>(GAME, room.code, (cur) => play(cur, me.seat, cell)).catch(() => {})
+    applyMove<Live>(GAME, room.code, (cur) => play(cur, me.seat, col)).catch(() => {})
   }
 
   // a finished game: pause, then either player deals the next board (the transaction makes it happen once)
@@ -86,9 +89,9 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
 
   const scoreboard = (
     <>
-      <ScoreCard p={seats[0]} you={me.seat === 0} value={score(0)} meta={`${MARK[0]} · first to ${st.target}`} />
+      <ScoreCard p={seats[0]} you={me.seat === 0} value={score(0)} meta={`${COLOUR[0]} · first to ${st.target}`} />
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={me.seat === 1} value={score(1)} meta={`${MARK[1]} · first to ${st.target}`} />
+      <ScoreCard p={seats[1]} you={me.seat === 1} value={score(1)} meta={`${COLOUR[1]} · first to ${st.target}`} />
     </>
   )
 
@@ -113,22 +116,22 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
       : `${mover?.name ?? 'Opponent'}’s turn`
 
   return (
-    <main className="ttt screen-in">
+    <main className="c4m screen-in">
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={me.seat === 0} value={score(0)} meta={`${MARK[0]} · first to ${st.target}`} />
-        <div className={`ttt-turn ttt-turn--${live.result ? 'done' : live.turn}${myTurn ? ' ttt-turn--you' : ''}`} aria-live="polite">
+        <ScoreCard p={seats[0]} you={me.seat === 0} value={score(0)} meta={`${COLOUR[0]} · first to ${st.target}`} />
+        <div className={`c4-turn${myTurn ? ' c4-turn--you' : ''}`} aria-live="polite">
           <span className="label">Game {live.game}</span>
-          <Mark seat={live.result ? (live.result.winner === -1 ? null : live.result.winner) : live.turn} small />
+          <Disc seat={live.result ? (live.result.winner === -1 ? null : live.result.winner) : live.turn} />
         </div>
-        <ScoreCard p={seats[1]} you={me.seat === 1} value={score(1)} meta={`${MARK[1]} · first to ${st.target}`} />
+        <ScoreCard p={seats[1]} you={me.seat === 1} value={score(1)} meta={`${COLOUR[1]} · first to ${st.target}`} />
       </div>
 
-      <p className={`ttt-status${myTurn ? ' ttt-status--you' : ''}${live.result ? ' ttt-status--result' : ''}`} role="status">
+      <p className={`c4-status${myTurn ? ' c4-status--you' : ''}${live.result ? ' c4-status--result' : ''}`} role="status">
         {status}
       </p>
 
-      <div className="ttt-stage">
-        <TttBoard live={live} mySeat={me.seat} myTurn={myTurn} onTap={tap} />
+      <div className="c4-stage">
+        <C4Board live={live} mySeat={me.seat} myTurn={myTurn} onDrop={drop} />
       </div>
 
       {awaySecs !== null && opp && (
@@ -151,7 +154,7 @@ function Results({
 }: {
   room: Room
   me: Me
-  st: TttState
+  st: C4State
   seats: [Seated | null, Seated | null]
   exit: MatchExit
 }) {
@@ -180,22 +183,22 @@ function Results({
   useEffect(() => {
     if (!me.isHost || dealt.current || !imReady || !oppReady) return
     dealt.current = true
-    startMatch(GAME, room.code, { ...initialTttState(st.target, st.match + 1) })
+    startMatch(GAME, room.code, { ...initialC4State(st.target, st.match + 1) })
   }, [me.isHost, imReady, oppReady, room.code, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
-    game: 'Tic-Tac-Toe',
+    game: 'Connect Four',
     winner,
     scoreLine,
     link: shareLink(GAME),
-    players: [0, 1].map((k) => ({ name: names[k], seat: k as 0 | 1, score: String(s[k]), meta: `${MARK[k]} · games won` })) as CardInput['players'],
+    players: [0, 1].map((k) => ({ name: names[k], seat: k as 0 | 1, score: String(s[k]), meta: `${COLOUR[k]} · games won` })) as CardInput['players'],
     detail: {
-      kind: 'ttt',
+      kind: 'c4',
       board: st.live.board,
       line: st.live.result?.line,
-      stats: [['Series', `Best of ${st.target * 2 - 1}`], ['Games played', String(st.live.game)]],
+      stats: [['Series', seriesLabel(st.target)], ['Games played', String(st.live.game)]],
     },
   }
 
@@ -205,26 +208,26 @@ function Results({
   }
 
   return (
-    <main className="ttt ttt-results screen-in">
+    <main className="c4m c4m-results screen-in">
       {iWon && <Confetti />}
-      <div className="ttt-results__head">
+      <div className="c4m-results__head">
         <p className="label">
-          Match {st.match} · first to {st.target}
+          Match {st.match} · {seriesLabel(st.target).toLowerCase()}
         </p>
-        <h1 className={`ttt-results__title${iWon ? ' ttt-results__title--win' : ''}`}>
+        <h1 className={`c4m-results__title${iWon ? ' c4m-results__title--win' : ''}`}>
           {iWon ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
         </h1>
-        <p className="ttt-results__line">
+        <p className="c4m-results__line">
           {s[0]} <span>—</span> {s[1]}
         </p>
       </div>
-      <div className="mt-hud ttt-results__cards">
-        <ScoreCard p={seats[0]} you={me.seat === 0} value={s[0]} meta={MARK[0]} />
+      <div className="mt-hud c4m-results__cards">
+        <ScoreCard p={seats[0]} you={me.seat === 0} value={s[0]} meta={COLOUR[0]} />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={me.seat === 1} value={s[1]} meta={MARK[1]} />
+        <ScoreCard p={seats[1]} you={me.seat === 1} value={s[1]} meta={COLOUR[1]} />
       </div>
       <div className="mt-share">
-        <ShareResult card={card} won={iWon} message={shareMessage('Tic-Tac-Toe', GAME, names, winner, scoreLine)} />
+        <ShareResult card={card} won={iWon} message={shareMessage('Connect Four', GAME, names, winner, scoreLine)} />
       </div>
 
       <div className="mt-actions" aria-live="polite">

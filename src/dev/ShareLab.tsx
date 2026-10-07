@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { freshLive, play, type Live } from '../games/connect4/engine'
 import { drawShareCard, type CardInput } from '../match/shareCard'
 
 // Dev-only preview of result cards (route: /dev/share), with sample data for each game.
@@ -7,6 +8,22 @@ const players = (a: { score: string; meta: string }, b: { score: string; meta: s
   { name: 'Emmanuel', seat: 0, ...a },
   { name: 'Seven', seat: 1, ...b },
 ]
+
+// a real decider played through the engine, so the card shows a position that can actually happen
+function c4Sample(moves: number[]): CardInput {
+  let live: Live = freshLive(1, 3, { s0: 1, s1: 1 })
+  for (const col of moves) {
+    const n = play(live, live.turn, col)
+    if (!n) throw new Error(`illegal Connect Four move: column ${col}`)
+    live = n
+  }
+  const s = [live.scores.s0, live.scores.s1]
+  return {
+    game: 'Connect Four', winner: live.result?.winner ?? -1, scoreLine: `${s[0]} — ${s[1]}`, link: 'lash-vs-seven.web.app/connect4',
+    players: players({ score: String(s[0]), meta: 'Orange · games won' }, { score: String(s[1]), meta: 'Blue · games won' }),
+    detail: { kind: 'c4', board: live.board, line: live.result?.line, stats: [['Series', 'Best of 3'], ['Games played', String(live.game)]] },
+  }
+}
 
 const SAMPLES: Record<string, CardInput> = {
   wordhunt: {
@@ -27,6 +44,7 @@ const SAMPLES: Record<string, CardInput> = {
     players: players({ score: '2', meta: 'X · games' }, { score: '1', meta: 'O · games' }),
     detail: { kind: 'ttt', board: '01.10.110'.split('').map((c, i) => ([0, 4, 8].includes(i) ? '0' : c)).join(''), line: [0, 4, 8], stats: [['Series', 'Best of 3'], ['Decider', 'Game 3']] },
   },
+  connect4: c4Sample([3, 3, 4, 2, 2, 4, 5, 6, 1, 5, 4, 3, 2, 5, 5, 6]),
   draw: {
     game: 'Tic-Tac-Toe', winner: -1, scoreLine: '2 — 2', link: 'lash-vs-seven.web.app/tictactoe',
     players: players({ score: '2', meta: 'X · games' }, { score: '2', meta: 'O · games' }),

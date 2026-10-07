@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import type { Seat } from '../../lobby/rooms'
+import { WinLine } from '../../match/WinLine'
 import { MARK, type Live } from './engine'
 
 interface Props {
@@ -48,7 +49,7 @@ export function TttBoard({ live, mySeat, myTurn, onTap }: Props) {
         </div>
       ))}
       {line && live.result!.winner !== -1 && (
-        <WinLine key={`${live.game}-${line.join()}`} boardRef={boardRef} line={line} />
+        <WinLine key={`${live.game}-${line.join()}`} boardRef={boardRef} line={line} cellSelector=".ttt-cell" />
       )}
     </div>
   )
@@ -68,68 +69,6 @@ export function Mark({ seat, small }: { seat: Seat | null; small?: boolean }) {
       ) : (
         <circle className="ttt-stroke" cx="50" cy="50" r="27" />
       )}
-    </svg>
-  )
-}
-
-/* ── The strike through a winning three ──────────────────────────────── */
-
-interface Geometry {
-  w: number
-  h: number
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-  /** stroke width, scaled to the cell size */
-  sw: number
-  len: number
-}
-
-/**
- * Drawn in real pixels from the measured cell centres (gaps included), so it runs dead through
- * the middle of all three marks at any board size. Re-measures if the board is resized.
- */
-function WinLine({ boardRef, line }: { boardRef: React.RefObject<HTMLDivElement | null>; line: number[] }) {
-  const [g, setG] = useState<Geometry | null>(null)
-
-  useLayoutEffect(() => {
-    const board = boardRef.current
-    if (!board) return
-    const measure = () => {
-      const cells = board.querySelectorAll<HTMLElement>('.ttt-cell')
-      const centre = (i: number) => {
-        const el = cells[i]
-        return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2, size: el.offsetWidth }
-      }
-      const a = centre(line[0])
-      const b = centre(line[2])
-      // overshoot past the outer marks so it reads as a strike, not a connector
-      const dist = Math.hypot(b.x - a.x, b.y - a.y)
-      const ux = (b.x - a.x) / dist
-      const uy = (b.y - a.y) / dist
-      const over = a.size * 0.34
-      const x1 = a.x - ux * over
-      const y1 = a.y - uy * over
-      const x2 = b.x + ux * over
-      const y2 = b.y + uy * over
-      setG({ w: board.offsetWidth, h: board.offsetHeight, x1, y1, x2, y2, sw: Math.max(6, a.size * 0.12), len: Math.hypot(x2 - x1, y2 - y1) })
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(board)
-    return () => ro.disconnect()
-  }, [boardRef, line])
-
-  if (!g) return null
-  return (
-    <svg
-      className="ttt-winline"
-      viewBox={`0 0 ${g.w} ${g.h}`}
-      style={{ ['--len' as string]: g.len, ['--sw' as string]: g.sw }}
-      aria-hidden="true"
-    >
-      <line className="ttt-winline__ink" x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} />
     </svg>
   )
 }

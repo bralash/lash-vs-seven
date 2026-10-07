@@ -22,6 +22,11 @@
         "source": "/tictactoe.html",
         "destination": "/tictactoe",
         "type": 301
+      },
+      {
+        "source": "/connect4.html",
+        "destination": "/connect4",
+        "type": 301
       }
     ],
     "rewrites": [

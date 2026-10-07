@@ -19,6 +19,8 @@ export type CardDetail =
   | { kind: 'rounds'; rows: { word: string; seat: Seat01 | null; note: string }[] }
   /** Tic-Tac-Toe: the deciding board and its strike, plus stats */
   | { kind: 'ttt'; board: string; line?: number[]; stats: [string, string][] }
+  /** Connect Four: the deciding 7×6 board with the winning four struck through, plus stats */
+  | { kind: 'c4'; board: string; line?: number[]; stats: [string, string][] }
 
 export interface CardInput {
   game: string
@@ -283,6 +285,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
     })
     return
   }
+  if (d.kind === 'c4') {
+    drawC4(ctx, d, x, y, h, pad)
+    return
+  }
   // ttt
   const size = 70
   const gap = 10
@@ -327,6 +333,98 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
     ctx.stroke()
   }
   statLines(ctx, d.stats, gx + size * 3 + gap * 2 + 64, y + 86)
+}
+
+/** Connect Four, drawn like the in-game board. */
+function drawC4(ctx: Ctx, d: Extract<CardDetail, { kind: 'c4' }>, x: number, y: number, h: number, pad: number) {
+  // framed board, recessed paper holes, rimmed discs, yellow-rimmed winners
+  const cell = 38
+  const gap = 6
+  const inset = 12
+  const bw = cell * 7 + gap * 6 + inset * 2
+  const bh = cell * 6 + gap * 5 + inset * 2
+  const bx = x + pad
+  const by = y + (h - bh) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, bw, bh)
+  ctx.strokeStyle = '#2b2833'
+  ctx.lineWidth = 3
+  ctx.strokeRect(bx + 1.5, by + 1.5, bw - 3, bh - 3)
+
+  const centre = (i: number) => [
+    bx + inset + (i % 7) * (cell + gap) + cell / 2,
+    by + inset + Math.floor(i / 7) * (cell + gap) + cell / 2,
+  ]
+  // the part of a circle not covered by the same circle shifted by dy: a crescent for shading
+  const crescent = (cx: number, cy: number, r: number, dy: number, colour: string) => {
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.clip()
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.arc(cx, cy + dy, r, 0, Math.PI * 2)
+    ctx.fillStyle = colour
+    ctx.fill('evenodd')
+    ctx.restore()
+  }
+  const disc = (cx: number, cy: number, r: number, v: number) => {
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fillStyle = SEAT[v]
+    ctx.fill()
+    crescent(cx, cy, r, 3, 'rgba(255, 255, 255, .35)')
+    crescent(cx, cy, r, -4, 'rgba(18, 16, 22, .2)')
+  }
+
+  const r = cell / 2
+  const dr = cell * 0.44
+  for (let i = 0; i < 42; i++) {
+    const [cx, cy] = centre(i)
+    const v = d.board[i]
+    const win = !!d.line?.includes(i)
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.fillStyle = win ? C.hit : C.paper2
+    ctx.fill()
+    if (!win) crescent(cx, cy, r, 3, 'rgba(18, 16, 22, .28)')
+    if (v === '.') continue
+    disc(cx, cy, dr, Number(v))
+    ctx.beginPath()
+    if (win) {
+      ctx.arc(cx, cy, dr - 1, 0, Math.PI * 2)
+      ctx.strokeStyle = C.hit
+      ctx.lineWidth = 4
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(cx, cy, dr + 2, 0, Math.PI * 2)
+      ctx.strokeStyle = C.ink
+      ctx.lineWidth = 2
+    } else {
+      ctx.arc(cx, cy, dr - 1, 0, Math.PI * 2)
+      ctx.strokeStyle = C.ink
+      ctx.lineWidth = 2.5
+    }
+    ctx.stroke()
+  }
+  if (d.line) {
+    const [x1, y1] = centre(d.line[0])
+    const [x2, y2] = centre(d.line[d.line.length - 1])
+    const len = Math.hypot(x2 - x1, y2 - y1)
+    const ux = (x2 - x1) / len
+    const uy = (y2 - y1) / len
+    // same as in the game: a paper line with an ink edge, so it reads over the coloured discs
+    ctx.lineCap = 'round'
+    for (const [colour, width] of [[C.ink, 11], [C.slot, 5]] as const) {
+      ctx.strokeStyle = colour
+      ctx.lineWidth = width
+      ctx.beginPath()
+      ctx.moveTo(x1 - ux * 13, y1 - uy * 13)
+      ctx.lineTo(x2 + ux * 13, y2 + uy * 13)
+      ctx.stroke()
+    }
+  }
+  statLines(ctx, d.stats, bx + bw + 56, y + 86)
 }
 
 /** Label/value pairs stacked vertically on the dark panel. */

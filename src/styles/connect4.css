@@ -1,0 +1,181 @@
+.c4m {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 14px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.c4m > * { width: 100%; }
+
+/* ── Whose turn (centre of the HUD) ────────────────────── */
+.c4-turn {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 84px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+}
+.c4-turn .label { color: var(--paper-2); font-size: 10px; }
+.c4-turn--you { background: var(--hit); }
+.c4-turn--you .label { color: var(--ink); }
+.c4-turn--you .c4-mini { animation: pulse .6s ease-in-out infinite alternate; }
+.c4-mini { display: inline-block; width: 30px; height: 30px; }
+.c4-mini--draw { font-family: var(--display); font-size: 26px; line-height: 30px; text-align: center; color: var(--paper); }
+
+.c4-status {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(20px, 5vw, 28px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.c4-status--you { background: var(--hit); }
+.c4-status--result { animation: stamp-in .35s var(--ease-snap) both; }
+
+/* ── Board ─────────────────────────────────────────────── */
+.c4-stage { display: grid; justify-items: center; }
+.c4 {
+  --gap: clamp(5px, 1.6vw, 9px);
+  --pad: clamp(8px, 2.4vw, 14px);
+  width: min(100% - 10px, max(260px, calc((100dvh - 340px) * 0.98)), 540px);
+  display: grid;
+  gap: 6px;
+}
+
+/* the strip above the board where your ghost disc follows the pointer (desktop) */
+.c4-rail {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--gap);
+  padding: 0 var(--pad);
+}
+.c4-rail__slot { aspect-ratio: 1; display: grid; place-items: center; }
+
+.c4-board {
+  /* the strike waits for the falling disc to land */
+  --strike-delay: .55s;
+  --strike-time: .5s;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--gap);
+  padding: var(--pad);
+  background: var(--board);
+  box-shadow: var(--shadow-lg), inset 0 0 0 3px #2b2833, inset 0 0 0 4px #0b0a0e;
+}
+
+.c4-col {
+  display: grid;
+  grid-template-rows: repeat(6, auto);
+  gap: var(--gap);
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.c4-col:disabled { cursor: default; }
+.c4-board--live .c4-col:not(:disabled) { cursor: pointer; }
+@media (hover: hover) {
+  .c4-board--live .c4-col:not(:disabled):hover { background: rgba(255, 255, 255, .07); }
+}
+.c4-col:focus-visible { outline: 3px solid var(--hit); outline-offset: 2px; }
+
+.c4-hole {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--paper-2);
+  box-shadow: inset 0 4px 0 rgba(18, 16, 22, .28);
+}
+
+/* ── Discs ─────────────────────────────────────────────── */
+.c4-disc {
+  display: block;
+  width: 88%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  box-shadow: inset 0 -5px 0 rgba(18, 16, 22, .2), inset 0 4px 0 rgba(255, 255, 255, .35);
+}
+.c4-disc--0 { background: var(--lash); }
+.c4-disc--1 { background: var(--seven); }
+.c4-disc--ghost { width: 82%; opacity: .5; animation: none; }
+.c4-mini.c4-disc { width: 30px; border-width: 2.5px; }
+
+/* newest disc falls from above the board; one row ≈ 1.25 disc heights, then a small bounce */
+.c4-disc--drop {
+  position: relative;
+  z-index: 1;
+  animation: c4-fall calc(.22s + var(--fall, 1) * .045s) cubic-bezier(.45, 0, .85, .5) both,
+    c4-bounce .22s calc(.22s + var(--fall, 1) * .045s) ease-out both;
+}
+@keyframes c4-fall { from { transform: translateY(calc(var(--fall, 1) * -125% - 140%)); } }
+@keyframes c4-bounce { 40% { transform: translateY(-9%); } }
+
+/* ── Win / draw ────────────────────────────────────────── */
+.c4-hole--win .c4-disc {
+  animation: c4-win .4s calc(var(--strike-delay) + var(--step, 0) * var(--strike-time) / 3.4) var(--ease-snap) both;
+}
+.c4-hole--win .c4-disc--drop {
+  animation: c4-fall calc(.22s + var(--fall, 1) * .045s) cubic-bezier(.45, 0, .85, .5) both,
+    c4-win .4s calc(var(--strike-delay) + var(--step, 0) * var(--strike-time) / 3.4) var(--ease-snap) both;
+}
+.c4-hole--win { background: var(--hit); }
+/* winning discs swap their ink rim for a thick yellow one */
+.c4-hole--win .c4-disc { border-color: var(--hit); border-width: 4px; box-shadow: 0 0 0 2px var(--ink), inset 0 -5px 0 rgba(18, 16, 22, .2), inset 0 4px 0 rgba(255, 255, 255, .35); }
+@keyframes c4-win { 45% { transform: scale(1.12); } }
+
+.c4-board--won .c4-hole:not(.c4-hole--win) .c4-disc,
+.c4-board--draw .c4-disc {
+  opacity: .32;
+  transition: opacity .35s var(--strike-delay);
+}
+.c4-board--draw { animation: draw-shrug .5s .45s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .c4-disc--drop, .c4-hole--win .c4-disc { animation: none; }
+}
+
+/* ── Results ───────────────────────────────────────────── */
+.c4m-results { gap: 24px; padding-top: clamp(8px, 4vh, 40px); }
+.c4m-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.c4m-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.c4m-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+.c4m-results__line { font-family: var(--display); font-size: clamp(24px, 5vw, 32px); }
+.c4m-results__line span { color: var(--dim); }
+.c4m-results__cards { align-items: center; }
+
+/* ── Phones during the match: pinned to one screen ─────── */
+@media (width < 900px) {
+  html.scroll-locked .c4m {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 12px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  html.scroll-locked .c4-stage { align-self: center; }
+  html.scroll-locked .c4m .mt-score { padding-block: 6px 8px; }
+}
