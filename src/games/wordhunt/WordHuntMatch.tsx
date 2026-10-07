@@ -21,7 +21,7 @@ import {
 } from './engine'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
-import { ShareResult } from '../../match/ShareResult'
+import { ResultActions } from '../../match/ResultActions'
 import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
@@ -401,19 +401,16 @@ function Results({
       )}
 
       <RivalryLine r={rivalry} />
-      <div className="mt-share">
-        <ShareResult card={card} won={iWon} message={shareMessage('Word Hunt', GAME, names, winner, scoreLine)} />
-      </div>
-
-      <div className="mt-actions" aria-live="polite">
-        <button type="button" className="btn btn--primary btn--lg" onClick={readyUp} disabled={imReady || oppGone}>
-          {oppGone ? `${opp?.name ?? 'Opponent'} left` : imReady ? (oppReady ? 'Dealing…' : 'Ready — waiting') : oppReady ? `Rematch — ${opp.name} is ready` : 'Play again'}
-          <span className="keycap">↵</span>
-        </button>
-        <button type="button" className="btn" onClick={over ? exit.now : exit.request}>
-          {over ? 'Back to lobby' : 'Leave room'}
-        </button>
-      </div>
+      <ResultActions
+        card={card}
+        message={shareMessage('Word Hunt', GAME, names, winner, scoreLine)}
+        oppName={opp?.name}
+        imReady={imReady}
+        oppReady={oppReady}
+        oppGone={oppGone}
+        onReady={readyUp}
+        onLeave={exit.now}
+      />
     </main>
   )
 }

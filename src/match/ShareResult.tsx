@@ -6,17 +6,15 @@ interface Props {
   card: CardInput
   /** text sent alongside the image, e.g. "Emmanuel beat Seven 2–1 at Tic-Tac-Toe" */
   message: string
-  /** winners get the loud button; everyone else a quieter one */
-  won: boolean
 }
 
-/** "Share your win" → preview of the result card, then the phone's share sheet (or download / copy). */
-export function ShareResult({ card, message, won }: Props) {
+/** Share icon → preview of the result card, then the phone's share sheet (or download / copy). */
+export function ShareResult({ card, message }: Props) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button type="button" className={`btn${won ? ' btn--primary' : ''} share-btn`} onClick={() => setOpen(true)}>
-        <ShareIcon /> {won ? 'Share your win' : 'Share result'}
+      <button type="button" className="btn btn--lg share-btn" onClick={() => setOpen(true)} aria-label="Share result" title="Share result">
+        <ShareIcon />
       </button>
       {open && <ShareDialog card={card} message={message} onClose={() => setOpen(false)} />}
     </>

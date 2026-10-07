@@ -220,22 +220,18 @@
 .share__actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .share__actions .btn { flex: 1 1 140px; font-size: 17px; padding: 12px 14px; }
 .share__note { min-height: 1.5em; text-align: center; }
-.mt-share { display: flex; justify-content: center; }
-.mt-share .btn { font-size: 18px; padding: 12px 20px; }
 
-/* ── Rivalry: the all-time record against this opponent ── */
-.mt-rivalry { display: grid; justify-items: center; gap: 6px; text-align: center; }
-.mt-rivalry__line {
-  padding: 4px 10px;
-  background: var(--hit);
-  border: 2px solid var(--ink);
-  box-shadow: var(--shadow-sm);
-  font-family: var(--mono);
-  font-weight: 500;
-  font-size: 15px;
-  transform: rotate(-1deg);
-}
-.mt-rivalry__meta { font-family: var(--mono); font-size: 13px; color: var(--ink-soft); max-width: 44ch; }
+/* ── Results: one row — share (icon) + rematch ─────────── */
+.mt-result-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 14px; width: min(100%, 460px); margin-inline: auto; }
+.mt-result-actions__note { flex-basis: 100%; text-align: center; }
+.mt-result-actions .btn--primary { flex: 1; padding-inline: 18px; font-size: clamp(22px, 6vw, 34px); white-space: nowrap; }
+.mt-result-actions .share-btn { flex: none; aspect-ratio: 1; padding: 0 18px; background: var(--slot); }
+.mt-result-actions .share-btn svg { width: 28px; height: 28px; }
+
+/* ── Rivalry: the all-time record against this opponent — information, so it stays quiet ── */
+.mt-rivalry { display: grid; justify-items: center; gap: 2px; text-align: center; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
+.mt-rivalry__line { font-weight: 500; letter-spacing: .04em; color: var(--ink); }
+.mt-rivalry__meta { max-width: 44ch; }
 
 /* ── Win strike (shared by grid games) ──────────────────── */
 /* boards may set --strike-delay / --strike-time to time it after their last piece lands */

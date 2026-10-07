@@ -13,7 +13,7 @@ import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
 import { useSession } from '../../match/session'
 import { shareLink, shareMessage } from '../../match/share'
-import { ShareResult } from '../../match/ShareResult'
+import { ResultActions } from '../../match/ResultActions'
 import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
@@ -473,27 +473,17 @@ function Results({
         <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={values[1]} meta={metas[1]} />
       </div>
       <RivalryLine r={rivalry} />
-      <div className="mt-share">
-        <ShareResult card={card} won={iWon} message={shareMessage('Sudoku', GAME, names, winner, brag)} />
-      </div>
-
-      <div className="mt-actions" aria-live="polite">
-        <button type="button" className="btn btn--primary btn--lg" onClick={readyUp} disabled={imReady || oppGone}>
-          {oppGone
-            ? `${opp?.name ?? 'Opponent'} left`
-            : imReady
-              ? oppReady
-                ? 'Dealing…'
-                : 'Ready — waiting'
-              : oppReady
-                ? `Rematch — ${opp?.name} is ready`
-                : 'New puzzle'}
-          <span className="keycap">↵</span>
-        </button>
-        <button type="button" className="btn" onClick={over || session.local ? exit.now : exit.request}>
-          {over || session.local ? 'Back to lobby' : 'Leave room'}
-        </button>
-      </div>
+      <ResultActions
+        card={card}
+        message={shareMessage('Sudoku', GAME, names, winner, brag)}
+        again="New puzzle"
+        oppName={opp?.name}
+        imReady={imReady}
+        oppReady={oppReady}
+        oppGone={oppGone}
+        onReady={readyUp}
+        onLeave={exit.now}
+      />
     </main>
   )
 }
