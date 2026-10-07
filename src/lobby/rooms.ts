@@ -1,6 +1,7 @@
 import {
   get,
   onDisconnect,
+  onValue,
   ref,
   remove,
   runTransaction,
@@ -161,9 +162,21 @@ export async function joinRoom(game: string, code: string, name: string): Promis
 /** Marks us online and arranges for "offline" to be written if the tab drops. */
 export function trackPresence(game: string, code: string) {
   const onlineRef = at(game, code, `players/${playerId()}/online`)
-  set(onlineRef, true).catch(() => {})
-  onDisconnect(onlineRef).set(false).catch(() => {})
+  // Every time the connection comes up — including after the phone was locked or the player
+  // switched apps to share the link — re-arm "offline when I drop" and mark ourselves online again.
+  // (Doing this only once left a returning player stuck as away, and the match then ended on them.)
+  const stop = onValue(ref(db, '.info/connected'), (snap) => {
+    if (snap.val() !== true) return
+    onDisconnect(onlineRef)
+      .set(false)
+      .then(() =>
+        // only touch a seat that still exists — never recreate one in a room that closed while we were away
+        runTransaction(at(game, code, `players/${playerId()}`), (p: Player | null) => (p ? { ...p, online: true } : null)),
+      )
+      .catch(() => {})
+  })
   return () => {
+    stop()
     // Navigating away inside the app doesn't drop the socket, so mark ourselves offline explicitly.
     onDisconnect(onlineRef).cancel().catch(() => {})
     // Transaction so we never recreate a seat (or a whole room) that was just removed.

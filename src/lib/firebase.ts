@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { getDatabase } from 'firebase/database'
 
-// Public web config for the lash-vs-seven project (recovered from legacy/js/lvs-utils.js).
+// Public web config for the lash-vs-seven project (recovered from public/classic/js/lvs-utils.js).
 // Web API keys are identifiers, not secrets — access is governed by Realtime DB rules.
 const app = initializeApp({
   apiKey: 'AIzaSyByYiN4eBZtRSTwaB3H64djW_lXpifVaqY',

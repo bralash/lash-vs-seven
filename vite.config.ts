@@ -3,6 +3,6 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  // legacy/ is the recovered old site — reference only, never bundled
-  server: { watch: { ignored: ['**/legacy/**'] } },
+  // public/classic/ is the original site, copied as-is to /classic/ — no need to watch it
+  server: { watch: { ignored: ['**/public/classic/**'] } },
 })

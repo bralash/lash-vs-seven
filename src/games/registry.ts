@@ -19,6 +19,8 @@ export interface GameMeta {
   length: string
   modes: 'online' | 'online + local' | 'local'
   status: 'live' | 'soon'
+  /** the original version is still playable at /classic/<slug> until this one is rebuilt */
+  classic?: boolean
   /** short tagline shown under the title in the game's lobby */
   tagline?: string
   rules?: RuleStep[]
@@ -58,10 +60,10 @@ export const GAMES: GameMeta[] = [
       { title: '60 seconds a round', body: 'If nobody gets it in time, nobody scores. Most rounds won after five takes the match.' },
     ],
   },
-  { slug: 'battleword', tiles: 'CRANE', name: 'Battleword', blurb: "Hide a 5-letter word. Crack your opponent's first using colour-coded clues.", category: 'word', length: '~5 min', modes: 'online + local', status: 'soon' },
-  { slug: 'hangman', tiles: 'GUESS', name: 'Hangman', blurb: 'One hides a word, the other guesses letter by letter. Swap roles — best of two.', category: 'word', length: '2 rounds', modes: 'online + local', status: 'soon' },
-  { slug: 'crossword', tiles: 'KENTE', name: 'Crossword', blurb: 'Race to fill the grid. Claim words in your colour and outscore your opponent.', category: 'word', length: '~8 min', modes: 'online + local', status: 'soon' },
-  { slug: 'battleship', tiles: 'FLEET', name: 'Battleship', blurb: "Hunt down your opponent's hidden fleet. Sink every ship before they sink yours.", category: 'board', length: '~10 min', modes: 'online + local', status: 'soon' },
+  { slug: 'battleword', tiles: 'CRANE', name: 'Battleword', blurb: "Hide a 5-letter word. Crack your opponent's first using colour-coded clues.", category: 'word', length: '~5 min', modes: 'online + local', status: 'soon', classic: true },
+  { slug: 'hangman', tiles: 'GUESS', name: 'Hangman', blurb: 'One hides a word, the other guesses letter by letter. Swap roles — best of two.', category: 'word', length: '2 rounds', modes: 'online + local', status: 'soon', classic: true },
+  { slug: 'crossword', tiles: 'KENTE', name: 'Crossword', blurb: 'Race to fill the grid. Claim words in your colour and outscore your opponent.', category: 'word', length: '~8 min', modes: 'online + local', status: 'soon', classic: true },
+  { slug: 'battleship', tiles: 'FLEET', name: 'Battleship', blurb: "Hunt down your opponent's hidden fleet. Sink every ship before they sink yours.", category: 'board', length: '~10 min', modes: 'online + local', status: 'soon', classic: true },
   {
     slug: 'tictactoe',
     tiles: 'XOX',
@@ -96,7 +98,23 @@ export const GAMES: GameMeta[] = [
       { title: 'Tip', body: 'The middle column is part of the most lines — and watch for threats your opponent is building on two sides.' },
     ],
   },
-  { slug: 'checkers', tiles: 'KING', name: 'Checkers', blurb: 'Diagonal warfare. Capture every enemy piece and crown your kings.', category: 'board', length: '~15 min', modes: 'local', status: 'soon' },
+  {
+    slug: 'checkers',
+    tiles: 'KING',
+    name: 'Checkers',
+    blurb: 'Diagonal warfare. Jump to capture, chain your jumps, crown your kings — and take every piece.',
+    category: 'board',
+    length: '~15 min',
+    modes: 'online + local',
+    status: 'live',
+    tagline: 'Jump, chain, crown · take every piece',
+    rules: [
+      { title: 'Move diagonally', body: 'Tap one of your pieces, then a dark square. Pieces step one square diagonally forward. Orange starts at the bottom.' },
+      { title: 'Capturing is a must', body: 'Jump over an opponent’s piece into the empty square beyond — forwards or backwards. If you can capture, you have to. Keep jumping while you can.' },
+      { title: 'Kings fly', body: 'Reach the far row and you’re crowned (that ends your turn). Kings move and capture any distance along a diagonal.' },
+      { title: 'How it ends', body: 'Take every piece, or leave your opponent with no moves. If 25 moves each pass with only kings moving and nothing captured, it’s a draw.' },
+    ],
+  },
   {
     slug: 'othello',
     tiles: 'FLIP',
@@ -114,9 +132,9 @@ export const GAMES: GameMeta[] = [
       { title: 'Most discs wins', body: 'Count the discs at the end — the bigger colour wins. Tip: corners can never be flipped, so they’re gold.' },
     ],
   },
-  { slug: 'oware', tiles: 'SEEDS', name: 'Oware', blurb: 'Sow seeds around the 12-pit board. Capture on 2 or 3 — first to 25 wins.', category: 'board', length: '~15 min', modes: 'online + local', status: 'soon' },
-  { slug: 'ludo', tiles: 'SIX', name: 'Ludo', blurb: 'Roll a six to enter, knock opponents off the track, bring all four home.', category: 'board', length: '~20 min', modes: 'online + local', status: 'soon' },
-  { slug: 'quoridor', tiles: 'WALLS', name: 'Quoridor', blurb: 'Race your pawn across. Place walls to block — but never seal the path.', category: 'board', length: '~10 min', modes: 'online + local', status: 'soon' },
+  { slug: 'oware', tiles: 'SEEDS', name: 'Oware', blurb: 'Sow seeds around the 12-pit board. Capture on 2 or 3 — first to 25 wins.', category: 'board', length: '~15 min', modes: 'online + local', status: 'soon', classic: true },
+  { slug: 'ludo', tiles: 'SIX', name: 'Ludo', blurb: 'Roll a six to enter, knock opponents off the track, bring all four home.', category: 'board', length: '~20 min', modes: 'online + local', status: 'soon', classic: true },
+  { slug: 'quoridor', tiles: 'WALLS', name: 'Quoridor', blurb: 'Race your pawn across. Place walls to block — but never seal the path.', category: 'board', length: '~10 min', modes: 'online + local', status: 'soon', classic: true },
   {
     slug: 'dots',
     tiles: 'BOXES',
@@ -134,8 +152,24 @@ export const GAMES: GameMeta[] = [
       { title: 'Tip', body: 'Avoid drawing the third side of a box — that hands it to your opponent. Late in the game, count the chains.' },
     ],
   },
-  { slug: 'sudoku', tiles: '9X9', name: 'Sudoku', blurb: 'Same puzzle, both racing. Fill the grid before your opponent does.', category: 'puzzle', length: '~10 min', modes: 'online + local', status: 'soon' },
-  { slug: 'memory', tiles: 'PAIRS', name: 'Memory', blurb: 'Flip cards, find pairs. Whoever collects the most wins.', category: 'puzzle', length: '~5 min', modes: 'online + local', status: 'soon' },
+  {
+    slug: 'sudoku',
+    tiles: '9X9',
+    name: 'Sudoku',
+    blurb: 'Same puzzle, both racing. Fill the grid before your opponent does — or take turns on one phone against the clock.',
+    category: 'puzzle',
+    length: '~10 min',
+    modes: 'online + local',
+    status: 'live',
+    tagline: 'Same puzzle · first to solve it wins',
+    rules: [
+      { title: 'Fill the grid', body: 'Every row, column and 3×3 box must contain 1 to 9 exactly once. The printed numbers are clues and can’t be changed.' },
+      { title: 'Tap, then number', body: 'Tap a square, then a number on the pad. Turn on Notes to pencil in candidates. A clash with another number shows in red.' },
+      { title: 'Race online', body: 'You both get the same puzzle. You can see how far along your opponent is, but not their numbers. First to solve it wins.' },
+      { title: 'Pass & play', body: 'On one phone, each of you solves the same puzzle in turn against the clock. The faster time wins.' },
+    ],
+  },
+  { slug: 'memory', tiles: 'PAIRS', name: 'Memory', blurb: 'Flip cards, find pairs. Whoever collects the most wins.', category: 'puzzle', length: '~5 min', modes: 'online + local', status: 'soon', classic: true },
 ]
 
 export const CATEGORY_LABEL: Record<Category, string> = {

@@ -126,6 +126,12 @@ function GameCard({ game, index }: { game: GameMeta; index: number }) {
           Play <span className="keycap">↵</span>
         </span>
       )}
+      {game.status !== 'live' && game.classic && (
+        // a plain link: the classic site lives outside this app
+        <a className="card__classic" href={`/classic/${game.slug}`}>
+          Play the classic <span aria-hidden="true">↗</span>
+        </a>
+      )}
     </>
   )
 

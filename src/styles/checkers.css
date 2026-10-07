@@ -1,0 +1,146 @@
+.ckm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 14px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.ckm > * { width: 100%; }
+
+/* ── Whose turn (centre of the HUD) ────────────────────── */
+.ck-turn {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 84px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+}
+.ck-turn .label { color: var(--paper-2); font-size: 10px; }
+.ck-turn--you { background: var(--hit); }
+.ck-turn--you .label { color: var(--ink); }
+.ck-turn--you .ck-mini { animation: pulse .6s ease-in-out infinite alternate; }
+.ck-mini.ck-piece { width: 30px; border-width: 2.5px; }
+.ck-mini--draw { font-family: var(--display); font-size: 26px; line-height: 30px; text-align: center; color: var(--paper); }
+
+.ck-status {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(18px, 4.6vw, 28px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.ck-status--you { background: var(--hit); }
+.ck-status--must { animation: stamp-in .3s var(--ease-snap) both; }
+.ck-status--result { animation: stamp-in .35s var(--ease-snap) both; }
+
+/* ── Board ─────────────────────────────────────────────── */
+.ck-stage { display: grid; justify-items: center; }
+.ck-board {
+  width: min(100% - 10px, max(260px, calc(100dvh - 330px)), 540px);
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  padding: clamp(6px, 2vw, 12px);
+  background: var(--board);
+  box-shadow: var(--shadow-lg), inset 0 0 0 3px #2b2833, inset 0 0 0 4px #0b0a0e;
+}
+
+.ck-sq {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ck-sq > * { grid-area: 1 / 1; }
+.ck-sq--light { background: var(--paper); }
+.ck-sq--dark { background: #3a3542; }
+.ck-sq:disabled { cursor: default; }
+.ck-board--live .ck-sq:not(:disabled) { cursor: pointer; }
+.ck-sq--last { background: color-mix(in srgb, var(--hit) 38%, #3a3542); }
+.ck-sq--sel { background: var(--hit); }
+.ck-sq:focus-visible { outline: 3px solid var(--hit); outline-offset: -3px; }
+@media (hover: hover) {
+  .ck-board--live .ck-sq--target:hover { background: color-mix(in srgb, var(--hit) 55%, #3a3542); }
+}
+
+/* ── Pieces ────────────────────────────────────────────── */
+.ck-piece {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: clamp(2px, .6vw, 3px) solid var(--ink);
+  box-shadow: inset 0 -4px 0 rgba(18, 16, 22, .22), inset 0 3px 0 rgba(255, 255, 255, .35);
+}
+.ck-piece--0 { background: var(--lash); }
+.ck-piece--1 { background: var(--seven); }
+.ck-crown { width: 58%; height: 58%; fill: var(--slot); filter: drop-shadow(0 1.5px 0 rgba(18, 16, 22, .45)); }
+
+/* on your turn: pieces that can move get a thin yellow ring; when a capture is forced, a thick pulsing one */
+.ck-piece--can { box-shadow: 0 0 0 2px var(--hit), inset 0 -4px 0 rgba(18, 16, 22, .22), inset 0 3px 0 rgba(255, 255, 255, .35); }
+.ck-piece--must { box-shadow: 0 0 0 4px var(--hit), inset 0 -4px 0 rgba(18, 16, 22, .22), inset 0 3px 0 rgba(255, 255, 255, .35); animation: pulse .6s ease-in-out infinite alternate; }
+.ck-sq--sel .ck-piece { box-shadow: 0 0 0 4px var(--ink), inset 0 -4px 0 rgba(18, 16, 22, .22), inset 0 3px 0 rgba(255, 255, 255, .35); animation: none; }
+
+/* the last move slides in from where it started (the piece is 80% of a square, so a square is 125%) */
+.ck-piece--slide { z-index: 2; animation: ck-slide .24s var(--ease-out) both; }
+@keyframes ck-slide { from { transform: translate(calc(var(--dx) * 125%), calc(var(--dy) * 125%)); } }
+
+/* what that move captured fades and shrinks where it stood */
+.ck-ghost { pointer-events: none; animation: ck-gone .45s .12s ease-in both; }
+@keyframes ck-gone { to { opacity: 0; transform: scale(.4); } }
+
+/* where the selected piece can go */
+.ck-dot { width: 28%; aspect-ratio: 1; border-radius: 50%; opacity: .8; pointer-events: none; }
+.ck-dot--0 { background: var(--lash); }
+.ck-dot--1 { background: var(--seven); }
+.ck-dot--capture { width: 46%; background: transparent; border: 4px solid var(--hit); opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ck-piece--slide, .ck-piece--must { animation: none; }
+}
+
+/* ── Results ───────────────────────────────────────────── */
+.ckm-results { gap: 24px; padding-top: clamp(8px, 4vh, 40px); }
+.ckm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.ckm-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.ckm-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+.ckm-results__line { font-family: var(--display); font-size: clamp(20px, 4.6vw, 28px); text-transform: uppercase; }
+.ckm-results__cards { align-items: center; }
+
+/* ── Phones during the match: pinned to one screen ─────── */
+@media (width < 900px) {
+  html.scroll-locked .ckm {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 12px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  html.scroll-locked .ck-stage { align-self: center; }
+  html.scroll-locked .ckm .mt-score { padding-block: 6px 8px; }
+}

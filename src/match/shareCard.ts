@@ -21,6 +21,10 @@ export type CardDetail =
   | { kind: 'ttt'; board: string; line?: number[]; stats: [string, string][] }
   /** Connect Four: the deciding 7×6 board with the winning four struck through, plus stats */
   | { kind: 'c4'; board: string; line?: number[]; stats: [string, string][] }
+  /** Checkers: the final board (kings crowned), the last square moved to marked, plus stats */
+  | { kind: 'checkers'; board: string; last?: number; stats: [string, string][] }
+  /** Sudoku: the solved grid, clues in ink and the rest in the winner's colour, plus stats */
+  | { kind: 'sudoku'; puzzle: string; solution: string; seat: Seat01; stats: [string, string][] }
   /** Othello: the final board, with the last square played marked, plus stats */
   | { kind: 'othello'; board: string; last?: number; stats: [string, string][] }
   /** Dots & Boxes: the final board with every box in its owner's colour, plus stats */
@@ -33,6 +37,8 @@ export interface CardInput {
   players: [CardPlayer, CardPlayer]
   /** e.g. "2 — 1" */
   scoreLine: string
+  /** the line under the winner's name, when "WINS 2 — 1" doesn't fit the game (e.g. "SOLVED IN 6:42") */
+  headline?: string
   detail: CardDetail
   /** shown in the footer, e.g. "lash-vs-seven.web.app/wordhunt" */
   link: string
@@ -198,7 +204,7 @@ export async function drawShareCard(input: CardInput): Promise<Blob> {
   block(ctx, -nameW / 2 - 34, -headSize * 0.62, nameW + 68, headSize * 1.14, draw ? C.slot : C.hit, 12, 6)
   text(ctx, winnerName, 0, headSize * 0.33, headSize, C.ink, { align: 'center' })
   ctx.restore()
-  text(ctx, draw ? input.scoreLine : `WINS ${input.scoreLine}`, W / 2, 548, 64, C.ink, { align: 'center' })
+  text(ctx, input.headline ?? (draw ? input.scoreLine : `WINS ${input.scoreLine}`), W / 2, 548, 64, C.ink, { align: 'center' })
 
   // player cards
   const cardY = 610
@@ -287,6 +293,14 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
       ctx.fillRect(bx, ry + rowH * 0.18, lw, rowH * 0.64)
       text(ctx, label, bx + 14, ry + rowH * 0.6, 22, r.seat === null ? C.dim : C.paper, { family: MONO, weight: 500 })
     })
+    return
+  }
+  if (d.kind === 'checkers') {
+    drawCheckers(ctx, d, x, y, h, pad)
+    return
+  }
+  if (d.kind === 'sudoku') {
+    drawSudoku(ctx, d, x, y, h, pad)
     return
   }
   if (d.kind === 'othello') {
@@ -542,6 +556,74 @@ function drawOthello(ctx: Ctx, d: Extract<CardDetail, { kind: 'othello' }>, x: n
     ctx.strokeStyle = C.ink
     ctx.lineWidth = 2
     ctx.stroke()
+  }
+  statLines(ctx, d.stats, bx + side + 56, y + 86)
+}
+
+/** Sudoku: the solved grid — clues in ink, the squares the winner filled in their colour. */
+function drawSudoku(ctx: Ctx, d: Extract<CardDetail, { kind: 'sudoku' }>, x: number, y: number, h: number, pad: number) {
+  const cell = 27
+  const thin = 2
+  const thick = 5
+  const frame = 8
+  const side = cell * 9 + thin * 6 + thick * 2 + frame * 2
+  const bx = x + pad
+  const by = y + (h - side) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, side, side)
+  // position of column/row k, with thicker gaps between the 3×3 boxes
+  const at = (k: number) => frame + k * cell + (k - Math.floor(k / 3)) * thin + Math.floor(k / 3) * thick
+  for (let i = 0; i < 81; i++) {
+    const cx = bx + at(i % 9)
+    const cy = by + at(Math.floor(i / 9))
+    const given = d.puzzle[i] !== '.'
+    ctx.fillStyle = given ? C.paper2 : C.paper
+    ctx.fillRect(cx, cy, cell, cell)
+    text(ctx, d.solution[i], cx + cell / 2, cy + cell / 2 + 7, 20, given ? C.ink : SEAT[d.seat], { align: 'center' })
+  }
+  statLines(ctx, d.stats, bx + side + 56, y + 86)
+}
+
+/** Checkers: the final board drawn like the in-game one — crowned pieces wear a crown. */
+function drawCheckers(ctx: Ctx, d: Extract<CardDetail, { kind: 'checkers' }>, x: number, y: number, h: number, pad: number) {
+  const cell = 31
+  const frame = 9
+  const side = cell * 8 + frame * 2
+  const bx = x + pad
+  const by = y + (h - side) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, side, side)
+  for (let i = 0; i < 64; i++) {
+    const r = Math.floor(i / 8)
+    const c = i % 8
+    const cx = bx + frame + c * cell
+    const cy = by + frame + r * cell
+    const dark = (r + c) % 2 === 1
+    ctx.fillStyle = i === d.last ? C.hit : dark ? '#3a3542' : C.paper
+    ctx.fillRect(cx, cy, cell, cell)
+    const v = d.board[i]
+    if (v === '.') continue
+    const seat = Number(v) % 2
+    const king = v === '2' || v === '3'
+    const rad = cell * 0.4
+    disc(ctx, cx + cell / 2, cy + cell / 2, rad, SEAT[seat])
+    ctx.beginPath()
+    ctx.arc(cx + cell / 2, cy + cell / 2, rad - 1, 0, Math.PI * 2)
+    ctx.strokeStyle = C.ink
+    ctx.lineWidth = 2
+    ctx.stroke()
+    if (king) {
+      // the same crown as the board: five points, drawn in paper
+      const s = rad * 1.1
+      const ox = cx + cell / 2 - s / 2
+      const oy = cy + cell / 2 - s / 2
+      const pts = [[3, 18], [5, 7], [9.5, 12], [12, 5], [14.5, 12], [19, 7], [21, 18]]
+      ctx.beginPath()
+      pts.forEach(([px, py], k) => (k ? ctx.lineTo : ctx.moveTo).call(ctx, ox + (px / 24) * s, oy + (py / 24) * s))
+      ctx.closePath()
+      ctx.fillStyle = C.slot
+      ctx.fill()
+    }
   }
   statLines(ctx, d.stats, bx + side + 56, y + 86)
 }

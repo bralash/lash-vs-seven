@@ -6,6 +6,9 @@ import { autoplay } from './DotsLab'
 import { freshLive as othelloLive } from '../games/othello/engine'
 import { margin as discMargin } from '../games/othello/OthelloMatch'
 import { autoplay as othelloPlay } from './OthelloLab'
+import { generate } from '../games/sudoku/engine'
+import { count as ckCount, freshLive as ckLive, kings } from '../games/checkers/engine'
+import { autoplay as ckPlay } from './CheckersLab'
 import { drawShareCard, type CardInput } from '../match/shareCard'
 
 // Dev-only preview of result cards (route: /dev/share), with sample data for each game.
@@ -53,6 +56,28 @@ function othelloSample(): CardInput {
   }
 }
 
+// a real generated puzzle
+function sudokuSample(): CardInput {
+  const { puzzle, solution } = generate('medium')
+  return {
+    game: 'Sudoku', winner: 1, scoreLine: '38/51 — 6:42', headline: 'SOLVED IN 6:42', link: 'lash-vs-seven.web.app/sudoku',
+    players: players({ score: '38/51', meta: 'filled' }, { score: '6:42', meta: 'solved' }),
+    detail: { kind: 'sudoku', puzzle, solution, seat: 1, stats: [['Time', '6:42'], ['Difficulty', 'Medium']] },
+  }
+}
+
+// a full random game played through the engine
+function checkersSample(): CardInput {
+  const live = ckPlay(ckLive(0), 999, 11)
+  const s = [ckCount(live.board, 0), ckCount(live.board, 1)]
+  const w = live.result?.winner ?? -1
+  return {
+    game: 'Checkers', winner: w, scoreLine: `${s[0]} — ${s[1]}`, headline: w === -1 ? 'A DRAW' : s[1 - w] === 0 ? 'TOOK EVERY PIECE' : 'LEFT THEM NO MOVES', link: 'lash-vs-seven.web.app/checkers',
+    players: players({ score: String(s[0]), meta: 'Orange · pieces left' }, { score: String(s[1]), meta: 'Blue · pieces left' }),
+    detail: { kind: 'checkers', board: live.board, last: live.last?.to, stats: [['Pieces left', `${s[0]} — ${s[1]}`], ['Kings', `${kings(live.board, 0)} — ${kings(live.board, 1)}`]] },
+  }
+}
+
 const SAMPLES: Record<string, CardInput> = {
   wordhunt: {
     game: 'Word Hunt', winner: 0, scoreLine: '6,400 — 3,900', link: 'lash-vs-seven.web.app/wordhunt',
@@ -75,6 +100,8 @@ const SAMPLES: Record<string, CardInput> = {
   connect4: c4Sample([3, 3, 4, 2, 2, 4, 5, 6, 1, 5, 4, 3, 2, 5, 5, 6]),
   dots: dotsSample(5),
   othello: othelloSample(),
+  sudoku: sudokuSample(),
+  checkers: checkersSample(),
   draw: {
     game: 'Tic-Tac-Toe', winner: -1, scoreLine: '2 — 2', link: 'lash-vs-seven.web.app/tictactoe',
     players: players({ score: '2', meta: 'X · games' }, { score: '2', meta: 'O · games' }),

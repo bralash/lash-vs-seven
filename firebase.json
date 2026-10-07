@@ -37,6 +37,96 @@
         "source": "/othello.html",
         "destination": "/othello",
         "type": 301
+      },
+      {
+        "source": "/sudoku.html",
+        "destination": "/sudoku",
+        "type": 301
+      },
+      {
+        "source": "/checkers.html",
+        "destination": "/checkers",
+        "type": 301
+      },
+      {
+        "source": "/battleship.html",
+        "destination": "/classic/battleship",
+        "type": 302
+      },
+      {
+        "source": "/battleship",
+        "destination": "/classic/battleship",
+        "type": 302
+      },
+      {
+        "source": "/battleword.html",
+        "destination": "/classic/battleword",
+        "type": 302
+      },
+      {
+        "source": "/battleword",
+        "destination": "/classic/battleword",
+        "type": 302
+      },
+      {
+        "source": "/crossword.html",
+        "destination": "/classic/crossword",
+        "type": 302
+      },
+      {
+        "source": "/crossword",
+        "destination": "/classic/crossword",
+        "type": 302
+      },
+      {
+        "source": "/hangman.html",
+        "destination": "/classic/hangman",
+        "type": 302
+      },
+      {
+        "source": "/hangman",
+        "destination": "/classic/hangman",
+        "type": 302
+      },
+      {
+        "source": "/ludo.html",
+        "destination": "/classic/ludo",
+        "type": 302
+      },
+      {
+        "source": "/ludo",
+        "destination": "/classic/ludo",
+        "type": 302
+      },
+      {
+        "source": "/memory.html",
+        "destination": "/classic/memory",
+        "type": 302
+      },
+      {
+        "source": "/memory",
+        "destination": "/classic/memory",
+        "type": 302
+      },
+      {
+        "source": "/oware.html",
+        "destination": "/classic/oware",
+        "type": 302
+      },
+      {
+        "source": "/oware",
+        "destination": "/classic/oware",
+        "type": 302
+      },
+      {
+        "source": "/quoridor.html",
+        "destination": "/classic/quoridor",
+        "type": 302
+      },
+      {
+        "source": "/quoridor",
+        "destination": "/classic/quoridor",
+        "type": 302
       }
     ],
     "rewrites": [

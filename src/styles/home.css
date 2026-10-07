@@ -171,6 +171,25 @@
 }
 .card--live:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
 
+/* soon games that still have their original version: a quieter, outlined button out to /classic/ */
+.card__classic {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 9px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 16px;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+.card__classic:hover { background: var(--hit); }
+.card__classic:active { transform: translate(3px, 3px); box-shadow: none; }
+
 .card--soon {
   background-color: var(--paper);
   background-image: repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in srgb, var(--ink) 6%, transparent) 9px 10px);
