@@ -2,11 +2,11 @@ import { useEffect } from 'react'
 import { loadDictionary } from '../../lib/dictionary'
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
-import { WordHuntMatch, initialWordHuntState } from './WordHuntMatch'
+import { AnagramMatch, initialAnagramState } from './AnagramMatch'
 
-const game = gameBySlug('wordhunt')!
+const game = gameBySlug('anagram')!
 
-export function WordHunt() {
+export function Anagram() {
   // fetch the full word list while players are still in the lobby
   useEffect(() => {
     loadDictionary()
@@ -15,8 +15,8 @@ export function WordHunt() {
   return (
     <Lobby
       game={game}
-      initialState={() => ({ ...initialWordHuntState() })}
-      renderGame={(room, me, exit) => <WordHuntMatch room={room} me={me} exit={exit} />}
+      initialState={() => ({ ...initialAnagramState() })}
+      renderGame={(room, me, exit) => <AnagramMatch room={room} me={me} exit={exit} />}
     />
   )
 }

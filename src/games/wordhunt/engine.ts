@@ -1,3 +1,4 @@
+import { inDictionary } from '../../lib/dictionary'
 import { WORDS } from './words'
 
 export const SIZE = 4
@@ -11,8 +12,11 @@ const WORD_SET = new Set(WORDS)
 const PREFIX_SET = new Set<string>()
 for (const w of WORDS) for (let i = 1; i <= w.length; i++) PREFIX_SET.add(w.slice(0, i))
 
-export const isWord = (w: string) => WORD_SET.has(w)
-export const isPrefix = (p: string) => PREFIX_SET.has(p)
+/** Common words: used to build grids and the "nobody found" list, so those stay recognisable. */
+const isCommon = (w: string) => WORD_SET.has(w)
+const isPrefix = (p: string) => PREFIX_SET.has(p)
+/** Accepted answers: any common word, or anything in the full dictionary once it has loaded. */
+export const isWord = (w: string) => isCommon(w) || inDictionary(w)
 
 const SCORE_TABLE = [0, 0, 0, 100, 400, 800, 1400, 1800]
 export function score(word: string) {
@@ -45,13 +49,13 @@ export function neighbours(i: number): number[] {
 export const isAdjacent = (a: number, b: number) =>
   a !== b && Math.abs(rowOf(a) - rowOf(b)) <= 1 && Math.abs(colOf(a) - colOf(b)) <= 1
 
-/** Every dictionary word that can be traced on the grid. */
+/** Every common word that can be traced on the grid (drives grid quality and the "nobody found" list). */
 export function solve(grid: readonly string[]): Set<string> {
   const found = new Set<string>()
   const visited = new Array<boolean>(CELLS).fill(false)
   const dfs = (i: number, word: string) => {
     if (!isPrefix(word)) return
-    if (word.length >= MIN_LEN && isWord(word)) found.add(word)
+    if (word.length >= MIN_LEN && isCommon(word)) found.add(word)
     if (word.length >= MAX_LEN) return
     for (const n of neighbours(i)) {
       if (visited[n]) continue
@@ -82,4 +86,22 @@ export function generateGrid(minWords = 12): string[] {
     }
   }
   return best
+}
+
+/** A tile path that spells `word` on the grid (used to light up the best word on the share card). */
+export function pathOf(grid: readonly string[], word: string): number[] | null {
+  const used = new Array<boolean>(CELLS).fill(false)
+  const path: number[] = []
+  const dfs = (i: number, k: number): boolean => {
+    if (grid[i] !== word[k]) return false
+    used[i] = true
+    path.push(i)
+    if (k === word.length - 1) return true
+    for (const n of neighbours(i)) if (!used[n] && dfs(n, k + 1)) return true
+    used[i] = false
+    path.pop()
+    return false
+  }
+  for (let i = 0; i < CELLS; i++) if (dfs(i, 0)) return path
+  return null
 }

@@ -9,6 +9,9 @@ import '../styles/home.css'
 type Filter = 'all' | Category
 
 // Occasions, not instructions — one line under the title. Phones show as many as fit on one row.
+// Playable games first; within each group, registry order is kept (Array.sort is stable).
+const ORDERED = [...GAMES].sort((a, b) => Number(a.status !== 'live') - Number(b.status !== 'live'))
+
 const MODES = ['Date nights', 'Friendly battles', 'Long-distance rivals', 'Family game night']
 const FILTERS: Filter[] = ['all', 'word', 'board', 'puzzle']
 
@@ -27,7 +30,7 @@ export function Home() {
     return c
   }, [])
 
-  const shown = filter === 'all' ? GAMES : GAMES.filter((g) => g.category === filter)
+  const shown = filter === 'all' ? ORDERED : ORDERED.filter((g) => g.category === filter)
 
   return (
     <>
@@ -71,7 +74,7 @@ export function Home() {
           <ul className="games">
             {shown.map((g) => (
               <li key={g.slug}>
-                <GameCard game={g} index={GAMES.indexOf(g)} />
+                <GameCard game={g} index={ORDERED.indexOf(g)} />
               </li>
             ))}
           </ul>

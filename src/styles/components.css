@@ -201,3 +201,29 @@
 .confirm__body { margin-bottom: 24px; color: var(--ink-soft); }
 .confirm__actions { display: flex; flex-wrap: wrap; gap: 14px; }
 .confirm__actions .btn { flex: 1 1 200px; font-size: 18px; padding: 14px 18px; }
+
+/* ── Segmented control (filters, match options) ─────── */
+.seg {
+  display: inline-flex;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+.seg__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 0;
+  border-right: var(--edge) solid var(--ink);
+  background: transparent;
+  font-family: var(--display);
+  font-size: 15px;
+  text-transform: uppercase;
+}
+.seg__btn:last-child { border-right: 0; }
+.seg__btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg__btn:not([aria-pressed="true"]):hover { background: var(--paper-2); }
+.seg__count { font-family: var(--mono); font-size: 11px; opacity: .7; }
+

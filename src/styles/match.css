@@ -1,0 +1,224 @@
+/* Shared match chrome used by every game: score HUD, timer, countdown, banners, end screens. */
+
+/* ── HUD ───────────────────────────────────────────────── */
+.mt-hud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+.mt-score {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 12px 10px;
+  border: var(--edge) solid var(--ink);
+  border-top-width: 8px;
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.mt-score--0 { border-top-color: var(--lash); }
+.mt-score--1 { border-top-color: var(--seven); text-align: right; }
+.mt-score--you { background: #fff6d6; }
+.mt-score__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.mt-score__name em { font-style: normal; color: var(--ink-soft); font-weight: 400; }
+.mt-score__n { font-family: var(--display); font-size: clamp(24px, 6vw, 34px); line-height: 1; font-variant-numeric: tabular-nums; }
+.mt-score__meta { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+
+.mt-clock {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-width: 84px;
+  padding: 6px 10px;
+  background: var(--board);
+  color: var(--hit);
+  box-shadow: var(--shadow-sm);
+}
+.mt-clock .label { color: var(--paper-2); font-size: 10px; }
+.mt-clock__n { font-family: var(--display); font-size: clamp(34px, 8vw, 44px); line-height: 1; font-variant-numeric: tabular-nums; }
+.mt-clock--hot { background: var(--strike); color: var(--paper); animation: pulse .5s ease-in-out infinite alternate; }
+
+.mt-timebar { height: 10px; border: 2px solid var(--ink); background: var(--paper-2); }
+.mt-timebar span { display: block; height: 100%; background: var(--hit); transition: width .1s linear; }
+.mt-timebar span.hot { background: var(--strike); }
+
+@keyframes pulse { to { transform: scale(1.05); } }
+
+@keyframes stamp-in { from { transform: scale(1.4); opacity: 0; } }
+@keyframes shake {
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+
+/* ── Chips & banner ──────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  background: var(--board);
+  color: var(--paper);
+  font-family: var(--display);
+  font-size: 15px;
+  animation: stamp-in .3s var(--ease-snap) both;
+}
+.chip b { padding: 2px 6px; background: var(--hit); color: var(--ink); font-family: var(--mono); font-weight: 500; font-size: 12px; }
+
+.mt-banner {
+  padding: 10px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ── Countdown overlay (portalled to <body>) ─────────── */
+.mt-countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: var(--gutter);
+  background: var(--board);
+  background-image: radial-gradient(color-mix(in srgb, var(--paper) 7%, transparent) 1px, transparent 1.4px);
+  background-size: 14px 14px;
+  color: var(--paper);
+  text-align: center;
+  animation: fade .2s ease both;
+}
+.mt-countdown .label { color: var(--hit); font-size: 14px; }
+.mt-countdown__vs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 10px 14px;
+  max-width: 90vw;
+  font-family: var(--display);
+  font-size: clamp(22px, 5vw, 34px);
+  text-transform: uppercase;
+  line-height: 1;
+}
+.mt-countdown__vs .p0 { color: var(--lash); }
+.mt-countdown__vs .p1 { color: #8fa8ff; }
+.mt-countdown__vs i { font-style: normal; font-family: var(--mono); font-size: 14px; letter-spacing: .14em; color: var(--paper-2); }
+.mt-countdown__n {
+  display: block;
+  min-width: 1ch;
+  font-family: var(--display);
+  font-size: clamp(160px, 42vmin, 340px);
+  line-height: .9;
+  color: var(--hit);
+  text-shadow: 8px 8px 0 #000;
+  transform: rotate(-4deg);
+  animation: count .55s var(--ease-snap) both;
+}
+.mt-countdown__sub { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-2); }
+.mt-countdown--go .mt-countdown__n {
+  padding: 0 .12em;
+  background: var(--hit);
+  color: var(--ink);
+  text-shadow: none;
+  box-shadow: 12px 12px 0 #000;
+  font-size: clamp(110px, 30vmin, 240px);
+}
+.mt-countdown--go { animation: go-out .3s .38s ease-in both; }
+@keyframes count { from { transform: rotate(-4deg) scale(1.5); opacity: 0; } }
+@keyframes go-out { to { opacity: 0; transform: scale(1.06); } }
+
+/* ── Actions ───────────────────────────────────────────── */
+.mt-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+
+/* ── Confetti ──────────────────────────────────────────── */
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 30; }
+.confetti i {
+  position: absolute;
+  top: -20px;
+  animation-name: fall;
+  animation-timing-function: cubic-bezier(.3, .6, .6, 1);
+  animation-fill-mode: both;
+}
+@keyframes fall {
+  to { transform: translate(var(--drift), 110vh) rotate(var(--spin)); opacity: .9; }
+}
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+
+@media (width <= 480px) {
+  .mt-hud { gap: 8px; }
+  .mt-clock { min-width: 66px; }
+}
+
+/* ── Phones during a live round: page pinned to one screen ─ */
+@media (width < 900px) {
+  html.scroll-locked .lobby {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  html.scroll-locked .lobby > .topbar { flex: none; padding: 12px 0 10px; }
+
+  /* floats over the bottom instead of adding a row, so the board never jumps mid-round */
+  html.scroll-locked .mt-banner {
+    position: fixed;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 20;
+    box-shadow: var(--shadow);
+  }
+}
+
+/* ── Match ended early ─────────────────────────────────── */
+.mt-ended {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 28px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: clamp(16px, 6vh, 64px) 0 32px;
+}
+.mt-ended > * { width: 100%; }
+.mt-ended__head { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.mt-ended__head p:last-child { max-width: 38ch; color: var(--ink-soft); }
+.mt-ended__title { font-size: clamp(44px, 10vw, 84px); animation: stamp-in .5s var(--ease-snap) both; }
+.mt-ended__scores { align-items: center; order: 0; } /* undo the in-round "scores first" ordering */
+.mt-ended__vs { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+
+/* ── Share result card ─────────────────────────────────── */
+.share-btn svg { flex: none; }
+.share { display: grid; gap: 16px; }
+.share__preview {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1080 / 1350;
+  max-height: 56dvh;
+  margin: 0 auto;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper-2);
+  box-shadow: var(--shadow);
+}
+.share__preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.share__actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.share__actions .btn { flex: 1 1 140px; font-size: 17px; padding: 12px 14px; }
+.share__note { min-height: 1.5em; text-align: center; }
+.mt-share { display: flex; justify-content: center; }
+.mt-share .btn { font-size: 18px; padding: 12px 20px; }

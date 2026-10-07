@@ -9,60 +9,6 @@
 }
 .wh > *, .wh-side > * { width: 100%; }
 
-/* ── HUD ───────────────────────────────────────────────── */
-.wh-hud {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 12px;
-  align-items: stretch;
-}
-.wh-score {
-  display: grid;
-  align-content: start;
-  gap: 2px;
-  min-width: 0;
-  padding: 8px 12px 10px;
-  border: var(--edge) solid var(--ink);
-  border-top-width: 8px;
-  background: var(--slot);
-  box-shadow: var(--shadow-sm);
-}
-.wh-score--0 { border-top-color: var(--lash); }
-.wh-score--1 { border-top-color: var(--seven); text-align: right; }
-.wh-score--you { background: #fff6d6; }
-.wh-score__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-.wh-score__name em { font-style: normal; color: var(--ink-soft); font-weight: 400; }
-.wh-score__n { font-family: var(--display); font-size: clamp(24px, 6vw, 34px); line-height: 1; font-variant-numeric: tabular-nums; }
-.wh-score__meta { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
-
-.wh-clock {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  min-width: 84px;
-  padding: 6px 10px;
-  background: var(--board);
-  color: var(--hit);
-  box-shadow: var(--shadow-sm);
-}
-.wh-clock .label { color: var(--paper-2); font-size: 10px; }
-.wh-clock__n { font-family: var(--display); font-size: clamp(34px, 8vw, 44px); line-height: 1; font-variant-numeric: tabular-nums; }
-.wh-clock--hot { background: var(--strike); color: var(--paper); animation: pulse .5s ease-in-out infinite alternate; }
-
-.wh-timebar { height: 10px; border: 2px solid var(--ink); background: var(--paper-2); }
-.wh-timebar span { display: block; height: 100%; background: var(--hit); transition: width .1s linear; }
-.wh-timebar span.hot { background: var(--strike); }
-
-@keyframes pulse { to { transform: scale(1.05); } }
-
 /* ── Current word slot ─────────────────────────────────── */
 .wh-word {
   display: flex;
@@ -96,12 +42,6 @@
 .wh-word__fb { animation: stamp-in .3s var(--ease-snap) both; }
 .wh-word--bad .wh-word__fb { font-size: .7em; animation: shake .35s ease both; }
 .wh-word--dupe .wh-word__fb { font-size: .7em; }
-
-@keyframes stamp-in { from { transform: scale(1.4); opacity: 0; } }
-@keyframes shake {
-  20%, 60% { transform: translateX(-6px); }
-  40%, 80% { transform: translateX(6px); }
-}
 
 /* ── Board ─────────────────────────────────────────────── */
 .wh-board {
@@ -200,87 +140,6 @@
 
 /* ── Found words ───────────────────────────────────────── */
 .wh-found ul { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; min-height: 36px; }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 4px 4px 10px;
-  background: var(--board);
-  color: var(--paper);
-  font-family: var(--display);
-  font-size: 15px;
-  animation: stamp-in .3s var(--ease-snap) both;
-}
-.chip b { padding: 2px 6px; background: var(--hit); color: var(--ink); font-family: var(--mono); font-weight: 500; font-size: 12px; }
-
-.wh-banner {
-  padding: 10px 14px;
-  border: var(--edge) solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
-  font-size: 13px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-/* ── Countdown overlay (portalled to <body>) ─────────── */
-.wh-countdown {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 14px;
-  padding: var(--gutter);
-  background: var(--board);
-  background-image: radial-gradient(color-mix(in srgb, var(--paper) 7%, transparent) 1px, transparent 1.4px);
-  background-size: 14px 14px;
-  color: var(--paper);
-  text-align: center;
-  animation: fade .2s ease both;
-}
-.wh-countdown .label { color: var(--hit); font-size: 14px; }
-.wh-countdown__vs {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 10px 14px;
-  max-width: 90vw;
-  font-family: var(--display);
-  font-size: clamp(22px, 5vw, 34px);
-  text-transform: uppercase;
-  line-height: 1;
-}
-.wh-countdown__vs .p0 { color: var(--lash); }
-.wh-countdown__vs .p1 { color: #8fa8ff; }
-.wh-countdown__vs i { font-style: normal; font-family: var(--mono); font-size: 14px; letter-spacing: .14em; color: var(--paper-2); }
-.wh-countdown__n {
-  display: block;
-  min-width: 1ch;
-  font-family: var(--display);
-  font-size: clamp(160px, 42vmin, 340px);
-  line-height: .9;
-  color: var(--hit);
-  text-shadow: 8px 8px 0 #000;
-  transform: rotate(-4deg);
-  animation: count .55s var(--ease-snap) both;
-}
-.wh-countdown__sub { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--paper-2); }
-.wh-countdown--go .wh-countdown__n {
-  padding: 0 .12em;
-  background: var(--hit);
-  color: var(--ink);
-  text-shadow: none;
-  box-shadow: 12px 12px 0 #000;
-  font-size: clamp(110px, 30vmin, 240px);
-}
-.wh-countdown--go { animation: go-out .3s .38s ease-in both; }
-@keyframes count { from { transform: rotate(-4deg) scale(1.5); opacity: 0; } }
-@keyframes go-out { to { opacity: 0; transform: scale(1.06); } }
-
 /* ── Results ───────────────────────────────────────────── */
 .wh-results { width: min(760px, 100%); gap: 24px; }
 .wh-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
@@ -336,25 +195,8 @@
 }
 .wh-missed li b { font-family: var(--mono); font-weight: 500; font-size: 11px; color: var(--dim); padding-right: 4px; }
 
-.wh-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
-
-/* ── Confetti ──────────────────────────────────────────── */
-.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 30; }
-.confetti i {
-  position: absolute;
-  top: -20px;
-  animation-name: fall;
-  animation-timing-function: cubic-bezier(.3, .6, .6, 1);
-  animation-fill-mode: both;
-}
-@keyframes fall {
-  to { transform: translate(var(--drift), 110vh) rotate(var(--spin)); opacity: .9; }
-}
-@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
 
 @media (width <= 480px) {
-  .wh-hud { gap: 8px; }
-  .wh-clock { min-width: 66px; }
   .wh-cols { grid-template-columns: 1fr; }
   .wh-type .btn .keycap { display: none; }
 }
@@ -362,8 +204,8 @@
 /* ── Side panel (word slot, typing, found words) ─────── */
 /* Phones: the panel dissolves so its parts stack around the board: word above, the rest below. */
 .wh-side { display: contents; }
-.wh-hud { order: -3; }
-.wh-timebar { order: -2; }
+.wh > .mt-hud { order: -3; }
+.wh > .mt-timebar { order: -2; }
 .wh-word { order: -1; }
 
 .wh-found__head { display: flex; justify-content: space-between; gap: 12px; }
@@ -391,9 +233,9 @@
     column-gap: 28px;
     align-items: start;
   }
-  .wh-hud { grid-area: hud; }
-  .wh-timebar { grid-area: bar; }
-  .wh-banner { grid-area: note; }
+  .wh > .mt-hud { grid-area: hud; }
+  .wh > .mt-timebar { grid-area: bar; }
+  .wh > .mt-banner { grid-area: note; }
   .wh-best { display: flex; }
   .wh-stage { grid-area: board; }
   .wh-board { width: min(560px, max(340px, calc(100dvh - 290px))); }
@@ -420,13 +262,6 @@
 .wh-stage { display: grid; justify-items: center; }
 
 @media (width < 900px) {
-  html.scroll-locked .lobby {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
-  }
-  html.scroll-locked .lobby > .topbar { flex: none; padding: 12px 0 10px; }
   /* scores + timer up top; live word, board and words grouped low in thumb reach; spare height in between */
   html.scroll-locked .wh {
     flex: 1;
@@ -435,24 +270,14 @@
     gap: 10px;
     grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
   }
-  html.scroll-locked .wh-hud { grid-row: 1; }
-  html.scroll-locked .wh-timebar { grid-row: 2; }
+  html.scroll-locked .wh > .mt-hud { grid-row: 1; }
+  html.scroll-locked .wh > .mt-timebar { grid-row: 2; }
   html.scroll-locked .wh-word { grid-row: 4; height: 48px; }
   html.scroll-locked .wh-stage { grid-row: 5; }
   html.scroll-locked .wh-found { grid-row: 6; }
   /* everything else on this screen has a fixed height (~330px incl. top bar), the board gets the rest */
   html.scroll-locked .wh-board { width: min(100% - 10px, max(220px, 100dvh - 345px)); }
-  html.scroll-locked .wh-hud .wh-score { padding-block: 6px 8px; }
-
-  /* floats over the bottom instead of adding a row, so the board never jumps mid-round */
-  html.scroll-locked .wh-banner {
-    position: fixed;
-    left: var(--gutter);
-    right: var(--gutter);
-    bottom: max(12px, env(safe-area-inset-bottom));
-    z-index: 20;
-    box-shadow: var(--shadow);
-  }
+  html.scroll-locked .wh .mt-score { padding-block: 6px 8px; }
 
   /* found words: one sideways-scrolling strip instead of growing the page */
   html.scroll-locked .wh-found ul {
@@ -468,10 +293,3 @@
   html.scroll-locked .wh-found .chip { flex: none; }
 }
 
-/* ── Match ended early ─────────────────────────────────── */
-.wh-ended { gap: 28px; padding-top: clamp(16px, 6vh, 64px); }
-.wh-ended__head { display: grid; justify-items: center; gap: 12px; text-align: center; }
-.wh-ended__head p:last-child { max-width: 38ch; color: var(--ink-soft); }
-.wh-ended__title { font-size: clamp(44px, 10vw, 84px); animation: stamp-in .5s var(--ease-snap) both; }
-.wh-ended__scores { align-items: center; order: 0; } /* undo the in-round "scores first" ordering */
-.wh-ended__vs { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }

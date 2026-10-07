@@ -5,7 +5,8 @@ import { ArrowLeft, Copy, Exit } from '../components/Icons'
 import { TopBar } from '../components/TopBar'
 import type { GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
-import { KEYS, hasLeft, load, markLeft, playerId, save } from '../lib/storage'
+import { playerId, signIn } from '../lib/firebase'
+import { KEYS, hasLeft, load, markLeft, save } from '../lib/storage'
 import {
   CODE_LENGTH,
   createRoom,
@@ -23,6 +24,12 @@ import {
 import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
+
+export interface MatchOption {
+  label: string
+  choices: { value: string; label: string }[]
+  initial: string
+}
 
 export interface MatchExit {
   /** asks "Leave the match?" first — use while the match is live */
@@ -42,7 +49,9 @@ interface Props {
   /** Rendered once the host starts the match. */
   renderGame: (room: Room, me: Me, exit: MatchExit) => ReactNode
   /** Initial game state written when the host presses Start. */
-  initialState?: () => Record<string, unknown>
+  initialState?: (choice?: string) => Record<string, unknown>
+  /** a setting the host picks in the waiting room (e.g. best of 3/5/7), passed to initialState */
+  option?: MatchOption
 }
 
 const FAILURE_COPY: Record<JoinFailure, string> = {
@@ -69,7 +78,7 @@ interface LeaveGuard {
   room: Room
 }
 
-export function Lobby({ game, renderGame, initialState }: Props) {
+export function Lobby({ game, renderGame, initialState, option }: Props) {
   const [params, setParams] = useSearchParams()
   const urlCode = normalizeCode(params.get('room') ?? '')
   const [inRoom, setInRoom] = useState<string | null>(null)
@@ -79,6 +88,21 @@ export function Lobby({ game, renderGame, initialState }: Props) {
   const [asking, setAsking] = useState(false)
   const leaving = useRef(false)
   const bufferedFor = useRef<string | null>(null)
+
+  // Rooms need a player id, which comes from a silent anonymous sign-in (instant on return visits).
+  const [auth, setAuth] = useState<'pending' | 'ready' | 'failed'>('pending')
+  const [authTry, setAuthTry] = useState(0)
+  useEffect(() => {
+    let alive = true
+    setAuth('pending')
+    signIn().then(
+      () => alive && setAuth('ready'),
+      () => alive && setAuth('failed'),
+    )
+    return () => {
+      alive = false
+    }
+  }, [authTry])
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -112,7 +136,7 @@ export function Lobby({ game, renderGame, initialState }: Props) {
 
   // Validate an invite link up front — before asking for a name.
   useEffect(() => {
-    if (!urlCode || inRoom === urlCode) return
+    if (auth !== 'ready' || !urlCode || inRoom === urlCode) return
     let alive = true
     setInvite({ state: 'checking' })
     peekRoom(game.slug, urlCode).then((res) => {
@@ -127,7 +151,7 @@ export function Lobby({ game, renderGame, initialState }: Props) {
     return () => {
       alive = false
     }
-  }, [game.slug, urlCode, inRoom])
+  }, [game.slug, urlCode, inRoom, auth])
 
   const enterRoom = (code: string) => {
     markLeft(game.slug, null)
@@ -172,7 +196,24 @@ export function Lobby({ game, renderGame, initialState }: Props) {
   const inMatch = guard?.kind === 'match'
 
   let screen: ReactNode
-  if (inRoom) {
+  if (auth !== 'ready') {
+    screen =
+      auth === 'failed' ? (
+        <main className="lobby__main screen-in">
+          <div className="lobby__hero">
+            <h1 className="lobby__title">Can’t connect</h1>
+            <p>{FAILURE_COPY.offline}</p>
+          </div>
+          <button type="button" className="btn btn--primary" onClick={() => setAuthTry((n) => n + 1)}>
+            Try again
+          </button>
+        </main>
+      ) : (
+        <main className="lobby__main" aria-busy="true">
+          <p className="hint">Connecting…</p>
+        </main>
+      )
+  } else if (inRoom) {
     screen = (
       <WaitingRoom
         game={game}
@@ -182,6 +223,7 @@ export function Lobby({ game, renderGame, initialState }: Props) {
         onRequestLeave={() => setAsking(true)}
         renderGame={renderGame}
         initialState={initialState}
+        option={option}
       />
     )
   } else if (urlCode && invite) {
@@ -454,6 +496,7 @@ function WaitingRoom({
   onRequestLeave,
   renderGame,
   initialState,
+  option,
 }: {
   game: GameMeta
   code: string
@@ -462,10 +505,12 @@ function WaitingRoom({
   onRequestLeave: () => void
   renderGame: Props['renderGame']
   initialState?: Props['initialState']
+  option?: MatchOption
 }) {
   const live = useRoom(game.slug, code)
   const [toast, setToast] = useState('')
   const [starting, setStarting] = useState(false)
+  const [choice, setChoice] = useState(option?.initial)
   const { play } = useSound()
   const pid = playerId()
 
@@ -547,7 +592,7 @@ function WaitingRoom({
     setStarting(true)
     play('start')
     try {
-      await startMatch(game.slug, code, initialState?.() ?? {})
+      await startMatch(game.slug, code, initialState?.(choice) ?? {})
     } catch {
       setStarting(false)
       setToast('Couldn’t start. Try again.')
@@ -600,6 +645,18 @@ function WaitingRoom({
       </ul>
 
       <div className="lobby__stack" aria-live="polite">
+        {isHost && option && (
+          <div className="lobby-option">
+            <span className="label">{option.label}</span>
+            <div className="seg" role="group" aria-label={option.label}>
+              {option.choices.map((c) => (
+                <button key={c.value} type="button" className="seg__btn" aria-pressed={choice === c.value} onClick={() => setChoice(c.value)}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {isHost ? (
           <button type="button" className="btn btn--primary btn--lg btn--block" disabled={!ready || starting} onClick={start}>
             {starting ? 'Starting…' : ready ? 'Start match' : 'Waiting for opponent'} <span className="keycap">↵</span>

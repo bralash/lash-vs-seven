@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { getDatabase } from 'firebase/database'
 
 // Public web config for the lash-vs-seven project (recovered from legacy/js/lvs-utils.js).
@@ -14,3 +15,39 @@ const app = initializeApp({
 })
 
 export const db = getDatabase(app)
+export const auth = getAuth(app)
+
+let signingIn: Promise<string> | null = null
+
+/**
+ * Every player gets a silent anonymous account; its uid is their player id, and the
+ * database rules only let a uid change its own seat, words and ready flag.
+ * Firebase keeps the account in the browser, so the id survives reloads.
+ */
+export function signIn(): Promise<string> {
+  signingIn ??= new Promise<string>((resolve, reject) => {
+    const stop = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        stop()
+        resolve(user.uid)
+        return
+      }
+      // no saved account yet — make one
+      signInAnonymously(auth).catch((err) => {
+        stop()
+        reject(err)
+      })
+    })
+  }).catch((err) => {
+    signingIn = null // let a later attempt retry
+    throw err
+  })
+  return signingIn
+}
+
+/** The signed-in player's id. Only call once signIn() has resolved (the lobby waits for it). */
+export function playerId(): string {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('playerId() called before sign-in finished')
+  return uid
+}

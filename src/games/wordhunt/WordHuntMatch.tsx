@@ -1,26 +1,33 @@
 import { ref, set } from 'firebase/database'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { db } from '../../lib/firebase'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
 import { useServerNow } from '../../lib/serverTime'
 import { useSound } from '../../lib/sound'
 import type { MatchExit, Me } from '../../lobby/Lobby'
-import { abandonRoom, playersBySeat, roomPath, startMatch, type Player, type Room } from '../../lobby/rooms'
+import { playersBySeat, roomPath, startMatch, type Room } from '../../lobby/rooms'
 import { Board, type Flash } from './Board'
 import {
   COUNTDOWN_MS,
   MIN_LEN,
   ROUND_MS,
   generateGrid,
+  pathOf,
   isWord,
   score,
   solve,
   totalScore,
 } from './engine'
-import { Confetti } from './Confetti'
-import { Countdown } from './Countdown'
+import { Confetti } from '../../match/Confetti'
+import { shareLink, shareMessage } from '../../match/share'
+import { ShareResult } from '../../match/ShareResult'
+import type { CardInput } from '../../match/shareCard'
+import { Countdown } from '../../match/Countdown'
+import { MatchEnded } from '../../match/MatchEnded'
+import { ScoreCard } from '../../match/ScoreCard'
+import type { Seated } from '../../match/types'
+import { useOpponentAway } from '../../match/useOpponentAway'
 import '../../styles/wordhunt.css'
 
 export interface WordHuntState {
@@ -35,13 +42,12 @@ const GAME = 'wordhunt'
 const GRACE_MS = 1500
 /** How long the "GO!" beat stays up once the clock starts. */
 const GO_MS = 650
-/** An opponent who drops offline mid-round has this long to come back before the match ends. */
-const RECONNECT_MS = 20_000
+
+const wordsLabel = (n: number) => `${n} ${n === 1 ? 'word' : 'words'}`
 
 export const initialWordHuntState = (round = 1): WordHuntState => ({ grid: generateGrid(), round })
 
 type Phase = 'countdown' | 'play' | 'grace' | 'results'
-type Seated = Player & { id: string }
 
 interface Feedback {
   text: string
@@ -73,19 +79,8 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   // Phones: the round screen is pinned — swiping the board must never scroll or pan the page.
   useScrollLock(inRound)
 
-  // Opponent dropped mid-round: give them RECONNECT_MS to come back, then end the match.
-  const oppAway = inRound && !!opp && !opp.online
-  const [awaySince, setAwaySince] = useState<number | null>(null)
-  useEffect(() => {
-    if (!oppAway) return setAwaySince(null)
-    const since = Date.now()
-    setAwaySince(since)
-    const t = setTimeout(() => {
-      if (opp) abandonRoom(GAME, room.code, opp.id, 'disconnected').catch(() => {})
-    }, RECONNECT_MS)
-    return () => clearTimeout(t)
-  }, [oppAway]) // only restart the clock when "away" flips, not on every room update
-  const awaySecs = awaySince ? Math.max(0, Math.ceil((awaySince + RECONNECT_MS - Date.now()) / 1000)) : 0
+  // Opponent dropped mid-round: they get a short window to come back before the match ends.
+  const awaySecs = useOpponentAway(GAME, room.code, opp, inRound)
 
   // My words are kept locally (instant feedback) and mirrored to the room for the opponent.
   const [mine, setMine] = useState<string[]>(() => st.found?.[me.id] ?? [])
@@ -160,7 +155,21 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const liveState = liveWord.length >= MIN_LEN ? (mine.includes(liveWord) ? 'dupe' : isWord(liveWord) ? 'good' : '') : ''
 
   if (endedEarly) {
-    return <MatchEnded room={room} me={me} seats={seats} scoreOf={scoreOf} countOf={countOf} exit={exit} />
+    return (
+      <MatchEnded
+        room={room}
+        me={me}
+        seats={seats}
+        exit={exit}
+        scoreboard={
+          <>
+            <ScoreCard p={seats[0]} you={me.seat === 0} value={scoreOf(seats[0]).toLocaleString()} meta={wordsLabel(countOf(seats[0]))} />
+            <span className="mt-ended__vs" aria-hidden="true">vs</span>
+            <ScoreCard p={seats[1]} you={me.seat === 1} value={scoreOf(seats[1]).toLocaleString()} meta={wordsLabel(countOf(seats[1]))} />
+          </>
+        }
+      />
+    )
   }
   if (phase === 'results' || abandoned) {
     return <Results room={room} me={me} st={st} mine={mine} seats={seats} grid={grid} exit={exit} />
@@ -170,16 +179,16 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 
   return (
     <main className="wh screen-in">
-      <div className="wh-hud">
-        <ScoreCard p={seats[0]} you={me.seat === 0} score={scoreOf(seats[0])} count={countOf(seats[0])} />
-        <div className={`wh-clock${phase === 'play' && secsLeft <= 10 ? ' wh-clock--hot' : ''}`} role="timer" aria-live="off">
+      <div className="mt-hud">
+        <ScoreCard p={seats[0]} you={me.seat === 0} value={scoreOf(seats[0]).toLocaleString()} meta={wordsLabel(countOf(seats[0]))} />
+        <div className={`mt-clock${phase === 'play' && secsLeft <= 10 ? ' mt-clock--hot' : ''}`} role="timer" aria-live="off">
           <span className="label">Time</span>
-          <span className="wh-clock__n">{phase === 'countdown' ? ROUND_MS / 1000 : secsLeft}</span>
+          <span className="mt-clock__n">{phase === 'countdown' ? ROUND_MS / 1000 : secsLeft}</span>
         </div>
-        <ScoreCard p={seats[1]} you={me.seat === 1} score={scoreOf(seats[1])} count={countOf(seats[1])} />
+        <ScoreCard p={seats[1]} you={me.seat === 1} value={scoreOf(seats[1]).toLocaleString()} meta={wordsLabel(countOf(seats[1]))} />
       </div>
 
-      <div className="wh-timebar" aria-hidden="true">
+      <div className="mt-timebar" aria-hidden="true">
         <span style={{ width: `${pct}%` }} className={secsLeft <= 10 && phase === 'play' ? 'hot' : ''} />
       </div>
 
@@ -226,18 +235,18 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         )}
       </div>
 
-      {oppAway && opp && (
-        <p className="wh-banner" role="status">
+      {awaySecs !== null && opp && (
+        <p className="mt-banner" role="status">
           {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back
         </p>
       )}
 
       {(phase === 'countdown' || (phase === 'play' && now - playFrom < GO_MS)) && (
         <Countdown
-          round={st.round}
+          label={`Round ${st.round}`}
           n={phase === 'countdown' ? countdown : 0}
           names={[seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']}
-          seconds={ROUND_MS / 1000}
+          subtitle={`Same grid · ${ROUND_MS / 1000} seconds · most points wins`}
         />
       )}
 
@@ -245,80 +254,7 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   )
 }
 
-function ScoreCard({ p, you, score, count }: { p: Seated | null; you: boolean; score: number; count: number }) {
-  if (!p) return <div className="wh-score" />
-  return (
-    <div className={`wh-score wh-score--${p.seat}${you ? ' wh-score--you' : ''}`}>
-      <span className="wh-score__name">
-        {p.name}
-        {you && <em> · you</em>}
-        {!p.online && <em> · away</em>}
-      </span>
-      <span className="wh-score__n">{score.toLocaleString()}</span>
-      <span className="wh-score__meta">{count} {count === 1 ? 'word' : 'words'}</span>
-    </div>
-  )
-}
 
-/* ── Match ended early (someone left or dropped) ──────────────────────── */
-
-function MatchEnded({
-  room,
-  me,
-  seats,
-  scoreOf,
-  countOf,
-  exit,
-}: {
-  room: Room
-  me: Me
-  seats: [Seated | null, Seated | null]
-  scoreOf: (p: Seated | null) => number
-  countOf: (p: Seated | null) => number
-  exit: MatchExit
-}) {
-  const navigate = useNavigate()
-  const leaver = seats.find((p) => p?.id === room.leftBy) ?? null
-  const iLeft = room.leftBy === me.id
-  const dropped = room.endReason === 'disconnected'
-  const title = iLeft ? (dropped ? 'You lost connection' : 'You left') : `${leaver?.name ?? 'Your opponent'} ${dropped ? 'dropped out' : 'left'}`
-  const sub = iLeft
-    ? 'The match ended while you were away.'
-    : dropped
-      ? 'They lost connection and didn’t make it back, so the match is over.'
-      : 'They left the match, so it’s over. Start a new room to play again.'
-
-  return (
-    <main className="wh wh-ended screen-in">
-      <div className="wh-ended__head">
-        <p className="label">Match over</p>
-        <h1 className="wh-ended__title">{title}</h1>
-        <p>{sub}</p>
-      </div>
-      <div className="wh-hud wh-ended__scores">
-        <ScoreCard p={seats[0]} you={me.seat === 0} score={scoreOf(seats[0])} count={countOf(seats[0])} />
-        <span className="wh-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={me.seat === 1} score={scoreOf(seats[1])} count={countOf(seats[1])} />
-      </div>
-      <div className="wh-actions">
-        <button type="button" className="btn btn--primary btn--lg" onClick={exit.now}>
-          New room <span className="keycap">↵</span>
-        </button>
-        {/* leave first so the finished room is cleaned up, then go home */}
-        <button
-          type="button"
-          className="btn"
-          onClick={() => {
-            exit.now()
-            navigate('/')
-          }}
-        >
-          All games
-        </button>
-      </div>
-    </main>
-  )
-}
 
 /* ── Results ─────────────────────────────────────────────────────────── */
 
@@ -383,6 +319,28 @@ function Results({
 
   const headline = winner === -1 ? 'Draw' : iWon ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`
 
+  // share card: spotlight the winner's best word (yours on a draw)
+  const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
+  const scoreLine = `${scores[0].toLocaleString()} — ${scores[1].toLocaleString()}`
+  const featured = winner >= 0 ? winner : me.seat
+  const best = [...lists[featured]].sort((a, b) => score(b) - score(a) || b.length - a.length)[0]
+  const unique = lists[featured].filter((x) => !lists[1 - featured].includes(x)).length
+  const card: CardInput = {
+    game: 'Word Hunt',
+    winner,
+    scoreLine,
+    link: shareLink(GAME),
+    players: [0, 1].map((s) => ({ name: names[s], seat: s as 0 | 1, score: scores[s].toLocaleString(), meta: wordsLabel(lists[s].length) })) as CardInput['players'],
+    detail: {
+      kind: 'grid',
+      letters: grid,
+      path: best ? pathOf(grid, best) ?? [] : [],
+      word: best ?? '—',
+      points: best ? `+${score(best).toLocaleString()}` : '',
+      stats: [['Words found', `${lists[0].length} — ${lists[1].length}`], ['Unique words', String(unique)]],
+    },
+  }
+
   return (
     <main className="wh wh-results screen-in">
       {iWon && <Confetti />}
@@ -436,7 +394,11 @@ function Results({
         </section>
       )}
 
-      <div className="wh-actions" aria-live="polite">
+      <div className="mt-share">
+        <ShareResult card={card} won={iWon} message={shareMessage('Word Hunt', GAME, names, winner, scoreLine)} />
+      </div>
+
+      <div className="mt-actions" aria-live="polite">
         <button type="button" className="btn btn--primary btn--lg" onClick={readyUp} disabled={imReady || oppGone}>
           {oppGone ? `${opp?.name ?? 'Opponent'} left` : imReady ? (oppReady ? 'Dealing…' : 'Ready — waiting') : oppReady ? `Rematch — ${opp.name} is ready` : 'Play again'}
           <span className="keycap">↵</span>

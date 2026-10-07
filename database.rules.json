@@ -1,0 +1,205 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "anagram-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "battleword-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "checkers-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "connect4-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "crossword-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "dots-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "hangman-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "ludo-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "mem": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "othello-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "oware-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "quoridor-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "sudoku": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "ttt": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "wh-rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "matches": {
+      "$game": {
+        "$code": {
+          ".read": "auth != null",
+          ".write": "auth != null && $game.matches(/^[a-z0-9]{2,20}$/) && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid && newData.child('seats/s0').val() === auth.uid && newData.child('status').val() === 'waiting') || (data.exists() && !newData.exists() && ((data.child('status').val() === 'waiting' && data.child('hostId').val() === auth.uid) || (data.child('status').val() === 'abandoned' && data.child('players').hasChild(auth.uid)) || data.child('createdAt').val() < now - 86400000)))",
+          "game": {
+            ".validate": "newData.val() === $game"
+          },
+          "code": {
+            ".validate": "newData.val() === $code"
+          },
+          "hostId": {
+            ".validate": "newData.isString()"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "seats": {
+            "s0": {
+              ".validate": "newData.isString()"
+            },
+            "s1": {
+              ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('status').val() === 'waiting' && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && (!newData.exists() || newData.val() === auth.uid)))",
+              ".validate": "newData.isString()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "players": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || newData.parent().parent().child('seats/s0').val() === auth.uid || newData.parent().parent().child('seats/s1').val() === auth.uid)",
+              ".validate": "newData.hasChildren(['name', 'seat'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+              },
+              "seat": {
+                ".validate": "(newData.val() === 0 && newData.parent().parent().parent().child('seats/s0').val() === $uid) || (newData.val() === 1 && newData.parent().parent().parent().child('seats/s1').val() === $uid)"
+              },
+              "online": {
+                ".validate": "newData.isBoolean()"
+              },
+              "joinedAt": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "status": {
+            ".write": "auth != null && data.parent().child('players').hasChild(auth.uid)",
+            ".validate": "newData.isString() && ((!data.exists() && newData.val() === 'waiting') || (data.exists() && data.val() !== 'abandoned' && ((newData.val() === 'playing' && data.parent().child('hostId').val() === auth.uid) || (newData.val() === 'abandoned' && data.val() === 'playing'))))"
+          },
+          "startedAt": {
+            ".write": "auth != null && data.parent().child('hostId').val() === auth.uid && data.parent().child('players').hasChild(auth.uid)",
+            ".validate": "newData.isNumber()"
+          },
+          "leftBy": {
+            ".write": "auth != null && !data.exists() && data.parent().child('players').hasChild(auth.uid)",
+            ".validate": "newData.isString()"
+          },
+          "endReason": {
+            ".write": "auth != null && !data.exists() && data.parent().child('players').hasChild(auth.uid)",
+            ".validate": "newData.val() === 'left' || newData.val() === 'disconnected'"
+          },
+          "endedAt": {
+            ".write": "auth != null && !data.exists() && data.parent().child('players').hasChild(auth.uid)",
+            ".validate": "newData.isNumber()"
+          },
+          "state": {
+            ".write": "auth != null && data.parent().child('hostId').val() === auth.uid && data.parent().child('players').hasChild(auth.uid) && !newData.child('found').exists() && !newData.child('ready').exists() && !newData.child('progress').exists() && !newData.child('solved').exists()",
+            "found": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)"
+              }
+            },
+            "ready": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)",
+                ".validate": "newData.isBoolean()"
+              }
+            },
+            "progress": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)"
+              }
+            },
+            "solved": {
+              "$r": {
+                ".write": "auth != null && !data.exists() && newData.child('by').val() === auth.uid && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)"
+              }
+            },
+            "live": {
+              ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    }
+  }
+}

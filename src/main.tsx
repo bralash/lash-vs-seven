@@ -5,6 +5,7 @@ import './styles/tokens.css'
 import './styles/base.css'
 import './styles/components.css'
 import './styles/lobby.css'
+import './styles/match.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

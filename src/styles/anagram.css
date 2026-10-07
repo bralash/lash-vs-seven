@@ -1,0 +1,166 @@
+.ag {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 14px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.ag > * { width: 100%; }
+
+/* ── Round pips ────────────────────────────────────────── */
+.ag-pips { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; gap: 8px; }
+.ag-pip {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: 14px;
+}
+.ag-pip--next { border-style: dashed; color: var(--dim); background: transparent; }
+.ag-pip--now { background: var(--hit); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+.ag-pip--won-0 { background: var(--lash); color: var(--paper); }
+.ag-pip--won-1 { background: var(--seven); color: var(--paper); }
+.ag-pip--none { background: repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--ink) 18%, transparent) 5px 6px); color: var(--dim); }
+
+/* ── Play area: answer slots, letter pool, controls ────── */
+.ag-play {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  container-type: inline-size;
+}
+.ag-play > * { width: 100%; }
+
+.ag-slots,
+.ag-pool,
+.ag-reveal__word {
+  --gap: clamp(6px, 2cqi, 10px);
+  --tile: min(64px, calc((100cqw - 28px - (var(--n) - 1) * var(--gap)) / var(--n)));
+  display: grid;
+  grid-template-columns: repeat(var(--n), var(--tile));
+  justify-content: center;
+  gap: var(--gap);
+}
+.ag-pool {
+  padding: 14px;
+  background: var(--board);
+  box-shadow: var(--shadow-lg), inset 0 0 0 3px #2b2833, inset 0 0 0 4px #0b0a0e;
+}
+
+.ag-tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-bottom: 5px solid #cbbd9f;
+  background: var(--paper);
+  box-shadow: inset 0 2px 0 #fffdf6;
+  font-family: var(--display);
+  font-size: calc(var(--tile) * .55);
+  line-height: 1;
+  color: var(--ink);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: transform .08s, background .08s;
+  animation: tile-pop .3s var(--ease-snap) both;
+}
+.ag-tile:not(:disabled):active { transform: translateY(3px); border-bottom-width: 2px; }
+.ag-pool .ag-tile:not(:disabled):hover { background: #fff6d6; }
+.ag-tile--used { background: var(--tile-hi); border-bottom-color: var(--tile); box-shadow: none; color: transparent; }
+.ag-tile:disabled { cursor: default; }
+
+.ag-slot { background: var(--hit); border-bottom-color: var(--hit-deep); }
+.ag-slot--empty {
+  background: transparent;
+  border: 2px dashed color-mix(in srgb, var(--ink) 35%, transparent);
+  box-shadow: none;
+  animation: none;
+}
+.ag-slots--wrong .ag-slot:not(.ag-slot--empty) { background: var(--strike); color: var(--paper); border-bottom-color: #9e1a10; }
+.ag-slots--wrong { animation: shake .35s ease both; }
+
+.ag-controls { display: flex; justify-content: center; gap: 14px; }
+.ag-controls .btn { flex: 1 1 0; max-width: 200px; font-size: 18px; padding: 12px 16px; }
+.ag-hint { text-align: center; min-height: 1.5em; }
+.ag-len { text-align: center; }
+@media (pointer: coarse) { .ag-hint--keys { display: none; } }
+
+@keyframes tile-pop { from { transform: scale(.6); opacity: 0; } }
+
+/* ── Reveal between rounds ─────────────────────────────── */
+.ag-reveal {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 22px 18px 18px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  container-type: inline-size;
+  animation: pop .3s var(--ease-snap) both;
+}
+.ag-reveal > * { width: 100%; }
+.ag-reveal--win { background: #fff6d6; }
+.ag-reveal--none { background-image: repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in srgb, var(--ink) 6%, transparent) 9px 10px); }
+.ag-reveal__title { font-size: clamp(30px, 8vw, 48px); animation: stamp-in .4s var(--ease-snap) both; }
+.ag-tile--answer { background: var(--hit); border-bottom-color: var(--hit-deep); }
+.ag-reveal__def { max-width: 40ch; justify-self: center; min-height: 3em; font-size: 14px; color: var(--ink-soft); }
+.ag-reveal__def i { font-weight: 500; color: var(--ink); }
+
+/* ── Results ───────────────────────────────────────────── */
+.ag-results { gap: 24px; }
+.ag-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.ag-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.ag-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+.ag-results__line { font-family: var(--display); font-size: clamp(24px, 5vw, 32px); }
+.ag-results__line span { color: var(--dim); }
+
+.ag-rounds { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ag-round {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: var(--edge) solid var(--ink);
+  border-left-width: 10px;
+  border-left-color: var(--paper-2);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.ag-round--0 { border-left-color: var(--lash); }
+.ag-round--1 { border-left-color: var(--seven); }
+.ag-round__n { font-family: var(--display); color: var(--dim); }
+.ag-round__word { font-family: var(--display); font-size: 20px; letter-spacing: .04em; }
+.ag-round__who { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); text-align: right; }
+
+/* ── Phones during the match: pinned to one screen, letters low in thumb reach ── */
+@media (width < 900px) {
+  html.scroll-locked .ag {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 10px;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+  /* the play area sits in the middle of the free space rather than leaving a gap above it */
+  html.scroll-locked .ag > .ag-play,
+  html.scroll-locked .ag > .ag-reveal { grid-row: 4; align-self: center; }
+  html.scroll-locked .ag .mt-score { padding-block: 6px 8px; }
+}

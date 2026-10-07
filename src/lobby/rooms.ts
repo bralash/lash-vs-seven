@@ -8,11 +8,14 @@ import {
   set,
   update,
 } from 'firebase/database'
-import { db } from '../lib/firebase'
-import { playerId } from '../lib/storage'
+import { db, playerId } from '../lib/firebase'
+import { load, save } from '../lib/storage'
 
-// Rooms live at rooms/{game}/{code}. Each game gets its own namespace,
-// so codes only have to be unique per game.
+// Rooms live at matches/{game}/{code}. Each game gets its own namespace, so codes only
+// have to be unique per game. (The old site still uses rooms/, wh-rooms/ etc. — left untouched.)
+//
+// Every write below targets the smallest piece the database rules allow for the caller
+// (see database.rules.json): a seat, your own player entry, your own words, a status flip.
 
 /** `abandoned`: a player left (or dropped and didn't come back) mid-match — the match is over for both. */
 export type RoomStatus = 'waiting' | 'playing' | 'done' | 'abandoned'
@@ -32,6 +35,8 @@ export interface Room {
   status: RoomStatus
   hostId: string
   createdAt: number
+  /** who holds each seat; claiming s1 is how a guest joins */
+  seats?: { s0?: string; s1?: string }
   /** server time the match (or latest rematch) was started */
   startedAt?: number
   players: Record<string, Player>
@@ -51,9 +56,12 @@ export type JoinFailure =
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ' // no I/O — easy to read aloud
 export const CODE_LENGTH = 4
+/** Rooms older than this get cleaned up by the browser that created them. */
+const STALE_MS = 24 * 60 * 60 * 1000
 
-export const roomPath = (game: string, code: string) => `rooms/${game}/${code}`
+export const roomPath = (game: string, code: string) => `matches/${game}/${code}`
 const roomRef = (game: string, code: string) => ref(db, roomPath(game, code))
+const at = (game: string, code: string, rest: string) => ref(db, `${roomPath(game, code)}/${rest}`)
 
 function randomCode() {
   return Array.from({ length: CODE_LENGTH }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
@@ -78,21 +86,23 @@ export function playersBySeat(room: Room): [(Player & { id: string }) | null, (P
 /** Creates a fresh room with the caller in seat 0 and returns its code. */
 export async function createRoom(game: string, name: string): Promise<string> {
   const pid = playerId()
+  cleanUpMyOldRooms() // housekeeping, fire-and-forget
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = randomCode()
-    const r = roomRef(game, code)
-    const existing = await get(r)
+    const existing = await get(roomRef(game, code))
     if (existing.exists()) continue
-    await set(r, {
+    await set(roomRef(game, code), {
       game,
       code,
       status: 'waiting',
       hostId: pid,
       createdAt: serverTimestamp(),
+      seats: { s0: pid },
       players: {
         [pid]: { name, seat: 0, online: true, joinedAt: serverTimestamp() },
       },
     })
+    rememberRoom(game, code)
     return code
   }
   throw new Error('Could not find a free room code')
@@ -113,45 +123,36 @@ export async function peekRoom(game: string, code: string): Promise<{ room: Room
     }
     if (room.players?.[pid]) return { room } // rejoining my own seat
     if (room.status !== 'waiting') return { error: 'started' }
-    if (Object.keys(room.players ?? {}).length >= 2) return { error: 'full' }
+    if (room.seats?.s1) return { error: 'full' }
     return { room }
   } catch {
     return { error: 'offline' }
   }
 }
 
-/** Atomically claims the free seat (or reclaims ours). */
+/**
+ * Takes the guest seat (or reclaims ours after a refresh).
+ * Claiming `seats/s1` is a transaction, so two people opening the same link can't both get in.
+ */
 export async function joinRoom(game: string, code: string, name: string): Promise<{ ok: true } | { ok: false; error: JoinFailure }> {
   const pid = playerId()
-  let reason: JoinFailure = 'missing'
   try {
-    const result = await runTransaction(roomRef(game, code), (room: Room | null) => {
-      // First pass may run against an empty local cache — returning null lets the server retry with real data.
-      if (!room) return null
-      if (room.status === 'abandoned') {
-        reason = 'ended'
-        return undefined
-      }
-      const players = room.players ?? {}
-      if (players[pid]) {
-        players[pid] = { ...players[pid], name, online: true }
-        return { ...room, players }
-      }
-      if (room.status !== 'waiting') {
-        reason = 'started'
-        return undefined
-      }
-      const taken = new Set(Object.values(players).map((p) => p.seat))
-      const seat: Seat | undefined = !taken.has(0) ? 0 : !taken.has(1) ? 1 : undefined
-      if (seat === undefined) {
-        reason = 'full'
-        return undefined
-      }
-      players[pid] = { name, seat, online: true, joinedAt: Date.now() }
-      return { ...room, players }
-    })
-    if (result.committed && result.snapshot.exists()) return { ok: true }
-    return { ok: false, error: result.snapshot.exists() ? reason : 'missing' }
+    const snap = await get(roomRef(game, code))
+    const room = snap.val() as Room | null
+    if (!room) return { ok: false, error: 'missing' }
+    if (room.status === 'abandoned') return { ok: false, error: 'ended' }
+
+    // already seated (refresh, or coming back after a drop): just mark ourselves present again
+    if (room.players?.[pid]) {
+      await update(at(game, code, `players/${pid}`), { name, online: true })
+      return { ok: true }
+    }
+    if (room.status !== 'waiting') return { ok: false, error: 'started' }
+
+    const claim = await runTransaction(at(game, code, 'seats/s1'), (cur: string | null) => (cur ? undefined : pid))
+    if (!claim.committed) return { ok: false, error: 'full' }
+    await set(at(game, code, `players/${pid}`), { name, seat: 1, online: true, joinedAt: serverTimestamp() })
+    return { ok: true }
   } catch {
     return { ok: false, error: 'offline' }
   }
@@ -159,14 +160,14 @@ export async function joinRoom(game: string, code: string, name: string): Promis
 
 /** Marks us online and arranges for "offline" to be written if the tab drops. */
 export function trackPresence(game: string, code: string) {
-  const onlineRef = ref(db, `${roomPath(game, code)}/players/${playerId()}/online`)
+  const onlineRef = at(game, code, `players/${playerId()}/online`)
   set(onlineRef, true).catch(() => {})
   onDisconnect(onlineRef).set(false).catch(() => {})
   return () => {
     // Navigating away inside the app doesn't drop the socket, so mark ourselves offline explicitly.
     onDisconnect(onlineRef).cancel().catch(() => {})
     // Transaction so we never recreate a seat (or a whole room) that was just removed.
-    runTransaction(ref(db, `${roomPath(game, code)}/players/${playerId()}`), (p: Player | null) =>
+    runTransaction(at(game, code, `players/${playerId()}`), (p: Player | null) =>
       // null on null: a no-op if the seat is gone, and lets the server retry if our cache was just empty
       p ? { ...p, online: false } : null,
     ).catch(() => {})
@@ -185,13 +186,12 @@ export async function startMatch(game: string, code: string, state: Record<strin
  */
 export async function leaveRoom(game: string, room: Room) {
   const pid = playerId()
-  const r = roomRef(game, room.code)
   try {
     if (room.status === 'waiting') {
-      if (room.hostId === pid) await remove(r)
-      else await remove(ref(db, `${roomPath(game, room.code)}/players/${pid}`))
+      if (room.hostId === pid) await remove(roomRef(game, room.code))
+      else await update(roomRef(game, room.code), { [`players/${pid}`]: null, 'seats/s1': null })
     } else if (room.status === 'abandoned') {
-      await remove(r)
+      await remove(roomRef(game, room.code))
     } else {
       await abandonRoom(game, room.code, pid, 'left')
     }
@@ -200,13 +200,51 @@ export async function leaveRoom(game: string, room: Room) {
   }
 }
 
-/** Ends a live match for both players. Transaction so two near-simultaneous exits don't overwrite each other. */
+/** Ends a live match for both players. The rules make `abandoned` final, so a second exit can't undo it. */
 export async function abandonRoom(game: string, code: string, who: string, reason: EndReason) {
-  await runTransaction(roomRef(game, code), (room: Room | null) => {
-    if (!room) return null
-    if (room.status === 'abandoned' || room.status === 'waiting') return undefined
-    const players = room.players ?? {}
-    if (players[who]) players[who] = { ...players[who], online: false }
-    return { ...room, players, status: 'abandoned', leftBy: who, endReason: reason, endedAt: Date.now() }
+  const me = playerId()
+  await update(roomRef(game, code), {
+    status: 'abandoned',
+    leftBy: who,
+    endReason: reason,
+    endedAt: serverTimestamp(),
+    // we can only touch our own entry; a dropped opponent is already marked offline by their disconnect hook
+    ...(who === me ? { [`players/${me}/online`]: false } : {}),
   })
+}
+
+/* ── Housekeeping ──────────────────────────────────────────────────────
+ * The rules don't allow listing rooms (that would expose live room codes), so there's no global
+ * sweep. Instead each browser remembers the rooms it created and, next time it makes one,
+ * deletes any that are over a day old. The rules allow anyone to delete a room that old. */
+
+const MINE_KEY = 'lvs_my_rooms'
+
+interface MyRoom {
+  game: string
+  code: string
+  at: number
+}
+
+function myRooms(): MyRoom[] {
+  try {
+    const list = JSON.parse(load(MINE_KEY) ?? '[]')
+    return Array.isArray(list) ? list : []
+  } catch {
+    return []
+  }
+}
+
+function rememberRoom(game: string, code: string) {
+  save(MINE_KEY, JSON.stringify([...myRooms(), { game, code, at: Date.now() }].slice(-50)))
+}
+
+async function cleanUpMyOldRooms() {
+  const now = Date.now()
+  const all = myRooms()
+  // a little margin over a day so a slightly fast device clock can't ask before the rules allow it
+  const old = all.filter((r) => now - r.at > STALE_MS + 10 * 60 * 1000)
+  if (!old.length) return
+  save(MINE_KEY, JSON.stringify(all.filter((r) => !old.includes(r))))
+  await Promise.all(old.map((r) => remove(roomRef(r.game, r.code)).catch(() => {})))
 }

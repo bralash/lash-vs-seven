@@ -175,3 +175,8 @@
   .seats { grid-template-columns: 1fr; gap: 16px; }
   .join-row .btn { padding: 10px 18px; }
 }
+
+/* host-only match setting in the waiting room (e.g. best of 3 / 5 / 7) */
+.lobby-option { display: grid; justify-items: center; gap: 8px; }
+.lobby-option .seg { width: 100%; }
+.lobby-option .seg__btn { flex: 1; justify-content: center; }

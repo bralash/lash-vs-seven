@@ -1,11 +1,37 @@
 {
   "hosting": {
     "public": "dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "cleanUrls": true,
     "redirects": [
-      { "source": "/wordhunt.html", "destination": "/wordhunt", "type": 301 }
+      {
+        "source": "/wordhunt.html",
+        "destination": "/wordhunt",
+        "type": 301
+      },
+      {
+        "source": "/anagram.html",
+        "destination": "/anagram",
+        "type": 301
+      },
+      {
+        "source": "/tictactoe.html",
+        "destination": "/tictactoe",
+        "type": 301
+      }
     ],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }
