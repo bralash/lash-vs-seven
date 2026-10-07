@@ -7,6 +7,7 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -220,6 +221,7 @@ function Results({
     <main className="otm otm-results screen-in">
       {iWon && <Confetti />}
       <div className="otm-results__head">
+        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
         <p className="label">Match {st.match} · Othello</p>
         <h1 className={`otm-results__title${iWon ? ' otm-results__title--win' : ''}`}>
           {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}

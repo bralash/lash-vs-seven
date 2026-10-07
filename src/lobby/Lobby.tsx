@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useBlocker, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { VsBlock } from '../components/VsBlock'
 import { HowToPlay } from '../components/HowToPlay'
 import { ArrowLeft, Copy, Exit } from '../components/Icons'
 import { TopBar } from '../components/TopBar'
@@ -656,6 +657,7 @@ function WaitingRoom({
   return (
     <main className="lobby__main lobby__main--wide screen-in">
       <div className="lobby__hero">
+        <VsBlock mood={ready ? 'idle' : 'wait'} eyes size={64} />
         <p className="label">Room code</p>
         <div className="code-tiles" aria-label={`Room code ${code.split('').join(' ')}`}>
           {code.split('').map((ch, i) => (

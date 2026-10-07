@@ -14,6 +14,7 @@ import { ScoreCard } from '../../match/ScoreCard'
 import { useSession } from '../../match/session'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -457,6 +458,7 @@ function Results({
     <main className="sum sum-results screen-in">
       {iWon && <Confetti />}
       <div className="sum-results__head">
+        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
         <p className="label">
           Match {st.match} · {DIFFICULTY_LABEL[st.difficulty]}
         </p>

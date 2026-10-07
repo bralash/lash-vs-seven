@@ -22,6 +22,7 @@ import {
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -349,6 +350,7 @@ function Results({
     <main className="wh wh-results screen-in">
       {iWon && <Confetti />}
       <div className="wh-results__head">
+        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
         <p className="label">Round {st.round} · final</p>
         <h1 className={`wh-results__title${iWon ? ' wh-results__title--win' : ''}`}>{headline}</h1>
         <p className="wh-results__line">

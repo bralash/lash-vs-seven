@@ -7,6 +7,7 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -218,6 +219,7 @@ function Results({
     <main className="c4m c4m-results screen-in">
       {iWon && <Confetti />}
       <div className="c4m-results__head">
+        <VsBlock mood="win" side={winner} eyes size={64} />
         <p className="label">
           Match {st.match} · {seriesLabel(st.target).toLowerCase()}
         </p>

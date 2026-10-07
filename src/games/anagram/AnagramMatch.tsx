@@ -10,6 +10,7 @@ import { playersBySeat, roomPath, startMatch, type Room } from '../../lobby/room
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -479,6 +480,7 @@ function Results({
     <main className="ag ag-results screen-in">
       {iWon && <Confetti />}
       <div className="ag-results__head">
+        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
         <p className="label">Match {st.match} · final</p>
         <h1 className={`ag-results__title${iWon ? ' ag-results__title--win' : ''}`}>{headline}</h1>
         <p className="ag-results__line">

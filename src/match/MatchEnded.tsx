@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { VsBlock } from '../components/VsBlock'
 import type { MatchExit, Me } from '../lobby/Lobby'
 import type { Room } from '../lobby/rooms'
 import type { Seated } from './types'
@@ -31,6 +32,7 @@ export function MatchEnded({ room, me, seats, exit, scoreboard }: Props) {
   return (
     <main className="mt-ended screen-in">
       <div className="mt-ended__head">
+        <VsBlock mood="left" eyes size={64} />
         <p className="label">Match over</p>
         <h1 className="mt-ended__title">{title}</h1>
         <p>{sub}</p>
