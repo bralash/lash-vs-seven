@@ -24,6 +24,13 @@ import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
+export interface MatchExit {
+  /** asks "Leave the match?" first — use while the match is live */
+  request: () => void
+  /** leaves straight away — for screens where the match is already over */
+  now: () => void
+}
+
 export interface Me {
   id: string
   seat: 0 | 1
@@ -32,8 +39,8 @@ export interface Me {
 
 interface Props {
   game: GameMeta
-  /** Rendered once the host starts the match. `requestLeave` opens the leave confirmation. */
-  renderGame: (room: Room, me: Me, requestLeave: () => void) => ReactNode
+  /** Rendered once the host starts the match. */
+  renderGame: (room: Room, me: Me, exit: MatchExit) => ReactNode
   /** Initial game state written when the host presses Start. */
   initialState?: () => Record<string, unknown>
 }
@@ -42,6 +49,11 @@ const FAILURE_COPY: Record<JoinFailure, string> = {
   missing: 'That room doesn’t exist or has closed.',
   started: 'That match has already started.',
   full: 'That room already has two players.',
+  ended: 'That match has ended — a player left.',
+  youLeft: 'You left this match, so it’s over for both of you.',
+  youDropped: 'You lost connection, and the match ended while you were away.',
+  oppLeft: 'Your opponent left, so the match is over.',
+  oppDropped: 'Your opponent lost connection and didn’t make it back, so the match is over.',
   offline: 'Couldn’t reach the server. Check your connection and try again.',
 }
 
@@ -388,14 +400,17 @@ function InviteScreen({
 
   const failure = invite.state === 'bad' ? invite.error : error && error !== 'name' ? error : null
   if (failure) {
+    // They were in this match — "Can't join" would read like someone shut them out.
+    const theirOwn = ['youLeft', 'youDropped', 'oppLeft', 'oppDropped'].includes(failure)
     return (
       <main className="lobby__main screen-in">
         <div className="lobby__hero">
-          <h1 className="lobby__title">Can’t join</h1>
+          {theirOwn && <p className="label">Room {code}</p>}
+          <h1 className="lobby__title">{theirOwn ? 'Match over' : 'Can’t join'}</h1>
           <p>{FAILURE_COPY[failure]}</p>
         </div>
         <button type="button" className="btn btn--primary" onClick={onDismiss}>
-          Start your own room
+          {theirOwn ? 'Start a new room' : 'Start your own room'}
         </button>
       </main>
     )
@@ -474,7 +489,8 @@ function WaitingRoom({
     const mine = snapshot?.players?.[pid]
     if (!snapshot || !mine) return onGuard(null)
     const other = Object.entries(snapshot.players).find(([id]) => id !== pid)?.[1]?.name ?? null
-    if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, room: snapshot })
+    if (snapshot.status === 'abandoned') onGuard(null) // match already over — nothing to protect
+    else if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, room: snapshot })
     else if (snapshot.hostId === pid && other) onGuard({ kind: 'close', other, room: snapshot })
     else onGuard(null)
   }, [snapshot, pid, onGuard])
@@ -504,7 +520,7 @@ function WaitingRoom({
   }
 
   if (room.status !== 'waiting') {
-    return <>{renderGame(room, { id: pid, seat: me.seat, isHost }, onRequestLeave)}</>
+    return <>{renderGame(room, { id: pid, seat: me.seat, isHost }, { request: onRequestLeave, now: leave })}</>
   }
 
   const seats = playersBySeat(room)

@@ -1,18 +1,18 @@
 import { ref, set } from 'firebase/database'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { db } from '../../lib/firebase'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
+import { useScrollLock } from '../../lib/useScrollLock'
 import { useServerNow } from '../../lib/serverTime'
 import { useSound } from '../../lib/sound'
-import type { Me } from '../../lobby/Lobby'
-import { playersBySeat, roomPath, startMatch, type Player, type Room } from '../../lobby/rooms'
+import type { MatchExit, Me } from '../../lobby/Lobby'
+import { abandonRoom, playersBySeat, roomPath, startMatch, type Player, type Room } from '../../lobby/rooms'
 import { Board, type Flash } from './Board'
 import {
   COUNTDOWN_MS,
-  MAX_LEN,
   MIN_LEN,
   ROUND_MS,
-  findPath,
   generateGrid,
   isWord,
   score,
@@ -35,6 +35,8 @@ const GAME = 'wordhunt'
 const GRACE_MS = 1500
 /** How long the "GO!" beat stays up once the clock starts. */
 const GO_MS = 650
+/** An opponent who drops offline mid-round has this long to come back before the match ends. */
+const RECONNECT_MS = 20_000
 
 export const initialWordHuntState = (round = 1): WordHuntState => ({ grid: generateGrid(), round })
 
@@ -47,7 +49,7 @@ interface Feedback {
   id: number
 }
 
-export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; requestLeave: () => void }) {
+export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }) {
   const st = room.state as unknown as WordHuntState
   const grid = st.grid
   const now = useServerNow(100)
@@ -61,8 +63,29 @@ export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; 
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
 
+  const abandoned = room.status === 'abandoned'
+  // Abandoned before the clock ran out = the match never finished; after it = results still stand.
+  const endedEarly = abandoned && (room.endedAt ?? 0) < playTo + GRACE_MS
+  const inRound = !abandoned && phase !== 'results'
+
   // Refresh / closing the tab mid-round gets the browser's own "Leave site?" prompt.
-  useBeforeUnload(phase === 'countdown' || phase === 'play')
+  useBeforeUnload(inRound && phase !== 'grace')
+  // Phones: the round screen is pinned — swiping the board must never scroll or pan the page.
+  useScrollLock(inRound)
+
+  // Opponent dropped mid-round: give them RECONNECT_MS to come back, then end the match.
+  const oppAway = inRound && !!opp && !opp.online
+  const [awaySince, setAwaySince] = useState<number | null>(null)
+  useEffect(() => {
+    if (!oppAway) return setAwaySince(null)
+    const since = Date.now()
+    setAwaySince(since)
+    const t = setTimeout(() => {
+      if (opp) abandonRoom(GAME, room.code, opp.id, 'disconnected').catch(() => {})
+    }, RECONNECT_MS)
+    return () => clearTimeout(t)
+  }, [oppAway]) // only restart the clock when "away" flips, not on every room update
+  const awaySecs = awaySince ? Math.max(0, Math.ceil((awaySince + RECONNECT_MS - Date.now()) / 1000)) : 0
 
   // My words are kept locally (instant feedback) and mirrored to the room for the opponent.
   const [mine, setMine] = useState<string[]>(() => st.found?.[me.id] ?? [])
@@ -82,7 +105,6 @@ export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; 
   const [live, setLive] = useState<number[]>([])
   const [flash, setFlash] = useState<Flash | null>(null)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
-  const [typed, setTyped] = useState('')
 
   useEffect(() => {
     if (!feedback) return
@@ -130,20 +152,6 @@ export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; 
     setFeedback({ text, kind, id })
   }
 
-  const onType = (e: FormEvent) => {
-    e.preventDefault()
-    const word = typed
-    setTyped('')
-    if (!word) return
-    const path = findPath(grid, word)
-    if (!path) {
-      play('error')
-      setFeedback({ text: `${word} · not on the grid`, kind: 'bad', id: Date.now() })
-      return
-    }
-    submit(word, path)
-  }
-
   const scoreOf = (p: Seated | null) => (p ? totalScore(p.id === me.id ? mine : st.found?.[p.id] ?? []) : 0)
   const countOf = (p: Seated | null) => (p ? (p.id === me.id ? mine : st.found?.[p.id] ?? []).length : 0)
 
@@ -151,12 +159,14 @@ export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; 
   const best = mine.reduce<string | null>((b, w) => (!b || score(w) > score(b) || (score(w) === score(b) && w.length > b.length) ? w : b), null)
   const liveState = liveWord.length >= MIN_LEN ? (mine.includes(liveWord) ? 'dupe' : isWord(liveWord) ? 'good' : '') : ''
 
-  if (phase === 'results') {
-    return <Results room={room} me={me} st={st} mine={mine} seats={seats} grid={grid} requestLeave={requestLeave} />
+  if (endedEarly) {
+    return <MatchEnded room={room} me={me} seats={seats} scoreOf={scoreOf} countOf={countOf} exit={exit} />
+  }
+  if (phase === 'results' || abandoned) {
+    return <Results room={room} me={me} st={st} mine={mine} seats={seats} grid={grid} exit={exit} />
   }
 
   const pct = phase === 'play' ? ((playTo - now) / ROUND_MS) * 100 : phase === 'countdown' ? 100 : 0
-  const pointerFine = typeof matchMedia !== 'undefined' && matchMedia('(pointer: fine)').matches
 
   return (
     <main className="wh screen-in">
@@ -173,7 +183,10 @@ export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; 
         <span style={{ width: `${pct}%` }} className={secsLeft <= 10 && phase === 'play' ? 'hot' : ''} />
       </div>
 
-      <Board grid={grid} hidden={phase === 'countdown'} disabled={phase !== 'play'} flash={flash} onPathChange={setLive} onTrace={(p) => submit(p.map((i) => grid[i]).join(''), p)} />
+      {/* phones: the stage takes whatever height is left and the board stays square inside it */}
+      <div className="wh-stage">
+        <Board grid={grid} hidden={phase === 'countdown'} disabled={phase !== 'play'} flash={flash} onPathChange={setLive} onTrace={(p) => submit(p.map((i) => grid[i]).join(''), p)} />
+      </div>
 
       {/* desktop: one panel beside the board; phones: display: contents keeps the stacked order */}
       <div className="wh-side">
@@ -189,26 +202,6 @@ export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; 
             <span className="wh-word__hint">{phase === 'play' ? 'Drag across the letters' : phase === 'grace' ? 'Time!' : 'Get ready'}</span>
           )}
         </div>
-
-        <form className="wh-type" onSubmit={onType}>
-          <span aria-hidden="true">&gt;</span>
-          <label className="visually-hidden" htmlFor="wh-type">Type a word</label>
-          <input
-            id="wh-type"
-            value={typed}
-            onChange={(e) => setTyped(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, MAX_LEN))}
-            placeholder="…or type a word"
-            autoComplete="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            disabled={phase !== 'play'}
-            autoFocus={pointerFine}
-            onFocus={(e) => e.currentTarget.scrollIntoView({ block: 'nearest' })}
-          />
-          <button type="submit" className="btn btn--primary" disabled={phase !== 'play'}>
-            Enter <span className="keycap">↵</span>
-          </button>
-        </form>
 
         <section className="wh-found" aria-label={`Your words: ${mine.length}`}>
           <p className="wh-found__head">
@@ -233,7 +226,11 @@ export function WordHuntMatch({ room, me, requestLeave }: { room: Room; me: Me; 
         )}
       </div>
 
-      {opp && !opp.online && <p className="wh-banner" role="status">{opp.name} disconnected — waiting for them to come back</p>}
+      {oppAway && opp && (
+        <p className="wh-banner" role="status">
+          {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back
+        </p>
+      )}
 
       {(phase === 'countdown' || (phase === 'play' && now - playFrom < GO_MS)) && (
         <Countdown
@@ -263,6 +260,66 @@ function ScoreCard({ p, you, score, count }: { p: Seated | null; you: boolean; s
   )
 }
 
+/* ── Match ended early (someone left or dropped) ──────────────────────── */
+
+function MatchEnded({
+  room,
+  me,
+  seats,
+  scoreOf,
+  countOf,
+  exit,
+}: {
+  room: Room
+  me: Me
+  seats: [Seated | null, Seated | null]
+  scoreOf: (p: Seated | null) => number
+  countOf: (p: Seated | null) => number
+  exit: MatchExit
+}) {
+  const navigate = useNavigate()
+  const leaver = seats.find((p) => p?.id === room.leftBy) ?? null
+  const iLeft = room.leftBy === me.id
+  const dropped = room.endReason === 'disconnected'
+  const title = iLeft ? (dropped ? 'You lost connection' : 'You left') : `${leaver?.name ?? 'Your opponent'} ${dropped ? 'dropped out' : 'left'}`
+  const sub = iLeft
+    ? 'The match ended while you were away.'
+    : dropped
+      ? 'They lost connection and didn’t make it back, so the match is over.'
+      : 'They left the match, so it’s over. Start a new room to play again.'
+
+  return (
+    <main className="wh wh-ended screen-in">
+      <div className="wh-ended__head">
+        <p className="label">Match over</p>
+        <h1 className="wh-ended__title">{title}</h1>
+        <p>{sub}</p>
+      </div>
+      <div className="wh-hud wh-ended__scores">
+        <ScoreCard p={seats[0]} you={me.seat === 0} score={scoreOf(seats[0])} count={countOf(seats[0])} />
+        <span className="wh-ended__vs" aria-hidden="true">vs</span>
+        <ScoreCard p={seats[1]} you={me.seat === 1} score={scoreOf(seats[1])} count={countOf(seats[1])} />
+      </div>
+      <div className="wh-actions">
+        <button type="button" className="btn btn--primary btn--lg" onClick={exit.now}>
+          New room <span className="keycap">↵</span>
+        </button>
+        {/* leave first so the finished room is cleaned up, then go home */}
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            exit.now()
+            navigate('/')
+          }}
+        >
+          All games
+        </button>
+      </div>
+    </main>
+  )
+}
+
 /* ── Results ─────────────────────────────────────────────────────────── */
 
 function Results({
@@ -272,7 +329,7 @@ function Results({
   mine,
   seats,
   grid,
-  requestLeave,
+  exit,
 }: {
   room: Room
   me: Me
@@ -280,7 +337,7 @@ function Results({
   mine: string[]
   seats: [Seated | null, Seated | null]
   grid: string[]
-  requestLeave: () => void
+  exit: MatchExit
 }) {
   const { play } = useSound()
   const wordsOf = (p: Seated | null) => (p ? (p.id === me.id ? mine : st.found?.[p.id] ?? []) : [])
@@ -299,10 +356,17 @@ function Results({
   const ready = st.ready ?? {}
   const imReady = !!ready[me.id]
   const oppReady = !!(opp && ready[opp.id])
+  // the opponent left after the round: results stand, but there's no one to rematch
+  const over = room.status === 'abandoned'
+  const oppGone = over || !opp?.online
 
+  const cheered = useRef(false)
   useEffect(() => {
-    if (winner === me.seat) play('findBig')
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (iWon && !cheered.current) {
+      cheered.current = true
+      play('findBig')
+    }
+  }, [iWon, play])
 
   // The host deals the next grid once both players are ready.
   const dealt = useRef(false)
@@ -373,11 +437,13 @@ function Results({
       )}
 
       <div className="wh-actions" aria-live="polite">
-        <button type="button" className="btn btn--primary btn--lg" onClick={readyUp} disabled={imReady || !opp?.online}>
-          {!opp?.online ? `${opp?.name ?? 'Opponent'} left` : imReady ? (oppReady ? 'Dealing…' : 'Ready — waiting') : oppReady ? `Rematch — ${opp.name} is ready` : 'Play again'}
+        <button type="button" className="btn btn--primary btn--lg" onClick={readyUp} disabled={imReady || oppGone}>
+          {oppGone ? `${opp?.name ?? 'Opponent'} left` : imReady ? (oppReady ? 'Dealing…' : 'Ready — waiting') : oppReady ? `Rematch — ${opp.name} is ready` : 'Play again'}
           <span className="keycap">↵</span>
         </button>
-        <button type="button" className="btn" onClick={requestLeave}>Leave room</button>
+        <button type="button" className="btn" onClick={over ? exit.now : exit.request}>
+          {over ? 'Back to lobby' : 'Leave room'}
+        </button>
       </div>
     </main>
   )

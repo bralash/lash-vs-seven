@@ -2,6 +2,20 @@
 
 html, body { margin: 0; }
 
+/* Sideways overflow is clipped at the root as well as body — iOS Safari ignores body-only rules,
+   so anything a few px too wide made the whole page pannable on phones. */
+html, body { overflow-x: hidden; }
+@supports (overflow: clip) {
+  html, body { overflow-x: clip; }
+}
+
+/* Set by useScrollLock during a live round: no scrolling, panning, bounce or pull-to-refresh. */
+html.scroll-locked,
+html.scroll-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   min-height: 100dvh;
   background-color: var(--paper);
@@ -12,7 +26,6 @@ body {
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
 h1, h2, h3 {

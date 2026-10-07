@@ -14,7 +14,9 @@ import { playerId } from '../lib/storage'
 // Rooms live at rooms/{game}/{code}. Each game gets its own namespace,
 // so codes only have to be unique per game.
 
-export type RoomStatus = 'waiting' | 'playing' | 'done'
+/** `abandoned`: a player left (or dropped and didn't come back) mid-match — the match is over for both. */
+export type RoomStatus = 'waiting' | 'playing' | 'done' | 'abandoned'
+export type EndReason = 'left' | 'disconnected'
 export type Seat = 0 | 1
 
 export interface Player {
@@ -35,9 +37,17 @@ export interface Room {
   players: Record<string, Player>
   /** game-specific state lives under here */
   state?: Record<string, unknown>
+  /** set when status is `abandoned` */
+  leftBy?: string
+  endReason?: EndReason
+  /** server time the match was abandoned */
+  endedAt?: number
 }
 
-export type JoinFailure = 'missing' | 'started' | 'full' | 'offline'
+/** `you*` / `opp*`: the match ended and this player was in it — they get wording about who ended it. */
+export type JoinFailure =
+  | 'missing' | 'started' | 'full' | 'ended' | 'offline'
+  | 'youLeft' | 'youDropped' | 'oppLeft' | 'oppDropped'
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ' // no I/O — easy to read aloud
 export const CODE_LENGTH = 4
@@ -95,6 +105,12 @@ export async function peekRoom(game: string, code: string): Promise<{ room: Room
     const room = snap.val() as Room | null
     if (!room) return { error: 'missing' }
     const pid = playerId()
+    if (room.status === 'abandoned') {
+      const dropped = room.endReason === 'disconnected'
+      if (room.leftBy === pid) return { error: dropped ? 'youDropped' : 'youLeft' }
+      if (room.players?.[pid]) return { error: dropped ? 'oppDropped' : 'oppLeft' }
+      return { error: 'ended' }
+    }
     if (room.players?.[pid]) return { room } // rejoining my own seat
     if (room.status !== 'waiting') return { error: 'started' }
     if (Object.keys(room.players ?? {}).length >= 2) return { error: 'full' }
@@ -112,6 +128,10 @@ export async function joinRoom(game: string, code: string, name: string): Promis
     const result = await runTransaction(roomRef(game, code), (room: Room | null) => {
       // First pass may run against an empty local cache — returning null lets the server retry with real data.
       if (!room) return null
+      if (room.status === 'abandoned') {
+        reason = 'ended'
+        return undefined
+      }
       const players = room.players ?? {}
       if (players[pid]) {
         players[pid] = { ...players[pid], name, online: true }
@@ -157,7 +177,12 @@ export async function startMatch(game: string, code: string, state: Record<strin
   await update(roomRef(game, code), { status: 'playing', startedAt: serverTimestamp(), state })
 }
 
-/** Host leaving a waiting room closes it; anyone else just gives up their seat. */
+/**
+ * Leaving a room:
+ * - waiting room: the host closes it; a guest just gives up their seat
+ * - live match: ends it for both players (status `abandoned`) so nobody is left sitting in a dead game
+ * - already abandoned: the last one out deletes it
+ */
 export async function leaveRoom(game: string, room: Room) {
   const pid = playerId()
   const r = roomRef(game, room.code)
@@ -165,10 +190,23 @@ export async function leaveRoom(game: string, room: Room) {
     if (room.status === 'waiting') {
       if (room.hostId === pid) await remove(r)
       else await remove(ref(db, `${roomPath(game, room.code)}/players/${pid}`))
+    } else if (room.status === 'abandoned') {
+      await remove(r)
     } else {
-      await update(r, { [`players/${pid}/online`]: false })
+      await abandonRoom(game, room.code, pid, 'left')
     }
   } catch {
     /* best effort */
   }
+}
+
+/** Ends a live match for both players. Transaction so two near-simultaneous exits don't overwrite each other. */
+export async function abandonRoom(game: string, code: string, who: string, reason: EndReason) {
+  await runTransaction(roomRef(game, code), (room: Room | null) => {
+    if (!room) return null
+    if (room.status === 'abandoned' || room.status === 'waiting') return undefined
+    const players = room.players ?? {}
+    if (players[who]) players[who] = { ...players[who], online: false }
+    return { ...room, players, status: 'abandoned', leftBy: who, endReason: reason, endedAt: Date.now() }
+  })
 }

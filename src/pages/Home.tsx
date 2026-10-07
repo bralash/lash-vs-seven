@@ -7,6 +7,9 @@ import { useSound } from '../lib/sound'
 import '../styles/home.css'
 
 type Filter = 'all' | Category
+
+// Occasions, not instructions — one line under the title. Phones show as many as fit on one row.
+const MODES = ['Date nights', 'Friendly battles', 'Long-distance rivals', 'Family game night']
 const FILTERS: Filter[] = ['all', 'word', 'board', 'puzzle']
 
 const TICKER = [
@@ -25,7 +28,6 @@ export function Home() {
   }, [])
 
   const shown = filter === 'all' ? GAMES : GAMES.filter((g) => g.category === filter)
-  const live = GAMES.filter((g) => g.status === 'live').length
 
   return (
     <>
@@ -37,10 +39,11 @@ export function Home() {
             <span className="hero__line">Lash <span className="hero__vs">vs</span></span>
             <span className="hero__line hero__seven">Seven</span>
           </h1>
-          <p className="hero__sub">Two players. One winner. Pick a game, send the link, settle it.</p>
-          <p className="hint">
-            {GAMES.length} games · {live} live now · no sign-up
-          </p>
+          <ul className="hero__modes" aria-label="Made for">
+            {MODES.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
         </section>
 
         <section aria-labelledby="games-title">

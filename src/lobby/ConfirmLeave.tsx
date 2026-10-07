@@ -27,7 +27,7 @@ export function ConfirmLeave({ kind, other, onStay, onLeave }: Props) {
     kind === 'match'
       ? {
           title: 'Leave the match?',
-          body: `${them} will be left playing on their own. You can come back with the room link while the room is open.`,
+          body: `This ends the match for ${them} too.`,
           stay: 'Keep playing',
           leave: 'Leave match',
         }

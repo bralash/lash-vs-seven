@@ -7,7 +7,7 @@
   margin: 0 auto;
   padding-bottom: 32px;
 }
-.wh > * { width: 100%; }
+.wh > *, .wh-side > * { width: 100%; }
 
 /* ── HUD ───────────────────────────────────────────────── */
 .wh-hud {
@@ -367,6 +367,7 @@
 .wh-word { order: -1; }
 
 .wh-found__head { display: flex; justify-content: space-between; gap: 12px; }
+.wh-best { display: none; } /* desktop panel only */
 .wh-best {
   display: flex;
   align-items: center;
@@ -393,10 +394,9 @@
   .wh-hud { grid-area: hud; }
   .wh-timebar { grid-area: bar; }
   .wh-banner { grid-area: note; }
-  .wh > .wh-board {
-    grid-area: board;
-    width: min(560px, max(340px, calc(100dvh - 290px)));
-  }
+  .wh-best { display: flex; }
+  .wh-stage { grid-area: board; }
+  .wh-board { width: min(560px, max(340px, calc(100dvh - 290px))); }
   .wh-side {
     grid-area: side;
     align-self: stretch; /* same height as the board */
@@ -415,3 +415,63 @@
   /* if the panel is taller than the board allows, the word list scrolls instead of stretching the page */
   .wh-side { max-height: min(560px, max(340px, calc(100dvh - 290px))); }
 }
+
+/* ── Phones during a live round: the whole game fits one screen ───────────── */
+.wh-stage { display: grid; justify-items: center; }
+
+@media (width < 900px) {
+  html.scroll-locked .lobby {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  html.scroll-locked .lobby > .topbar { flex: none; padding: 12px 0 10px; }
+  /* scores + timer up top; live word, board and words grouped low in thumb reach; spare height in between */
+  html.scroll-locked .wh {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 10px;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+  }
+  html.scroll-locked .wh-hud { grid-row: 1; }
+  html.scroll-locked .wh-timebar { grid-row: 2; }
+  html.scroll-locked .wh-word { grid-row: 4; height: 48px; }
+  html.scroll-locked .wh-stage { grid-row: 5; }
+  html.scroll-locked .wh-found { grid-row: 6; }
+  /* everything else on this screen has a fixed height (~330px incl. top bar), the board gets the rest */
+  html.scroll-locked .wh-board { width: min(100% - 10px, max(220px, 100dvh - 345px)); }
+  html.scroll-locked .wh-hud .wh-score { padding-block: 6px 8px; }
+
+  /* floats over the bottom instead of adding a row, so the board never jumps mid-round */
+  html.scroll-locked .wh-banner {
+    position: fixed;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 20;
+    box-shadow: var(--shadow);
+  }
+
+  /* found words: one sideways-scrolling strip instead of growing the page */
+  html.scroll-locked .wh-found ul {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    min-height: 34px;
+    margin-top: 6px;
+    scrollbar-width: none;
+  }
+  html.scroll-locked .wh-found ul::-webkit-scrollbar { display: none; }
+  html.scroll-locked .wh-found .chip { flex: none; }
+}
+
+/* ── Match ended early ─────────────────────────────────── */
+.wh-ended { gap: 28px; padding-top: clamp(16px, 6vh, 64px); }
+.wh-ended__head { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.wh-ended__head p:last-child { max-width: 38ch; color: var(--ink-soft); }
+.wh-ended__title { font-size: clamp(44px, 10vw, 84px); animation: stamp-in .5s var(--ease-snap) both; }
+.wh-ended__scores { align-items: center; order: 0; } /* undo the in-round "scores first" ordering */
+.wh-ended__vs { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }

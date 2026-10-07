@@ -9,7 +9,7 @@ export function WordHunt() {
     <Lobby
       game={game}
       initialState={() => ({ ...initialWordHuntState() })}
-      renderGame={(room, me, requestLeave) => <WordHuntMatch room={room} me={me} requestLeave={requestLeave} />}
+      renderGame={(room, me, exit) => <WordHuntMatch room={room} me={me} exit={exit} />}
     />
   )
 }
