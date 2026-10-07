@@ -24,6 +24,12 @@ export const Close = () => (
 export const Copy = () => (
   <svg {...base}><path d="M9 9h11v11H9z" /><path d="M5 15H4V4h11v1" /></svg>
 )
+export const Maximize = () => (
+  <svg {...base}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+)
+export const Minimize = () => (
+  <svg {...base}><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></svg>
+)
 export const Exit = () => (
   <svg {...base}><path d="M14 4H5v16h9" /><path d="M10 12h11M17 8l4 4-4 4" /></svg>
 )

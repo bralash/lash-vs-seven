@@ -2,10 +2,11 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type R
 import { Link, useBlocker, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { VsBlock } from '../components/VsBlock'
 import { HowToPlay } from '../components/HowToPlay'
-import { ArrowLeft, Copy, Exit } from '../components/Icons'
+import { ArrowLeft, Copy, Exit, Maximize, Minimize } from '../components/Icons'
 import { TopBar } from '../components/TopBar'
 import type { GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
+import { useFullscreen } from '../lib/useFullscreen'
 import { playerId, signIn } from '../lib/firebase'
 import { KEYS, hasLeft, load, markLeft, save } from '../lib/storage'
 import {
@@ -213,6 +214,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
   ) : null
 
   const inMatch = guard?.kind === 'match' || guard?.kind === 'local'
+  const fullscreen = useFullscreen(inMatch && !!game.fullscreen)
 
   let screen: ReactNode
   if (local) {
@@ -293,7 +295,16 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
             </>
           )
         }
-        right={rulesBtn}
+        right={
+          <>
+            {inMatch && game.fullscreen && fullscreen.supported && (
+              <button type="button" className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
+                {fullscreen.on ? <Minimize /> : <Maximize />}
+              </button>
+            )}
+            {rulesBtn}
+          </>
+        }
         end={
           inMatch && (
             <button type="button" className="icon-btn icon-btn--leave" onClick={() => setAsking(true)}>

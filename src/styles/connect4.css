@@ -167,6 +167,10 @@
 .c4m-results__line span { color: var(--dim); }
 .c4m-results__cards { align-items: center; }
 
+/* ── Full screen (iPad / desktop): let the board fill the height ── */
+html.is-fullscreen .c4m { width: min(1000px, 100%); }
+html.is-fullscreen .c4 { width: min(100% - 10px, max(260px, calc((100dvh - 300px) * 0.98)), 980px); }
+
 /* ── Phones during the match: pinned to one screen ─────── */
 @media (width < 900px) {
   html.scroll-locked .c4m {

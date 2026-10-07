@@ -19,6 +19,8 @@ export interface GameMeta {
   length: string
   modes: 'online' | 'online + local' | 'local'
   status: 'live' | 'soon'
+  /** offer a fullscreen button during the match (big boards that benefit on iPad / desktop) */
+  fullscreen?: boolean
   /** the original version is still playable at /classic/<slug> until this one is rebuilt */
   classic?: boolean
   /** short tagline shown under the title in the game's lobby */
@@ -83,6 +85,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     slug: 'connect4',
+    fullscreen: true,
     tiles: 'FOUR',
     name: 'Connect Four',
     blurb: 'Drop discs into the grid and line up four — across, down or diagonal. Play a single game or a series.',
@@ -100,6 +103,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     slug: 'checkers',
+    fullscreen: true,
     tiles: 'KING',
     name: 'Checkers',
     blurb: 'Diagonal warfare. Jump to capture, chain your jumps, crown your kings — and take every piece.',
@@ -134,6 +138,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     slug: 'oware',
+    fullscreen: true,
     tiles: 'SEEDS',
     name: 'Oware',
     blurb: 'Sow seeds around the 12-pit board. Capture on 2 or 3 — first to 25 wins.',

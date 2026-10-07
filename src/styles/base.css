@@ -86,3 +86,6 @@ a { color: inherit; }
     transition-duration: 1ms !important;
   }
 }
+
+/* full screen (a match on iPad / desktop): the page spans the whole display */
+html.is-fullscreen .page { max-width: none; }

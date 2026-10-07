@@ -3,11 +3,13 @@
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: 14px;
-  width: min(640px, 100%);
+  width: min(1120px, 100%);
   margin: 0 auto;
   padding-bottom: 32px;
 }
 .owm > * { width: 100%; }
+/* the board takes all the room it can; the HUD and status stay a readable width */
+.owm > .mt-hud, .owm > .ow-status { max-width: 720px; }
 
 /* ── "First to 25" (centre of the HUD) ─────────────────── */
 .ow-goal {
@@ -43,7 +45,8 @@
 /* ── Board ─────────────────────────────────────────────── */
 .ow-stage { display: grid; justify-items: center; gap: 12px; }
 .ow-board {
-  width: min(100% - 10px, 600px);
+  /* wide and short: as wide as the screen allows, unless the height runs out first (≈2.6 : 1) */
+  width: min(100% - 10px, max(300px, calc((100dvh - 330px) * 2.6)), 1100px);
   display: grid;
   gap: clamp(10px, 3vw, 18px);
   padding: clamp(10px, 3vw, 18px);
@@ -83,6 +86,7 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: background .15s, transform .15s var(--ease-snap);
+  container-type: inline-size; /* numbers scale with the pit */
 }
 .ow-pit:disabled { cursor: default; }
 .ow-board--live .ow-pit:disabled { opacity: .55; }
@@ -127,14 +131,14 @@
 .ow-seeds--lots { gap: 5%; }
 .ow-seeds--lots i { width: 19%; }
 .ow-pit--take .ow-seeds i { background: #fff; }
-.ow-pit__big { font-family: var(--display); font-size: clamp(20px, 6vw, 34px); }
+.ow-pit__big { font-family: var(--display); font-size: clamp(18px, 40cqi, 64px); }
 .ow-pit__n {
   position: absolute;
-  right: 4px;
-  bottom: 3px;
+  right: 6%;
+  bottom: 5%;
   font-family: var(--mono);
   font-weight: 500;
-  font-size: clamp(9px, 2.4vw, 12px);
+  font-size: clamp(9px, 14cqi, 20px);
   color: var(--dim);
 }
 .ow-pit:has(.ow-pit__big) .ow-pit__n { display: none; }
@@ -160,6 +164,10 @@
 }
 .owm-results__line { max-width: 40ch; font-family: var(--mono); font-size: 14px; color: var(--ink-soft); }
 .owm-results__cards { align-items: center; }
+
+/* ── Full screen (iPad / desktop): the whole display is the table ── */
+html.is-fullscreen .owm { width: 100%; }
+html.is-fullscreen .ow-board { width: min(100% - 10px, calc((100dvh - 300px) * 2.6), 1500px); }
 
 /* ── Phones during the match: pinned to one screen ─────── */
 @media (width < 900px) {
