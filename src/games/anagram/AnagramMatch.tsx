@@ -10,6 +10,8 @@ import { playersBySeat, roomPath, startMatch, type Room } from '../../lobby/room
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { RivalryLine } from '../../match/RivalryLine'
+import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
 import { Countdown } from '../../match/Countdown'
 import { MatchEnded } from '../../match/MatchEnded'
@@ -451,12 +453,14 @@ function Results({
   const headline = winner === -1 ? 'Draw' : iWon ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
   const scoreLine = `${wins[0]} — ${wins[1]}`
   const card: CardInput = {
     game: 'Anagram Race',
     winner,
     scoreLine,
     link: shareLink(GAME),
+    rivalry: rivalry?.card,
     players: [0, 1].map((s) => ({ name: names[s], seat: s as 0 | 1, score: String(wins[s]), meta: 'rounds won' })) as CardInput['players'],
     detail: {
       kind: 'rounds',
@@ -497,6 +501,7 @@ function Results({
         })}
       </ol>
 
+      <RivalryLine r={rivalry} />
       <div className="mt-share">
         <ShareResult card={card} won={iWon} message={shareMessage('Anagram Race', GAME, names, winner, scoreLine)} />
       </div>

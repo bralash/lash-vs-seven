@@ -22,6 +22,8 @@ import {
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { RivalryLine } from '../../match/RivalryLine'
+import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
 import { Countdown } from '../../match/Countdown'
 import { MatchEnded } from '../../match/MatchEnded'
@@ -321,6 +323,7 @@ function Results({
 
   // share card: spotlight the winner's best word (yours on a draw)
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.round)
   const scoreLine = `${scores[0].toLocaleString()} — ${scores[1].toLocaleString()}`
   const featured = winner >= 0 ? winner : me.seat
   const best = [...lists[featured]].sort((a, b) => score(b) - score(a) || b.length - a.length)[0]
@@ -330,6 +333,7 @@ function Results({
     winner,
     scoreLine,
     link: shareLink(GAME),
+    rivalry: rivalry?.card,
     players: [0, 1].map((s) => ({ name: names[s], seat: s as 0 | 1, score: scores[s].toLocaleString(), meta: wordsLabel(lists[s].length) })) as CardInput['players'],
     detail: {
       kind: 'grid',
@@ -394,6 +398,7 @@ function Results({
         </section>
       )}
 
+      <RivalryLine r={rivalry} />
       <div className="mt-share">
         <ShareResult card={card} won={iWon} message={shareMessage('Word Hunt', GAME, names, winner, scoreLine)} />
       </div>

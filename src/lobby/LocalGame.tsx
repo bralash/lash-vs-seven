@@ -10,6 +10,8 @@ import type { Room, Seat } from './rooms'
 export interface LocalMatch {
   names: [string, string]
   state: Record<string, unknown>
+  /** when the players sat down — tells this pass & play match apart from earlier ones (rivalry record) */
+  startedAt?: number
 }
 
 // Kept for the tab's lifetime, so a refresh mid-game picks up where you were.
@@ -56,7 +58,7 @@ export function LocalSetup({
     if (names[0].trim()) save(KEYS.name, clean[0])
     if (names[1].trim()) save(KEYS.name2, clean[1])
     play('start')
-    onStart({ names: clean, state: initialState?.(choice) ?? {} })
+    onStart({ names: clean, state: initialState?.(choice) ?? {}, startedAt: Date.now() })
   }
 
   return (
@@ -139,11 +141,12 @@ export function LocalGame({
   renderGame: (room: Room, me: Me, exit: MatchExit) => ReactNode
 }) {
   const [state, setState] = useState(match.state)
+  const [startedAt] = useState(() => match.startedAt ?? Date.now())
 
   // keep the lobby (and the tab's storage) in step, so a refresh resumes the game
   useEffect(() => {
-    onChange({ names: match.names, state })
-  }, [state, match.names, onChange])
+    onChange({ names: match.names, state, startedAt })
+  }, [state, match.names, startedAt, onChange])
 
   const session = useMemo<Session>(
     () => ({
@@ -167,7 +170,7 @@ export function LocalGame({
     code: 'LOCAL',
     status: 'playing',
     hostId: 'p0',
-    createdAt: 0,
+    createdAt: startedAt,
     players: {
       p0: { name: match.names[0], seat: 0, online: true, joinedAt: 0 },
       p1: { name: match.names[1], seat: 1, online: true, joinedAt: 0 },

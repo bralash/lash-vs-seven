@@ -14,6 +14,8 @@ import { ScoreCard } from '../../match/ScoreCard'
 import { useSession } from '../../match/session'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { RivalryLine } from '../../match/RivalryLine'
+import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
@@ -433,6 +435,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.difficulty, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
   const scoreLine = `${values[0]} — ${values[1]}`
   const card: CardInput = {
     game: 'Sudoku',
@@ -440,6 +443,7 @@ function Results({
     scoreLine,
     headline: cardLine.toUpperCase(),
     link: shareLink(GAME),
+    rivalry: rivalry?.card,
     players: [0, 1].map((k) => ({ name: names[k], seat: k as 0 | 1, score: values[k], meta: metas[k] })) as CardInput['players'],
     detail: { kind: 'sudoku', puzzle: st.puzzle, solution: st.solution, seat: winner === -1 ? 0 : winner, stats },
   }
@@ -466,6 +470,7 @@ function Results({
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
         <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={values[1]} meta={metas[1]} />
       </div>
+      <RivalryLine r={rivalry} />
       <div className="mt-share">
         <ShareResult card={card} won={iWon} message={shareMessage('Sudoku', GAME, names, winner, brag)} />
       </div>

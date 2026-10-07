@@ -7,6 +7,8 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { RivalryLine } from '../../match/RivalryLine'
+import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
@@ -194,12 +196,14 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.size, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Dots & Boxes',
     winner,
     scoreLine,
     link: shareLink(GAME),
+    rivalry: rivalry?.card,
     players: [0, 1].map((k) => ({ name: names[k], seat: k as 0 | 1, score: String(s[k]), meta: `${COLOUR[k]} · boxes` })) as CardInput['players'],
     detail: {
       kind: 'dots',
@@ -235,6 +239,7 @@ function Results({
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
         <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · boxes`} />
       </div>
+      <RivalryLine r={rivalry} />
       <div className="mt-share">
         <ShareResult card={card} won={iWon} message={shareMessage('Dots & Boxes', GAME, names, winner, scoreLine)} />
       </div>

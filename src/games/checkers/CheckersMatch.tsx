@@ -7,6 +7,8 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ShareResult } from '../../match/ShareResult'
+import { RivalryLine } from '../../match/RivalryLine'
+import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
@@ -198,6 +200,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
   const scoreLine = `${s[0]} — ${s[1]}`
   const wonBy = winner === -1 ? '' : s[(1 - winner) as Seat] === 0 ? 'Took every piece' : 'Left them no moves'
   const card: CardInput = {
@@ -206,6 +209,7 @@ function Results({
     scoreLine,
     headline: winner === -1 ? 'A DRAW' : wonBy.toUpperCase(),
     link: shareLink(GAME),
+    rivalry: rivalry?.card,
     players: [0, 1].map((k) => ({ name: names[k], seat: k as 0 | 1, score: String(s[k]), meta: `${COLOUR[k]} · pieces left` })) as CardInput['players'],
     detail: {
       kind: 'checkers',
@@ -238,6 +242,7 @@ function Results({
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
         <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · pieces left`} />
       </div>
+      <RivalryLine r={rivalry} />
       <div className="mt-share">
         <ShareResult card={card} won={iWon} message={shareMessage('Checkers', GAME, names, winner, scoreLine)} />
       </div>

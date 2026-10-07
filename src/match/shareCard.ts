@@ -40,6 +40,8 @@ export interface CardInput {
   /** the line under the winner's name, when "WINS 2 — 1" doesn't fit the game (e.g. "SOLVED IN 6:42") */
   headline?: string
   detail: CardDetail
+  /** the all-time head-to-head, in seat order, e.g. "LASH 7 — 5 SEVEN · ALL-TIME" — replaces the "MATCH RESULT" label */
+  rivalry?: string
   /** shown in the footer, e.g. "lash-vs-seven.web.app/wordhunt" */
   link: string
 }
@@ -194,7 +196,9 @@ export async function drawShareCard(input: CardInput): Promise<Blob> {
   // headline: the winner's name on a yellow sticker, then the score
   const draw = input.winner < 0
   const winnerName = draw ? 'DRAW' : input.players[input.winner].name.toUpperCase()
-  text(ctx, draw ? 'NOBODY BLINKED' : 'MATCH RESULT', W / 2, 262, 26, C.soft, { family: MONO, weight: 500, align: 'center', spacing: 5 })
+  const label = input.rivalry ?? (draw ? 'NOBODY BLINKED' : 'MATCH RESULT')
+  const labelSize = fit(ctx, label, W - 2 * M - label.length * 5, 26, MONO, 500)
+  text(ctx, label, W / 2, 262, labelSize, C.soft, { family: MONO, weight: 500, align: 'center', spacing: 5 })
   const headSize = fit(ctx, winnerName, W - 2 * M - 80, 150)
   ctx.font = font(headSize)
   const nameW = Math.min(ctx.measureText(winnerName).width, W - 2 * M - 80)

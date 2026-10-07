@@ -223,6 +223,20 @@
 .mt-share { display: flex; justify-content: center; }
 .mt-share .btn { font-size: 18px; padding: 12px 20px; }
 
+/* ── Rivalry: the all-time record against this opponent ── */
+.mt-rivalry { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.mt-rivalry__line {
+  padding: 4px 10px;
+  background: var(--hit);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 15px;
+  transform: rotate(-1deg);
+}
+.mt-rivalry__meta { font-family: var(--mono); font-size: 13px; color: var(--ink-soft); max-width: 44ch; }
+
 /* ── Win strike (shared by grid games) ──────────────────── */
 /* boards may set --strike-delay / --strike-time to time it after their last piece lands */
 .mt-winline {
