@@ -1,0 +1,130 @@
+.qrm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 14px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.qrm > * { width: 100%; }
+
+/* ── Whose turn (centre of the HUD) ────────────────────── */
+.qr-turn {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 84px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+}
+.qr-turn .label { color: var(--paper-2); font-size: 10px; }
+.qr-turn--you { background: var(--hit); }
+.qr-turn--you .label { color: var(--ink); }
+.qr-turn--you .qr-mini { animation: pulse .6s ease-in-out infinite alternate; }
+.qr-mini { width: 30px; height: 30px; overflow: visible; }
+.qr-mini .qr-pawn { stroke-width: .22; }
+
+.qr-status {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(18px, 4.6vw, 28px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.qr-status--you { background: var(--hit); }
+.qr-status--result { animation: stamp-in .35s var(--ease-snap) both; }
+
+/* ── Board ─────────────────────────────────────────────── */
+.qr-stage { display: grid; justify-items: center; }
+.qr-board {
+  display: block;
+  width: min(100% - 10px, max(260px, calc(100dvh - 380px)), 540px);
+  height: auto;
+  box-shadow: var(--shadow-lg);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.qr-board--live { cursor: pointer; }
+.qr-frame { fill: var(--board); }
+.qr-sq { fill: #3a3542; }
+.qr-sq--goal0 { fill: color-mix(in srgb, var(--lash) 34%, #3a3542); }
+.qr-sq--goal1 { fill: color-mix(in srgb, var(--seven) 40%, #3a3542); }
+.qr-sq--last { fill: color-mix(in srgb, var(--hit) 30%, #3a3542); }
+
+.qr-dot { opacity: .85; pointer-events: none; }
+.qr-dot--0 { fill: var(--lash); }
+.qr-dot--1 { fill: var(--seven); }
+
+.qr-pawn-move { transition: transform .22s var(--ease-out); pointer-events: none; }
+.qr-pawn { stroke: var(--ink); stroke-width: .09; }
+.qr-pawn--0 { fill: var(--lash); }
+.qr-pawn--1 { fill: var(--seven); }
+.qr-pawn--on { stroke: var(--hit); stroke-width: .12; animation: qr-ready .7s ease-in-out infinite alternate; }
+@keyframes qr-ready { to { stroke-width: .05; } }
+
+.qr-wall { stroke: var(--ink); stroke-width: .05; pointer-events: none; }
+.qr-wall--0 { fill: var(--lash); }
+.qr-wall--1 { fill: var(--seven); }
+.qr-wall--new { animation: qr-drop .3s var(--ease-snap) both; transform-box: fill-box; transform-origin: center; }
+@keyframes qr-drop { from { opacity: 0; transform: scale(1.35); } }
+.qr-ghost { opacity: .55; stroke: var(--hit); stroke-width: .07; }
+.qr-ghost--bad { fill: #6b6575; stroke: #e0473a; stroke-dasharray: .12 .08; opacity: .8; }
+
+/* the wall buttons (or a hint) under the board, one line high either way */
+.qr-bar { display: flex; justify-content: center; gap: 10px; min-height: 48px; align-items: center; }
+.qr-bar .hint { margin: 0; text-align: center; }
+.qr-bar .btn--primary { min-width: 11em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qr-pawn-move { transition: none; }
+  .qr-pawn--on, .qr-wall--new, .qr-turn--you .qr-mini { animation: none; }
+}
+
+/* ── Results ───────────────────────────────────────────── */
+.qrm-results { gap: 24px; padding-top: clamp(8px, 4vh, 40px); }
+.qrm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.qrm-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.qrm-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+.qrm-results__line { font-family: var(--display); font-size: clamp(20px, 4.6vw, 28px); text-transform: uppercase; }
+.qr-stats { border-collapse: collapse; border: var(--edge) solid var(--ink); background: var(--slot); box-shadow: var(--shadow-sm); }
+.qr-stats th, .qr-stats td { padding: 10px 12px; border-bottom: 2px solid var(--paper-2); text-align: center; }
+.qr-stats thead th { font-family: var(--display); font-weight: 400; font-size: 18px; text-transform: uppercase; }
+.qr-stats thead th:nth-child(2) { color: var(--lash); }
+.qr-stats thead th:nth-child(3) { color: var(--seven); }
+.qr-stats tbody th { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .1em; text-align: left; text-transform: uppercase; }
+.qr-stats td { font-family: var(--display); font-size: 24px; }
+.qr-stats tr:last-child > * { border-bottom: 0; }
+
+/* ── Full screen (iPad / desktop): let the board fill the height ── */
+html.is-fullscreen .qrm { width: min(1000px, 100%); }
+html.is-fullscreen .qr-board { width: min(100% - 10px, max(260px, calc(100dvh - 330px)), 980px); }
+
+/* ── Phones during the match: pinned to one screen ─────── */
+@media (width < 900px) {
+  html.scroll-locked .qrm {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 10px;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  html.scroll-locked .qr-stage { align-self: center; }
+  html.scroll-locked .qrm .mt-score { padding-block: 6px 8px; }
+}

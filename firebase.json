@@ -93,16 +93,6 @@
         "source": "/memory",
         "destination": "/classic/memory",
         "type": 302
-      },
-      {
-        "source": "/quoridor.html",
-        "destination": "/classic/quoridor",
-        "type": 302
-      },
-      {
-        "source": "/quoridor",
-        "destination": "/classic/quoridor",
-        "type": 302
       }
     ],
     "rewrites": [

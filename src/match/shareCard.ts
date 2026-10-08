@@ -39,6 +39,8 @@ export type CardDetail =
   | { kind: 'crossword'; rows: number; cols: number; colours: string; stats: [string, string][] }
   /** Battleship: the loser's sea as the winner left it — hits in the winner's colour, misses, unhit ships, plus stats */
   | { kind: 'battleship'; board: string; seat: Seat01; stats: [string, string][] }
+  /** Quoridor: the final 9×9 board — both pawns, every wall in its owner's colour (codes as in the game's engine), plus stats */
+  | { kind: 'quoridor'; pos: [number, number]; walls: number[]; stats: [string, string][] }
 
 export interface CardInput {
   game: string
@@ -360,6 +362,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
   }
   if (d.kind === 'battleship') {
     drawBattleship(ctx, d, x, y, h, pad)
+    return
+  }
+  if (d.kind === 'quoridor') {
+    drawQuoridor(ctx, d, x, y, h, pad)
     return
   }
   if (d.kind === 'crossword') {
@@ -760,6 +766,52 @@ function drawCheckers(ctx: Ctx, d: Extract<CardDetail, { kind: 'checkers' }>, x:
       ctx.fill()
     }
   }
+  statLines(ctx, d.stats, bx + side + 56, y + 86)
+}
+
+/** Quoridor: the board as it ended — goal rows tinted, walls in their owner's colour, both pawns. */
+function drawQuoridor(ctx: Ctx, d: Extract<CardDetail, { kind: 'quoridor' }>, x: number, y: number, h: number, pad: number) {
+  const cell = 24
+  const gap = 6
+  const frame = 9
+  const unit = cell + gap
+  const side = cell * 9 + gap * 8 + frame * 2
+  const bx = x + pad
+  const by = y + (h - side) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, side, side)
+  for (let i = 0; i < 81; i++) {
+    const r = Math.floor(i / 9)
+    ctx.fillStyle = r === 0 ? '#7a4a3a' : r === 8 ? '#3d4a86' : '#3a3542'
+    ctx.fillRect(bx + frame + (i % 9) * unit, by + frame + r * unit, cell, cell)
+  }
+  for (const code of d.walls) {
+    const seat = code >= 128 ? 1 : 0
+    const down = code % 128 >= 64
+    const at = code % 64
+    const wx = bx + frame + (at % 8) * unit
+    const wy = by + frame + Math.floor(at / 8) * unit
+    ctx.fillStyle = SEAT[seat]
+    ctx.strokeStyle = C.ink
+    ctx.lineWidth = 1.5
+    if (down) {
+      ctx.fillRect(wx + cell, wy, gap, cell * 2 + gap)
+      ctx.strokeRect(wx + cell, wy, gap, cell * 2 + gap)
+    } else {
+      ctx.fillRect(wx, wy + cell, cell * 2 + gap, gap)
+      ctx.strokeRect(wx, wy + cell, cell * 2 + gap, gap)
+    }
+  }
+  d.pos.forEach((p, seat) => {
+    const cx = bx + frame + (p % 9) * unit + cell / 2
+    const cy = by + frame + Math.floor(p / 9) * unit + cell / 2
+    disc(ctx, cx, cy, cell * 0.38, SEAT[seat])
+    ctx.beginPath()
+    ctx.arc(cx, cy, cell * 0.38, 0, Math.PI * 2)
+    ctx.strokeStyle = C.ink
+    ctx.lineWidth = 2
+    ctx.stroke()
+  })
   statLines(ctx, d.stats, bx + side + 56, y + 86)
 }
 
