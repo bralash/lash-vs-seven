@@ -26,6 +26,9 @@ const LocalSession = createContext<Session | null>(null)
 /** Wraps a pass-and-play match so its screens use the in-memory session. */
 export const LocalSessionProvider = LocalSession.Provider
 
+/** True inside a game against Ops. */
+export const useVsOps = () => !!useContext(LocalSession)?.bot
+
 export function useSession(game: string, code: string): Session {
   const local = useContext(LocalSession)
   return useMemo<Session>(

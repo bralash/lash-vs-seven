@@ -27,6 +27,7 @@ import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
 import { Reactions } from '../match/Reactions'
 import { BOT_NAME, type Brain } from '../match/bot'
+import { OpsFace } from '../components/OpsFace'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -527,8 +528,8 @@ function StartScreen({ game, onEnter, onLocal, onBot }: { game: GameMeta; onEnte
               Pass &amp; play
             </button>
             {onBot && (
-              <button type="button" className="btn btn--block lobby__local" onClick={onBot}>
-                Play {BOT_NAME}
+              <button type="button" className="btn btn--block lobby__local lobby__ops" onClick={onBot}>
+                <OpsFace size={28} /> Play {BOT_NAME}
               </button>
             )}
           </div>

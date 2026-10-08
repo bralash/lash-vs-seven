@@ -192,3 +192,5 @@
 .lobby__local { justify-content: center; }
 /* Pass & play and Play Ops, side by side */
 .lobby__solo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lobby__ops { gap: 10px; }
+.lobby__hero .opsf { justify-self: center; margin-bottom: 4px; }

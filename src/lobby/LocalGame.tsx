@@ -3,6 +3,7 @@ import type { GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
 import { KEYS, load, save } from '../lib/storage'
 import { BOT_NAME, LEVELS, type Brain, type Level } from '../match/bot'
+import { OpsFace } from '../components/OpsFace'
 import { LocalSessionProvider, type Session } from '../match/session'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
 import type { Room, Seat } from './rooms'
@@ -75,6 +76,7 @@ export function LocalSetup({
   return (
     <main className="lobby__main screen-in">
       <div className="lobby__hero">
+        {vsBot && <OpsFace size={64} />}
         <p className="label">{vsBot ? `You vs ${BOT_NAME}` : <>Pass &amp; play</>}</p>
         <h1 className="lobby__title">{game.name}</h1>
         <p className="hint">{vsBot ? `No friend handy? ${BOT_NAME} will play you` : 'One device · take turns · no room needed'}</p>

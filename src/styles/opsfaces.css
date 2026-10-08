@@ -1,0 +1,65 @@
+/* ── Ops face candidates (dev) ───────────────────────────── */
+.opsf { display: block; overflow: visible; }
+.opsf__body { transform-box: fill-box; transform-origin: 50% 100%; }
+.opsf-tag { font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: 2px; fill: var(--paper-2); text-anchor: middle; }
+
+/* every mood: a blink now and then */
+.opsf-eyes, .opsf-pupil { transform-box: fill-box; transform-origin: center; animation: opsf-blink 4s infinite; }
+@keyframes opsf-blink { 0%, 93%, 100% { scale: 1 1; } 96% { scale: 1 .1; } }
+
+/* idle: a slow breath */
+.opsf--idle .opsf__body { animation: opsf-breathe 3s ease-in-out infinite; }
+@keyframes opsf-breathe { 50% { transform: scale(1.03, .97); } }
+
+/* thinking: a small sway */
+.opsf--think .opsf__body { animation: opsf-ponder 1.6s ease-in-out infinite; }
+@keyframes opsf-ponder { 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+
+/* wins: stamped down, then a bounce */
+.opsf--win .opsf__body { animation: opsf-stamp .5s var(--ease-snap) both, opsf-bounce .7s .6s ease-in-out infinite alternate; }
+@keyframes opsf-stamp { from { transform: scale(1.6); opacity: 0; } }
+@keyframes opsf-bounce { to { transform: translateY(-6%) scale(.98, 1.03); } }
+
+/* loses: slumps over */
+.opsf--lose .opsf__body { animation: opsf-slump .8s var(--ease-out) both; }
+@keyframes opsf-slump { to { transform: rotate(8deg) scale(1, .94); } }
+
+/* draw: a shrug */
+.opsf--draw .opsf__body { animation: opsf-shrug 1.2s ease-in-out both; }
+@keyframes opsf-shrug { 20% { transform: rotate(-6deg); } 40% { transform: rotate(5deg); } 60% { transform: rotate(-3deg); } 80% { transform: rotate(1deg); } }
+
+/* Screen: a loading bar while she thinks */
+.opsf-screen__load rect { animation: opsf-load 1s calc(var(--k) * .12s) ease-in-out infinite; }
+@keyframes opsf-load { 0%, 100% { opacity: .2; } 40% { opacity: 1; } }
+
+/* Bot: eyes dart about while thinking, the antenna light flashes */
+.opsf--bot.opsf--think .opsf-pupil { animation: opsf-dart 1.4s steps(1) infinite; }
+@keyframes opsf-dart { 0% { translate: -3px -3px; } 33% { translate: 3px -3px; } 66% { translate: 0 2px; } }
+.opsf--bot.opsf--think .opsf-bot__antenna circle { animation: opsf-flash .5s steps(1) infinite; }
+@keyframes opsf-flash { 50% { fill: var(--paper); } }
+.opsf--bot.opsf--win .opsf-bot__antenna { transform-box: fill-box; transform-origin: 50% 100%; animation: opsf-wag .35s ease-in-out infinite alternate; }
+@keyframes opsf-wag { from { rotate: -14deg; } to { rotate: 14deg; } }
+
+/* Cyclops: the lid blinks; the iris circles the board while thinking; dizzy spiral on a loss */
+.opsf-lid, .opsf-lid-line { transform-box: view-box; transform-origin: 47px 19px; scale: 1 0; animation: opsf-lid 4.5s infinite; }
+@keyframes opsf-lid { 0%, 92%, 100% { scale: 1 0; } 95% { scale: 1 1; } }
+.opsf-lid-line { transform-origin: 47px 42px; scale: 1 1; animation: none; opacity: 0; }
+.opsf-lid--half { animation: none; scale: 1 .55; }
+.opsf-lid-line.opsf-lid--half { opacity: 1; translate: 0 -10px; scale: 1 1; }
+.opsf--cyclops.opsf--think .opsf-iris { animation: opsf-orbit 1.6s linear infinite; }
+@keyframes opsf-orbit { 0% { translate: 6px 0; } 25% { translate: 0 6px; } 50% { translate: -6px 0; } 75% { translate: 0 -6px; } 100% { translate: 6px 0; } }
+.opsf-spiral { transform-box: fill-box; transform-origin: center; animation: opsf-spin 1.2s linear infinite; }
+@keyframes opsf-spin { to { rotate: 360deg; } }
+
+/* Die: rolls through its faces while thinking */
+.opsf-die__roll g { opacity: 0; animation: opsf-face 1.2s calc(var(--i) * .2s) steps(1) infinite; }
+@keyframes opsf-face { 0% { opacity: 1; } 16.6% { opacity: 0; } }
+
+/* Visor: a light sweeps across, fast while thinking */
+.opsf-visor__sweep { animation: opsf-sweep 3s ease-in-out infinite alternate; }
+.opsf-visor__sweep--fast { animation-duration: .6s; }
+@keyframes opsf-sweep { to { translate: 50px 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .opsf *, .opsf__body { animation: none !important; }
+}

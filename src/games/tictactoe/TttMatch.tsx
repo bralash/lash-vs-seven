@@ -7,7 +7,7 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
-import { VsBlock } from '../../components/VsBlock'
+import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -216,7 +216,7 @@ function Results({
     <main className="ttt ttt-results screen-in">
       {iWon && <Confetti />}
       <div className="ttt-results__head">
-        <VsBlock mood="win" side={winner} eyes size={64} />
+        <ResultMark winner={winner} />
         <p className="label">
           Match {st.match} · first to {st.target}
         </p>
