@@ -7,13 +7,13 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
-import { VsBlock } from '../../components/VsBlock'
+import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
-import { useSession } from '../../match/session'
+import { useSession, useVsOps } from '../../match/session'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
@@ -95,6 +95,10 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
   const local = session.local
+  // against Ops there's no other phone to keep secrets from: deal on this device, like pass & play
+  // (Ops' brain only ever reads her own hand)
+  const vsOps = useVsOps()
+  const open = local || vsOps
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
@@ -123,23 +127,23 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     if (k) memKeys.current[roundId] = k
     return k
   }
-  const myKey = local ? null : getKey(false)
+  const myKey = open ? null : getKey(false)
   // my lock is already on the deck, but the key that takes it off isn't on this device
-  const lost = !local && live.phase !== 'done' && !myKey && (me.seat === dealer ? !!r.deckA : !!r.deckB)
+  const lost = !open && live.phase !== 'done' && !myKey && (me.seat === dealer ? !!r.deckA : !!r.deckB)
 
   const unlockMine = r.unlock?.[sk(view)]
   const unlockSig = unlockMine?.join(',')
   const dealt = useMemo<number[] | null>(() => {
-    if (local) return r.hands?.[view] ?? null
+    if (open) return r.hands?.[view] ?? null
     return unlockMine && myKey ? readHand(unlockMine, myKey) : null
     // the unlocked cards only change once a round; key them by value, not by snapshot object
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [local, r.hands, view, unlockSig, myKey])
+  }, [open, r.hands, view, unlockSig, myKey])
   const hand = dealt ? remaining(dealt, plays, view).sort(byCard) : []
   const legal = playable(hand, plays)
 
   /* ── the deal: each phone does its part as soon as it's its turn ── */
-  const step = local
+  const step = open
     ? null
     : live.phase === 'deal'
       ? !r.deckA
@@ -175,26 +179,26 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
   // one device: deal in the open
   useEffect(() => {
-    if (!local || live.phase !== 'deal') return
+    if (!open || live.phase !== 'deal') return
     const hands = shuffledHands()
     session.move<Live>((cur) => dealLocal(cur, hands))
-  }, [local, live.phase, live.round, session])
+  }, [open, live.phase, live.round, session])
 
   // waiting on the other phone during the deal: say so if it's slow
   const [slow, setSlow] = useState(false)
   useEffect(() => {
     setSlow(false)
-    if (local || live.phase !== 'deal') return
+    if (open || live.phase !== 'deal') return
     const t = setTimeout(() => setSlow(true), 3000)
     return () => clearTimeout(t)
-  }, [local, live.phase, r.deckA, r.deckB, r.unlock])
+  }, [open, live.phase, r.deckA, r.deckB, r.unlock])
 
   /* ── the end-of-round check, once both keys are out ── */
   const [check, setCheck] = useState<{ ok: true } | { ok: false; msg: string } | null>(null)
   const bothKeys = !!(r.keys?.s0 && r.keys?.s1)
   useEffect(() => {
     setCheck(null)
-    if (local || live.phase !== 'done' || !bothKeys || r.forfeitBy !== undefined) return
+    if (open || live.phase !== 'done' || !bothKeys || r.forfeitBy !== undefined) return
     let alive = true
     const t = setTimeout(() => {
       const v = verifyDeal({
@@ -215,7 +219,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       clearTimeout(t)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [local, live.phase, bothKeys, roundId])
+  }, [open, live.phase, bothKeys, roundId])
 
   /* ── playing a card: tap to lift, tap again to play ── */
   const [picked, setPicked] = useState<number | null>(null)
@@ -285,7 +289,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const last = trickNo === TRICKS - 1
 
   const status = (() => {
-    if (live.phase === 'deal') return local ? 'Dealing…' : 'Shuffling…'
+    if (live.phase === 'deal') return open ? 'Dealing…' : 'Shuffling…'
     if (live.phase === 'done') return roundLine(live, name)
     const who = live.turn
     if (local) return `${name(who)} ${leading ? 'leads' : 'to play'}${last ? ' · last trick' : ''}`
@@ -314,7 +318,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           <TrickPips winners={winners} current={live.phase === 'play' ? trickNo : -1} />
         </div>
 
-        {live.phase === 'deal' && !local ? (
+        {live.phase === 'deal' && !open ? (
           <DealSteps live={live} name={name} slow={slow} />
         ) : (
           <div className="sp-trick">
@@ -341,7 +345,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       <div className="sp-mine">
         {live.phase === 'done' ? (
           <div className="sp-done">
-            {!local && r.forfeitBy === undefined && (
+            {!open && r.forfeitBy === undefined && (
               <p className={`sp-check${check && !check.ok ? ' sp-check--bad' : ''}`}>
                 {check === null ? 'Checking the deal…' : check.ok ? '✓ Fair deal — both shuffles and every card checked' : check.msg}
               </p>
@@ -466,7 +470,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: SparSt
     <main className="spm spm-results screen-in">
       {iWon && <Confetti />}
       <div className="spm-results__head">
-        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
+        <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Spar · first to {st.target}</p>
         <h1 className={`spm-results__title${iWon ? ' spm-results__title--win' : ''}`}>
           {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
