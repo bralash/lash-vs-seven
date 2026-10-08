@@ -85,6 +85,19 @@
   text-transform: uppercase;
   text-align: center;
 }
+/* this phone has dropped: pinned over the top so it can't be missed */
+.mt-banner--self,
+html.scroll-locked .mt-banner.mt-banner--self {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  bottom: auto;
+  left: var(--gutter, 16px);
+  right: var(--gutter, 16px);
+  z-index: 60;
+  background: var(--strike);
+  box-shadow: var(--shadow);
+  animation: stamp-in .3s var(--ease-snap) both;
+}
 
 /* ── Countdown overlay (portalled to <body>) ─────────── */
 .mt-countdown {

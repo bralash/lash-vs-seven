@@ -27,6 +27,7 @@ import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
 import { OpsReactions } from '../match/OpsReactions'
 import { Reactions } from '../match/Reactions'
+import { SelfOffline } from '../match/SelfOffline'
 import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
 import { useRoom } from './useRoom'
@@ -734,7 +735,12 @@ function WaitingRoom({
   }
 
   if (room.status !== 'waiting') {
-    return <>{renderGame(room, { id: pid, seat: me.seat, isHost }, { request: onRequestLeave, now: leave })}</>
+    return (
+      <>
+        {renderGame(room, { id: pid, seat: me.seat, isHost }, { request: onRequestLeave, now: leave })}
+        {room.status === 'playing' && <SelfOffline />}
+      </>
+    )
   }
 
   const seats = playersBySeat(room)

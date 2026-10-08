@@ -165,18 +165,30 @@ export function trackPresence(game: string, code: string) {
   // Every time the connection comes up — including after the phone was locked or the player
   // switched apps to share the link — re-arm "offline when I drop" and mark ourselves online again.
   // (Doing this only once left a returning player stuck as away, and the match then ended on them.)
+  let connected = false
+  // only touch a seat that still exists — never recreate one in a room that closed while we were away
+  const markOnline = () =>
+    runTransaction(at(game, code, `players/${playerId()}`), (p: Player | null) => (p ? { ...p, online: true } : null)).catch(() => {})
   const stop = onValue(ref(db, '.info/connected'), (snap) => {
-    if (snap.val() !== true) return
+    connected = snap.val() === true
+    if (!connected) return
     onDisconnect(onlineRef)
       .set(false)
-      .then(() =>
-        // only touch a seat that still exists — never recreate one in a room that closed while we were away
-        runTransaction(at(game, code, `players/${playerId()}`), (p: Player | null) => (p ? { ...p, online: true } : null)),
-      )
+      .then(markOnline)
       .catch(() => {})
+  })
+  // A quick drop and reconnect (a blip on mobile data, the phone locked for a moment) can leave the
+  // server still holding the old connection. When it finally times that one out, its "offline" lands
+  // AFTER we've marked ourselves back online, and the other player sees us as gone while we're still
+  // here. So whenever the room says we're offline while we're connected, put it right.
+  const stopSelf = onValue(onlineRef, (snap) => {
+    if (!connected || snap.val() !== false) return
+    onDisconnect(onlineRef).set(false).catch(() => {})
+    markOnline()
   })
   return () => {
     stop()
+    stopSelf()
     // Navigating away inside the app doesn't drop the socket, so mark ourselves offline explicitly.
     onDisconnect(onlineRef).cancel().catch(() => {})
     // Transaction so we never recreate a seat (or a whole room) that was just removed.
@@ -260,4 +272,9 @@ async function cleanUpMyOldRooms() {
   if (!old.length) return
   save(MINE_KEY, JSON.stringify(all.filter((r) => !old.includes(r))))
   await Promise.all(old.map((r) => remove(roomRef(r.game, r.code)).catch(() => {})))
+}
+
+/** Calls `fn` with whether this device is connected to the database (false while offline or reconnecting). */
+export function watchConnected(fn: (up: boolean) => void) {
+  return onValue(ref(db, '.info/connected'), (snap) => fn(snap.val() === true))
 }
