@@ -63,3 +63,40 @@
 @media (prefers-reduced-motion: reduce) {
   .opsf *, .opsf__body { animation: none !important; }
 }
+
+/* ── Reaction faces (Screen look) ────────────────────────── */
+.opsf--hello .opsf__body, .opsf--wow .opsf__body, .opsf--gotcha .opsf__body { animation: opsf-stamp .4s var(--ease-snap) both; }
+.opsf-wave { transform-box: fill-box; transform-origin: 30% 100%; animation: opsf-wag .3s ease-in-out infinite alternate; }
+.opsf-glance { animation: opsf-glance 1.6s steps(1) infinite; }
+@keyframes opsf-glance { 0% { translate: 5px 0; } 50% { translate: -5px 0; } }
+.opsf--sleep .opsf__body { animation: opsf-breathe 2.4s ease-in-out infinite; }
+.opsf-zz { animation: opsf-float 1.6s ease-in-out infinite; }
+@keyframes opsf-float { 0% { opacity: 0; translate: -4px 6px; } 40% { opacity: 1; } 100% { opacity: 0; translate: 4px -6px; } }
+.opsf--smug .opsf__body { animation: opsf-tilt .5s var(--ease-out) both; }
+@keyframes opsf-tilt { to { transform: rotate(-5deg); } }
+.opsf--sorry .opsf__body { animation: opsf-bounce .5s ease-in-out infinite alternate; }
+.opsf-drop { animation: opsf-drip 1.8s ease-in infinite; }
+@keyframes opsf-drip { 0% { translate: 0 -3px; opacity: 0; } 15%, 80% { opacity: 1; } 100% { translate: 0 7px; opacity: 0; } }
+.opsf--nervous .opsf__body { animation: opsf-jitter .25s steps(2) infinite; }
+@keyframes opsf-jitter { 50% { transform: translateX(1.5px); } }
+.opsf--panic .opsf__body, .opsf--salty .opsf__body { animation: opsf-shake .12s steps(2) infinite; }
+@keyframes opsf-shake { 0% { transform: translate(-2px, 1px); } 50% { transform: translate(2px, -1px); } }
+.opsf-glitch { animation: opsf-flicker .3s steps(1) infinite; }
+@keyframes opsf-flicker { 0% { opacity: 1; translate: 0 0; } 33% { opacity: 0; } 66% { opacity: 1; translate: 4px 6px; } }
+.opsf--ouch .opsf__body { animation: opsf-recoil .45s var(--ease-out) both; }
+@keyframes opsf-recoil { 20% { transform: translateX(-6px) rotate(-6deg); } 45% { transform: translateX(4px) rotate(4deg); } 70% { transform: translateX(-2px); } }
+.opsf-sparkle, .opsf-stars { transform-box: fill-box; transform-origin: center; animation: opsf-twinkle .8s ease-in-out infinite alternate; }
+@keyframes opsf-twinkle { from { scale: .75; rotate: -15deg; } to { scale: 1.1; rotate: 15deg; } }
+.opsf--lucky .opsf__body { animation: opsf-bounce .4s ease-in-out infinite alternate; }
+.opsf--pity .opsf__body { animation: opsf-squash .5s var(--ease-out) both; }
+@keyframes opsf-squash { 40% { transform: scale(1.06, .9); } }
+.opsf--unlucky .opsf__body { animation: opsf-slump .8s var(--ease-out) both; }
+.opsf-rain { animation: opsf-rain .6s linear infinite; }
+@keyframes opsf-rain { from { translate: 0 -4px; opacity: 1; } to { translate: 0 6px; opacity: 0; } }
+.opsf--gg .opsf__body { animation: opsf-breathe 3s ease-in-out infinite; }
+.opsf-steam circle { transform-box: fill-box; transform-origin: center; animation: opsf-puff .9s ease-out infinite; }
+.opsf-steam circle + circle { animation-delay: .45s; }
+@keyframes opsf-puff { from { translate: 0 6px; opacity: 1; scale: .6; } to { translate: 0 -6px; opacity: 0; scale: 1.2; } }
+@media (prefers-reduced-motion: reduce) {
+  .opsf *, .opsf__body { animation: none !important; }
+}

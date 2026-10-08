@@ -304,3 +304,6 @@
 .steps__on .num { background: var(--hit); }
 /* the walk-through stays pinned at the top while the rules scroll under it */
 .rules-demo { position: sticky; top: -4px; z-index: 1; margin: -4px 0 0; padding: 4px 0 18px; background: var(--paper); }
+/* Ops' stickers carry her face in place of the emoji */
+.react__face { grid-row: span 2; display: grid; place-items: center; }
+.react__pop--ops { padding-block: 8px; }

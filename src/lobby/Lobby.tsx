@@ -25,8 +25,9 @@ import {
 } from './rooms'
 import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
+import { OpsReactions } from '../match/OpsReactions'
 import { Reactions } from '../match/Reactions'
-import { BOT_NAME, type Brain } from '../match/bot'
+import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
@@ -89,6 +90,8 @@ interface Props {
   option?: MatchOption | MatchOption[]
   /** lets you play Ops, the computer, on this device */
   bot?: Brain
+  /** how Ops reads the match, so she can send reactions during it */
+  sense?: OpsSense
   /** a walk-through shown above the rules in How to play */
   rulesDemo?: RulesDemo
 }
@@ -120,7 +123,7 @@ interface LeaveGuard {
   leave: () => void
 }
 
-export function Lobby({ game, renderGame, initialState, option, bot, rulesDemo }: Props) {
+export function Lobby({ game, renderGame, initialState, option, bot, sense, rulesDemo }: Props) {
   const [params, setParams] = useSearchParams()
   const urlCode = normalizeCode(params.get('room') ?? '')
   const [inRoom, setInRoom] = useState<string | null>(null)
@@ -143,7 +146,15 @@ export function Lobby({ game, renderGame, initialState, option, bot, rulesDemo }
     setLocal(null)
     setSetup(false)
   }, [game.slug])
-  const keepLocal = useCallback((m: LocalMatch) => saveLocal(game.slug, m), [game.slug])
+  // against Ops, the live state also feeds her reactions in the top bar
+  const [opsState, setOpsState] = useState<Record<string, unknown> | null>(null)
+  const keepLocal = useCallback(
+    (m: LocalMatch) => {
+      saveLocal(game.slug, m)
+      setOpsState(m.bot ? m.state : null)
+    },
+    [game.slug],
+  )
   useEffect(() => {
     if (local) setGuard({ kind: 'local', other: null, key: 'local', leave: endLocal })
     else setGuard((g) => (g?.kind === 'local' ? null : g))
@@ -377,6 +388,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, rulesDemo }
         right={
           <>
             {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} />}
+            {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
             {inMatch && game.fullscreen && fullscreen.supported && (
               <button type="button" className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
                 {fullscreen.on ? <Minimize /> : <Maximize />}

@@ -13,6 +13,24 @@ const MOODS: { id: OpsMood; label: string; where: string }[] = [
   { id: 'draw', label: 'Draw', where: 'Results' },
 ]
 
+const REACTS: { id: OpsMood; label: string; where: string }[] = [
+  { id: 'hello', label: 'Hi! / Bring it', where: 'Match starts' },
+  { id: 'wait', label: 'Hurry up', where: 'Your turn, 15s' },
+  { id: 'sleep', label: 'Zzz', where: 'Your turn, 45s' },
+  { id: 'smug', label: 'Hehe', where: 'She pulls ahead' },
+  { id: 'sorry', label: 'Sorry…', where: 'She’s crushing you' },
+  { id: 'nervous', label: 'Uh oh', where: 'You pull ahead' },
+  { id: 'panic', label: 'No no no', where: 'She’s losing badly' },
+  { id: 'ouch', label: 'Rude', where: 'You capture / win a game' },
+  { id: 'gotcha', label: 'Mine', where: 'She captures / wins a game' },
+  { id: 'wow', label: 'No way', where: 'You play a great move' },
+  { id: 'pity', label: 'Oof', where: 'You blunder' },
+  { id: 'lucky', label: 'Yes!', where: 'Good roll or deal' },
+  { id: 'unlucky', label: 'Rigged', where: 'Bad roll or deal' },
+  { id: 'gg', label: 'GG', where: 'Match ends' },
+  { id: 'salty', label: 'Again?', where: 'She loses on Hard' },
+]
+
 export default function OpsLab() {
   const [n, setN] = useState(0)
   const [pick, setPick] = useState<OpsStyle>('screen')
@@ -46,6 +64,21 @@ export default function OpsLab() {
           </div>
         </section>
       ))}
+
+      <section className="vslab__inline">
+        <p className="label">Reactions · the faces on her stickers mid-match (Screen look)</p>
+        <div className="vslab__grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
+          {REACTS.map((m) => (
+            <div key={m.id} className="vslab__card">
+              <div className="vslab__stage" style={{ height: 130 }}>
+                <OpsFace key={`r-${m.id}-${n}`} mood={m.id} size={88} />
+              </div>
+              <h2>{m.label}</h2>
+              <p>{m.where}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="vslab__inline">
         <p className="label">In context</p>

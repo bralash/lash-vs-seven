@@ -1,6 +1,6 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
-import { outcome, play, type Live } from './engine'
+import { EMPTY, outcome, play, type Live } from './engine'
 import type { TttState } from './TttMatch'
 
 /** How often Ops ignores its best move and plays anywhere. Hard never slips, so it can't be beaten. */
@@ -28,4 +28,27 @@ export const tttBrain: Brain = (state, level) => {
   if (!live || live.result || live.turn !== BOT_SEAT) return null
   const cell = Math.random() < SLIP[level] ? pick(free(live.board)) : pick(bestMoves(live.board, BOT_SEAT))
   return (cur: Live) => play(cur, BOT_SEAT, cell)
+}
+
+/** How the series looks to Ops, for her reactions. With perfect play every game is a draw, so the standing is just won, drawn or lost. */
+export const tttSense: OpsSense = {
+  key: (state) => {
+    const st = state as unknown as TttState
+    return `${st.match}:${st.live?.game}:${st.live?.board}`
+  },
+  turn: (state) => {
+    const live = (state as unknown as TttState).live
+    return !live || live.result ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as TttState).live
+    if (!live || live.result || live.board === EMPTY) return live && !live.result ? 0 : null
+    return Math.sign(search(live.board, live.turn, BOT_SEAT, 0))
+  },
+  ended: (state) => {
+    const st = state as unknown as TttState
+    const r = st.live?.result
+    if (!r) return null
+    return { winner: r.winner, final: st.live.scores.s0 >= st.target || st.live.scores.s1 >= st.target }
+  },
 }

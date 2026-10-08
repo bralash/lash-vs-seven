@@ -1,6 +1,7 @@
 import { onValue, ref, set } from 'firebase/database'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Smile } from '../components/Icons'
+import { OpsFace, type OpsMood } from '../components/OpsFace'
 import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { useSound } from '../lib/sound'
@@ -15,55 +16,52 @@ export const REACTIONS = [
   { k: 'gg', e: '🤝', label: 'GG' },
   { k: 'hurry', e: '⏳', label: 'Hurry up' },
 ] as const
-const BY_KEY = Object.fromEntries(REACTIONS.map((r) => [r.k, r]))
+export type ReactionKey = (typeof REACTIONS)[number]['k']
+const BY_KEY = Object.fromEntries(REACTIONS.map((r) => [r.k, r])) as Record<string, (typeof REACTIONS)[number]>
 
 /** a reaction stays on screen this long */
 const SHOW_MS = 2400
 /** one reaction per this long, so nobody can spam the other screen */
 const COOLDOWN_MS = 1200
 
-interface Pop {
+/** One sticker on screen: an emoji, or (from Ops) her face pulling a mood. */
+export interface Pop {
   id: number
-  k: string
   mine: boolean
+  said: string
+  e?: string
+  face?: OpsMood
 }
 
-/**
- * The top-bar button, its tray, and the stickers that pop over the game. Each player writes only
- * their latest reaction to matches/{game}/{code}/react/{uid}; the other screen shows it when it changes.
- */
-export function Reactions({ game, code, pid, other }: { game: string; code: string; pid: string; other: string | null }) {
+/** The stickers currently showing, and a way to add one (it removes itself after SHOW_MS). */
+export function usePops() {
+  const [pops, setPops] = useState<Pop[]>([])
+  const nextId = useRef(0)
+  const pop = useCallback((p: Omit<Pop, 'id'>) => {
+    const id = nextId.current++
+    setPops((all) => [...all.slice(-2), { ...p, id }])
+    setTimeout(() => setPops((all) => all.filter((x) => x.id !== id)), SHOW_MS)
+  }, [])
+  return { pops, pop }
+}
+
+/** Shows your own pick at once, then hands it on — at most one per COOLDOWN_MS. */
+export function useSend(pop: (p: Omit<Pop, 'id'>) => void, deliver: (k: ReactionKey) => void) {
+  const sentAt = useRef(0)
+  return (k: ReactionKey) => {
+    const now = Date.now()
+    if (now - sentAt.current < COOLDOWN_MS) return
+    sentAt.current = now
+    const r = BY_KEY[k]
+    pop({ mine: true, e: r.e, said: r.label })
+    deliver(k)
+  }
+}
+
+/** The top-bar button and its tray of reactions. */
+export function ReactionButton({ onPick }: { onPick: (k: ReactionKey) => void }) {
   const [open, setOpen] = useState(false)
   const [top, setTop] = useState(80)
-  const [pops, setPops] = useState<Pop[]>([])
-  const seen = useRef<Record<string, number> | null>(null)
-  const sentAt = useRef(0)
-  const nextId = useRef(0)
-  const { play } = useSound()
-
-  const pop = (k: string, mine: boolean) => {
-    const id = nextId.current++
-    setPops((p) => [...p.slice(-2), { id, k, mine }])
-    setTimeout(() => setPops((p) => p.filter((x) => x.id !== id)), SHOW_MS)
-  }
-
-  useEffect(
-    () =>
-      onValue(ref(db, `${roomPath(game, code)}/react`), (snap) => {
-        const all = (snap.val() ?? {}) as Record<string, { k: string; n: number }>
-        const before = seen.current
-        seen.current = Object.fromEntries(Object.entries(all).map(([u, r]) => [u, r.n]))
-        if (!before) return // what was already there when we arrived isn't news
-        for (const [u, r] of Object.entries(all)) {
-          if (u === pid || r.n === before[u] || !BY_KEY[r.k]) continue
-          pop(r.k, false)
-          play('tap')
-          navigator.vibrate?.(40)
-        }
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [game, code, pid],
-  )
 
   // Escape closes the tray
   useEffect(() => {
@@ -73,17 +71,8 @@ export function Reactions({ game, code, pid, other }: { game: string; code: stri
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  const send = (k: string) => {
-    setOpen(false)
-    const now = Date.now()
-    if (now - sentAt.current < COOLDOWN_MS) return
-    sentAt.current = now
-    pop(k, true)
-    set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: now }).catch(() => {})
-  }
-
   return (
-    <div className="react">
+    <>
       <button
         type="button"
         className="icon-btn"
@@ -101,7 +90,16 @@ export function Reactions({ game, code, pid, other }: { game: string; code: stri
           <button type="button" className="react__scrim" aria-label="Close reactions" onClick={() => setOpen(false)} />
           <div className="react__tray" role="menu" aria-label="Reactions" style={{ top }}>
             {REACTIONS.map((r) => (
-              <button key={r.k} type="button" role="menuitem" className="react__pick" onClick={() => send(r.k)}>
+              <button
+                key={r.k}
+                type="button"
+                role="menuitem"
+                className="react__pick"
+                onClick={() => {
+                  setOpen(false)
+                  onPick(r.k)
+                }}
+              >
                 <span className="react__emoji" aria-hidden="true">{r.e}</span>
                 <span className="react__label">{r.label}</span>
               </button>
@@ -109,20 +107,69 @@ export function Reactions({ game, code, pid, other }: { game: string; code: stri
           </div>
         </Portal>
       )}
-      <Portal>
-        <div className="react__pops" aria-live="polite">
-          {pops.map((p) => {
-            const r = BY_KEY[p.k]
-            return (
-              <div key={p.id} className={`react__pop react__pop--${p.mine ? 'mine' : 'theirs'}`}>
-                <span className="react__emoji" aria-hidden="true">{r.e}</span>
-                <span className="react__who">{p.mine ? 'You' : (other ?? 'Opponent')}</span>
-                <span className="react__said">{r.label}</span>
-              </div>
-            )
-          })}
-        </div>
-      </Portal>
+    </>
+  )
+}
+
+/** The stickers that pop over the game. */
+export function Pops({ pops, other }: { pops: Pop[]; other: string | null }) {
+  return (
+    <Portal>
+      <div className="react__pops" aria-live="polite">
+        {pops.map((p) => (
+          <div key={p.id} className={`react__pop react__pop--${p.mine ? 'mine' : 'theirs'}${p.face ? ' react__pop--ops' : ''}`}>
+            {p.face ? (
+              <span className="react__face" aria-hidden="true">
+                <OpsFace mood={p.face} size={56} />
+              </span>
+            ) : (
+              <span className="react__emoji" aria-hidden="true">{p.e}</span>
+            )}
+            <span className="react__who">{p.mine ? 'You' : (other ?? 'Opponent')}</span>
+            <span className="react__said">{p.said}</span>
+          </div>
+        ))}
+      </div>
+    </Portal>
+  )
+}
+
+/**
+ * Reactions in an online match. Each player writes only their latest reaction to
+ * matches/{game}/{code}/react/{uid}; the other screen shows it when it changes.
+ */
+export function Reactions({ game, code, pid, other }: { game: string; code: string; pid: string; other: string | null }) {
+  const { pops, pop } = usePops()
+  const seen = useRef<Record<string, number> | null>(null)
+  const { play } = useSound()
+
+  useEffect(
+    () =>
+      onValue(ref(db, `${roomPath(game, code)}/react`), (snap) => {
+        const all = (snap.val() ?? {}) as Record<string, { k: string; n: number }>
+        const before = seen.current
+        seen.current = Object.fromEntries(Object.entries(all).map(([u, r]) => [u, r.n]))
+        if (!before) return // what was already there when we arrived isn't news
+        for (const [u, r] of Object.entries(all)) {
+          const known = BY_KEY[r.k]
+          if (u === pid || r.n === before[u] || !known) continue
+          pop({ mine: false, e: known.e, said: known.label })
+          play('tap')
+          navigator.vibrate?.(40)
+        }
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [game, code, pid],
+  )
+
+  const send = useSend(pop, (k) => {
+    set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now() }).catch(() => {})
+  })
+
+  return (
+    <div className="react">
+      <ReactionButton onPick={send} />
+      <Pops pops={pops} other={other} />
     </div>
   )
 }

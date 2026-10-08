@@ -1,4 +1,4 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
 import { COLS, LINES, dropRow, idx, outcome, play, type Live } from './engine'
 import type { C4State } from './C4Match'
@@ -77,4 +77,29 @@ export const c4Brain: Brain = (state, level) => {
   const open = Array.from({ length: COLS }, (_, c) => c).filter((c) => dropRow(live.board, c) >= 0)
   const col = Math.random() < SLIP[level] ? pick(open) : pick(bestColumns(live.board, BOT_SEAT, DEPTH[level]))
   return (cur: Live) => play(cur, BOT_SEAT, col)
+}
+
+/** How the series looks to Ops, for her reactions: a 4-ply look at the board, squashed to −1…1. */
+export const c4Sense: OpsSense = {
+  key: (state) => {
+    const st = state as unknown as C4State
+    return `${st.match}:${st.live?.game}:${st.live?.board}`
+  },
+  turn: (state) => {
+    const live = (state as unknown as C4State).live
+    return !live || live.result ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as C4State).live
+    if (!live || live.result) return null
+    const v = negamax(live.board, live.turn, 4, -Infinity, Infinity)
+    const mine = live.turn === BOT_SEAT ? v : -v
+    return Math.abs(mine) >= WIN ? Math.sign(mine) : Math.tanh(mine / 150)
+  },
+  ended: (state) => {
+    const st = state as unknown as C4State
+    const r = st.live?.result
+    if (!r) return null
+    return { winner: r.winner, final: st.live.scores.s0 >= st.target || st.live.scores.s1 >= st.target }
+  },
 }
