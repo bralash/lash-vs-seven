@@ -7,12 +7,16 @@ import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
 import { VsBlock } from '../../components/VsBlock'
+import { ResultMark } from '../../match/ResultMark'
+import { BOT_NAME, BOT_SEAT } from '../../match/bot'
+import { loadDictionary } from '../../lib/dictionary'
+import { fitting, opsWord } from './bot'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
-import { useSession } from '../../match/session'
+import { useOpsLevel, useSession, useVsOps } from '../../match/session'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
@@ -78,6 +82,17 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   const secretId = `${room.code}:${room.createdAt}:${st.match}:${live.round}`
   const [mem, setMem] = useState<Record<string, Secret>>({})
   const secret = iSet ? (mem[secretId] ?? loadSecret(secretId)) : null
+  // against Ops her word is kept and answered on this device too, never shown until the round ends
+  const vsOps = useVsOps()
+  const level = useOpsLevel()
+  const opsSets = vsOps && setter === BOT_SEAT
+  const opsSecret = opsSets ? (mem[secretId] ?? loadSecret(secretId)) : null
+  const opsGuesses = vsOps && guesser === BOT_SEAT
+  // she reads the dictionary to guess; re-render once it's in so her working shows
+  const [, setDictIn] = useState(false)
+  useEffect(() => {
+    if (vsOps) loadDictionary().then(() => setDictIn(true))
+  }, [vsOps])
 
   const over = matchOver(live)
   const showResults = useHold(over, RESULT_MS)
@@ -92,7 +107,7 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
     const commit = await commitOf(word, salt)
     saveSecret(secretId, { word, salt })
     setMem((m) => ({ ...m, [secretId]: { word, salt } }))
-    sound('tap')
+    if (!opsSets) sound('tap')
     session.move<Live>((cur) => lock(cur, setter, { length: word.length, commit, hint: st.hints ? hint : '' })).catch(() => {})
   }
   const tryLetter = (l: string) => {
@@ -115,6 +130,25 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
     if (session.local || me.seat !== setter || !pending || !secret) return
     session.move<Live>((cur) => answer(cur, secret.word, secret.salt)).catch(() => {})
   }, [pending, secret, setter, me.seat, session])
+
+  // Ops picks her word as soon as it's her turn to set one (no hint: she doesn't write them)
+  const opsPicked = useRef('')
+  useEffect(() => {
+    if (!opsSets || live.phase !== 'setting' || opsPicked.current === secretId) return
+    opsPicked.current = secretId
+    const t = setTimeout(() => lockWord(opsWord(level ?? 'medium'), ''), 900)
+    return () => {
+      clearTimeout(t)
+      opsPicked.current = ''
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opsSets, live.phase, secretId])
+
+  // ...and this device answers your guesses at it
+  useEffect(() => {
+    if (!opsSets || !pending || !opsSecret) return
+    session.move<Live>((cur) => answer(cur, opsSecret.word, opsSecret.salt)).catch(() => {})
+  }, [pending, opsSecret, opsSets, session])
 
   // the guesser waits on the setter's phone; say so if it's slow
   const [slow, setSlow] = useState(false)
@@ -252,6 +286,7 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
           {/* the setter sees their own word faintly; everyone sees it at the end */}
           <WordTiles masked={round.masked} word={round.word ?? (session.local ? undefined : secret?.word)} lastLetter={(round.guessed ?? '').slice(-1)} />
           {round.hint && <p className="hm-hint">Hint · {round.hint}</p>}
+          {opsGuesses && !done && <OpsWorking round={round} />}
           <p className="hm-lives">
             {MAX_WRONG - round.wrong} wrong guess{MAX_WRONG - round.wrong === 1 ? '' : 'es'} left
           </p>
@@ -288,6 +323,26 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
 
       {awaySecs !== null && opp && <p className="mt-banner" role="status">{opp.name} disconnected · ending the match in {awaySecs}s unless they’re back</p>}
     </main>
+  )
+}
+
+/** What Ops is going on as she guesses: the words that still fit, or plain letter odds. */
+function OpsWorking({ round }: { round: Round }) {
+  const last = (round.guessed ?? '').slice(-1)
+  const tried = last ? `Tried ${last} ${round.masked.includes(last) ? '✓' : '✗'} · ` : ''
+  const fit = fitting(round)
+  const shown = round.masked.replace(/_/g, '·')
+  const line =
+    fit === null
+      ? 'reading the dictionary…'
+      : fit.length
+        ? `${fit.length.toLocaleString()} word${fit.length === 1 ? '' : 's'} I know fit ${shown}`
+        : 'no word I know fits, so going by letter odds'
+  return (
+    <p className="hm-hint hm-working" role="status">
+      {BOT_NAME}: {tried}
+      {line}
+    </p>
   )
 }
 
@@ -350,7 +405,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Hangma
     <main className="hmm hmm-results screen-in">
       {iWon && <Confetti />}
       <div className="hmm-results__head">
-        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
+        <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Hangman</p>
         <h1 className={`hmm-results__title${iWon ? ' hmm-results__title--win' : ''}`}>
           {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}

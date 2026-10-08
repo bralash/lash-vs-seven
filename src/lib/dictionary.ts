@@ -27,3 +27,15 @@ export function inDictionary(word: string) {
 export function dictionaryReady() {
   return words !== null
 }
+
+const byLength = new Map<number, string[]>()
+/** Every dictionary word of this length, or null until the dictionary has loaded. */
+export function wordsOfLength(n: number): string[] | null {
+  if (!words) return null
+  let list = byLength.get(n)
+  if (!list) {
+    list = [...words].filter((w) => w.length === n)
+    byLength.set(n, list)
+  }
+  return list
+}

@@ -167,6 +167,7 @@ export function LocalGame({
       // against Ops the screens word it like an online match: "Your turn", "Ops wins"
       local: !level,
       bot: !!level,
+      level,
       move: (mutate) => {
         setState((prev) => {
           const next = mutate(prev.live as never)

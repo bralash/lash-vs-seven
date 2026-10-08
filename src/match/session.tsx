@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo } from 'react'
 import { db } from '../lib/firebase'
 import { roomPath, startMatch } from '../lobby/rooms'
 import { applyMove } from './turns'
+import type { Level } from './bot'
 
 /**
  * How a turn-based match screen changes the game. Online, every change goes to the room in the
@@ -14,6 +15,8 @@ export interface Session {
   local: boolean
   /** playing Ops on this device: worded like an online match (you vs Ops), but nothing is recorded */
   bot?: boolean
+  /** how hard Ops plays, in a game against her */
+  level?: Level
   /** change state.live — the mutator returns the next position, or undefined to refuse */
   move: <T>(mutate: (live: T) => T | undefined) => Promise<boolean>
   /** this player wants a rematch */
@@ -28,6 +31,8 @@ export const LocalSessionProvider = LocalSession.Provider
 
 /** True inside a game against Ops. */
 export const useVsOps = () => !!useContext(LocalSession)?.bot
+/** How hard Ops plays, inside a game against her. */
+export const useOpsLevel = () => useContext(LocalSession)?.level
 
 export function useSession(game: string, code: string): Session {
   const local = useContext(LocalSession)
