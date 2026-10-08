@@ -308,3 +308,11 @@ html.scroll-locked .mt-banner.mt-banner--self {
 /* who owes whom, in a match played for stakes */
 .mt-stakes { display: grid; justify-items: center; gap: 4px; margin: 0 0 6px; padding: 0; list-style: none; }
 .mt-stakes li { padding: 3px 10px; background: var(--hit); color: var(--ink); font-family: var(--mono); font-weight: 500; font-size: 13px; letter-spacing: .04em; }
+
+/* the player's Ops, beside their score in the empty side of the card (mirrored on the right-aligned seat-2 card) */
+.mt-score__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.mt-score--1 .mt-score__row { flex-direction: row-reverse; }
+.mt-score__ops { display: flex; flex: none; margin: -2px 0; pointer-events: none; }
+@media (width <= 480px) {
+  .mt-score__ops svg { width: 30px; height: 30px; }
+}

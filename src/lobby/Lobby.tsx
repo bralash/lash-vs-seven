@@ -36,6 +36,7 @@ import { SelfOffline } from '../match/SelfOffline'
 import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
 import { StakePanel } from './StakePanel'
+import { LooksProvider, looksFor } from '../match/looks'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -800,7 +801,9 @@ function WaitingRoom({
   if (room.status !== 'waiting') {
     return (
       <>
-        {renderGame(room, { id: pid, seat: (me.seat < 2 ? me.seat : 0) as 0 | 1, seatN: me.seat, isHost }, { request: onRequestLeave, now: leave })}
+        <LooksProvider value={looksFor(room)}>
+          {renderGame(room, { id: pid, seat: (me.seat < 2 ? me.seat : 0) as 0 | 1, seatN: me.seat, isHost }, { request: onRequestLeave, now: leave })}
+        </LooksProvider>
         {room.status === 'playing' && <SelfOffline />}
       </>
     )

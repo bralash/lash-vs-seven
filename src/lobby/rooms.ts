@@ -12,6 +12,7 @@ import {
 import { db, playerId } from '../lib/firebase'
 import { load, save } from '../lib/storage'
 import type { Stake } from '../match/stakes'
+import { pickedOpsLook, type OpsStyle } from '../components/OpsFace'
 
 // Rooms live at matches/{game}/{code}. Each game gets its own namespace, so codes only
 // have to be unique per game. (The old site still uses rooms/, wh-rooms/ etc. — left untouched.)
@@ -34,6 +35,8 @@ export interface Player {
   seat: AnySeat
   online: boolean
   joinedAt: number
+  /** the Ops face they picked in Ops' room, shown on their score card (missing: they never picked) */
+  look?: OpsStyle
 }
 
 export interface Room {
@@ -77,6 +80,12 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ' // no I/O — easy to read aloud
 export const CODE_LENGTH = 4
 /** Rooms older than this get cleaned up by the browser that created them. */
 const STALE_MS = 24 * 60 * 60 * 1000
+
+/** my Ops pick for my room entry, if I made one */
+const myLook = () => {
+  const look = pickedOpsLook()
+  return look ? { look } : {}
+}
 
 export const roomPath = (game: string, code: string) => `matches/${game}/${code}`
 const roomRef = (game: string, code: string) => ref(db, roomPath(game, code))
@@ -136,7 +145,7 @@ export async function createRoom(game: string, name: string, seats = 2): Promise
       ...(seats > 2 ? { seatCount: seats } : {}),
       seats: { s0: pid },
       players: {
-        [pid]: { name, seat: 0, online: true, joinedAt: serverTimestamp() },
+        [pid]: { name, seat: 0, online: true, joinedAt: serverTimestamp(), ...myLook() },
       },
     })
     rememberRoom(game, code)
@@ -183,7 +192,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
 
     // already seated (refresh, or coming back after a drop): just mark ourselves present again
     if (room.players?.[pid]) {
-      await update(at(game, code, `players/${pid}`), { name, online: true })
+      await update(at(game, code, `players/${pid}`), { name, online: true, look: pickedOpsLook() })
       return { ok: true }
     }
     if (room.status !== 'waiting') return { ok: false, error: 'started' }
@@ -192,7 +201,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
     for (const seat of freeSeats(room)) {
       const claim = await runTransaction(at(game, code, `seats/s${seat}`), (cur: string | null) => (cur ? undefined : pid))
       if (!claim.committed) continue
-      await set(at(game, code, `players/${pid}`), { name, seat, online: true, joinedAt: serverTimestamp() })
+      await set(at(game, code, `players/${pid}`), { name, seat, online: true, joinedAt: serverTimestamp(), ...myLook() })
       return { ok: true }
     }
     return { ok: false, error: 'full' }

@@ -46,6 +46,11 @@ function subscribeLook(fn: () => void) {
 export function useOpsLook(): OpsStyle {
   return useSyncExternalStore(subscribeLook, readLook, () => OPS_LOOK)
 }
+/** The look this player chose in Ops' room, or null if they never picked one (so they're on the default). */
+export function pickedOpsLook(): OpsStyle | null {
+  const v = load(KEYS.opsLook)
+  return OPS_STYLES.some((s) => s.id === v) ? (v as OpsStyle) : null
+}
 export function setOpsLook(look: OpsStyle) {
   save(KEYS.opsLook, look)
   lookListeners.forEach((fn) => fn())

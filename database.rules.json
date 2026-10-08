@@ -95,6 +95,9 @@
               "joinedAt": {
                 ".validate": "newData.isNumber()"
               },
+              "look": {
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor)$/)"
+              },
               "$other": {
                 ".validate": false
               }
