@@ -6,7 +6,7 @@
  * added and removed in any order. Each card is a quadratic residue, so locking can't leak anything
  * through its Legendre symbol.
  *
- *  1. The phones take turns in a chain: the first locks all 36 cards with its key and shuffles, and
+ *  1. The phones take turns in a chain: the first locks all 35 cards (no Ace of Spades) with its key and shuffles, and
  *     each next one locks every card again and reshuffles (`deck`). Once every phone has, nobody can
  *     tell which card is where — as long as any one of them shuffled honestly.
  *  2. The first five cards go to the first player in seat order, the next five to the next, and so on
@@ -26,7 +26,13 @@ const P = BigInt(
 const P1 = P - 1n
 const Q = P1 / 2n
 
-export const DECK_SIZE = 36
+/** card number of the Ace of Spades, which isn't played (house rule) */
+export const ACE_OF_SPADES = 8
+/** the cards in play: 0–35 without the Ace of Spades */
+export const CARDS = Array.from({ length: 36 }, (_, k) => k).filter((k) => k !== ACE_OF_SPADES)
+export const DECK_SIZE = CARDS.length
+/** rounds dealt before the Ace of Spades came out had all 36 */
+const ALL_36 = Array.from({ length: 36 }, (_, k) => k)
 export const HAND = 5
 
 /** card k → its number in the group: (k + 2)², always a quadratic residue */
@@ -85,7 +91,7 @@ export function shuffle<T>(xs: T[]): T[] {
 
 /** Step 1, first phone in the chain: every card locked with my key, shuffled. */
 export function lockDeck(key: string): string[] {
-  return shuffle(Array.from({ length: DECK_SIZE }, (_, k) => hex(lock(encode(k), key))))
+  return shuffle(CARDS.map((k) => hex(lock(encode(k), key))))
 }
 
 /** Step 1, every next phone: lock every card again and shuffle. */
@@ -103,7 +109,7 @@ export function stripLocks(dealt: string[], myPos: number, myKey: string): strin
   return dealt.map((c, i) => (ownerOf(i) === myPos ? c : hex(modpow(big(c), undo, P))))
 }
 
-const DECODE = new Map(Array.from({ length: DECK_SIZE }, (_, k) => [encode(k), k]))
+const DECODE = new Map(ALL_36.map((k) => [encode(k), k]))
 
 /** Step 2, privately: remove my own lock from my five, once everyone else has removed theirs → card numbers. */
 export function readHand(mine: string[], myKey: string): number[] | null {
@@ -122,18 +128,19 @@ export interface DealRecord {
 
 /**
  * With every key out: was the deal honest? Returns each player's hand (card numbers, in seat order),
- * or the reason it wasn't. The deck must be exactly the 36 cards under everyone's locks, and each
+ * or the reason it wasn't. The deck must be exactly the 35 cards under everyone's locks, and each
  * player's five must be the cards in those slots of the deck with only their own lock left on.
  */
 export function verifyDeal(d: DealRecord): { hands: number[][] } | { error: string } {
   const n = d.keys.length
   if (!d.keys.every(keyOk)) return { error: 'bad key' }
-  if (d.deck?.length !== DECK_SIZE || d.dealt?.length !== HAND * n) return { error: 'short deck' }
+  const cards = d.deck?.length === 36 ? ALL_36 : CARDS
+  if (d.deck?.length !== cards.length || d.dealt?.length !== HAND * n) return { error: 'short deck' }
   // every lock at once: the keys multiply (mod p − 1)
   const all = d.keys.reduce((e, k) => (e * big(k)) % P1, 1n)
   const full = (k: number) => hex(modpow(encode(k), all, P))
-  const expect = new Set(Array.from({ length: DECK_SIZE }, (_, k) => full(k)))
-  if (new Set(d.deck).size !== DECK_SIZE || !d.deck.every((c) => expect.has(c))) return { error: 'shuffle' }
+  const expect = new Set(cards.map(full))
+  if (new Set(d.deck).size !== cards.length || !d.deck.every((c) => expect.has(c))) return { error: 'shuffle' }
   const hands: number[][] = Array.from({ length: n }, () => [])
   for (let i = 0; i < HAND * n; i++) {
     const card = DECODE.get(unlockWith(big(d.dealt[i]), d.keys[ownerOf(i)]))

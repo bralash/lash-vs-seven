@@ -36,7 +36,9 @@ import {
   leaderOf,
   matchOver,
   nextRound,
+  handTo,
   play,
+  toPlay,
   playable,
   playsOf,
   postLock,
@@ -249,7 +251,8 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   /* ── playing a card: tap to lift, tap again to play ── */
   const [picked, setPicked] = useState<number | null>(null)
   useEffect(() => setPicked(null), [plays.length, deals])
-  const myTurn = live.phase === 'play' && live.turn === view && !!myCards
+  const canPlay = toPlay(live)
+  const myTurn = canPlay.includes(view) && !!myCards
   const pick = (k: number) => {
     if (picked !== k) {
       setPicked(k)
@@ -290,7 +293,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         key={s}
         p={p}
         you={mine(s)}
-        active={local && inMatch && live.phase === 'play' && live.turn === s}
+        active={local && inMatch && canPlay.includes(s)}
         value={live.scores[s] ?? 0}
         meta={gone ? 'left' : meta}
       />
@@ -340,14 +343,15 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       return again ?? (open ? 'Dealing…' : 'Shuffling…')
     }
     if (live.phase === 'done') return roundLine(live, name)
-    const who = live.turn
-    if (local || who !== me.seatN) return `${name(who)} ${leading ? 'leads' : 'to play'}${last ? ' · last trick' : ''}`
+    const lastNote = last ? ' · last trick' : ''
+    if (leading && (local || live.turn !== me.seatN)) return `${name(live.turn)} leads${lastNote}`
+    if (!leading && (local || !canPlay.includes(me.seatN))) return `${local ? '' : 'Waiting for '}${andList(canPlay.map(name))}${local ? ' to play' : ''}${lastNote}`
     if (leading) return last ? 'Your lead · last trick' : 'Your lead'
     const canFollow = hand.some((c) => suitOf(c) === ledSuit)
     return canFollow ? `Follow ${SUIT_NAMES[ledSuit!]}` : `No ${SUIT_NAMES[ledSuit!]} — play any card`
   })()
 
-  const youAct = live.phase === 'play' && (local ? !cover : live.turn === me.seatN)
+  const youAct = live.phase === 'play' && (local ? !cover : canPlay.includes(me.seatN))
   const opponents = dealtIn.filter((s) => s !== view)
 
   return (
@@ -381,7 +385,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         ) : (
           <div className={`sp-trick sp-trick--${n}`}>
             {order.map((who, i) => {
-              const p = shown[i]
+              const p = shown.find((x) => x.s === who)
               const won = p && shownWinner === p.s
               return (
                 <div key={i} className={`sp-slot sp-slot--${who}${won ? ' sp-slot--won' : ''}`}>
@@ -428,9 +432,20 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         ) : cover ? (
           <div className="sp-pass">
             <p className="label">Pass the phone</p>
-            <button type="button" className="btn btn--primary btn--lg" onClick={() => setHolder(holdKey)}>
-              I’m {name(live.turn)} <span className="keycap">↵</span>
-            </button>
+            {/* after the lead, whoever's still to play can take it, in any order */}
+            {(canPlay.length > 1 ? canPlay : [live.turn]).map((s, i) => (
+              <button
+                key={s}
+                type="button"
+                className={`btn btn--lg${i === 0 ? ' btn--primary' : ''}`}
+                onClick={() => {
+                  setHolder(`${deals}:${s}`)
+                  if (s !== live.turn) session.move<Live>((cur) => handTo(cur, s)).catch(() => {})
+                }}
+              >
+                I’m {name(s)} {i === 0 && <span className="keycap">↵</span>}
+              </button>
+            ))}
           </div>
         ) : live.phase === 'deal' ? (
           <div className="sp-hand sp-hand--waiting" aria-hidden="true" />
@@ -619,3 +634,6 @@ function multiMessage(names: string[], winner: string | null, scoreLine: string)
   if (!winner) return `${list(names)} played Spar to a tie at the top (${scoreLine}) on Lash vs Seven. Settle it: ${url}`
   return `${winner} won Spar against ${list(names.filter((x) => x !== winner))} (${scoreLine}) on Lash vs Seven. Think you can do better? ${url}`
 }
+
+/** "Kofi", "Kofi & Esi", "Kofi, Esi & Yaw" */
+const andList = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} & ${names.at(-1)}`)

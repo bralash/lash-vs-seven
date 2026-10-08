@@ -1,6 +1,7 @@
 import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
 import { TRICKS, matchOver, play, playable, playsOf, remaining, scoreRound, suitOf, trickWinner, type Live, type Play } from './engine'
 import type { SparState } from './SparMatch'
+import { CARDS } from './deal'
 
 /** Ops only plays one-on-one, so there are always two seats: 0 (you) and 1 (her). */
 type Seat = number
@@ -67,7 +68,7 @@ function shuffle<T>(xs: T[]): T[] {
 function guess(dealt: number[], plays: Play[], seat: Seat): number[] {
   const them = other(seat)
   const seen = new Set([...dealt, ...plays.map((p) => p.c)])
-  const unseen = Array.from({ length: 36 }, (_, k) => k).filter((k) => !seen.has(k))
+  const unseen = CARDS.filter((k) => !seen.has(k))
   const n = TRICKS - plays.filter((p) => p.s === them).length
   const out = voids(plays, them)
   const fits = unseen.filter((k) => !out.has(suitOf(k)))

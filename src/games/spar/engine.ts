@@ -1,8 +1,8 @@
-import { HAND } from './deal'
+import { CARDS, DECK_SIZE, HAND } from './deal'
 
 /**
- * Spar, two to four players. 36 cards (6 to Ace in four suits), five each, play goes round in seat
- * order, follow suit if you can, no trumps: the highest card of the led suit takes the trick. Only the
+ * Spar, two to four players. 35 cards (6 to Ace in four suits, without the Ace of Spades), five each, the leader plays first and
+ * then the rest in any order, follow suit if you can, no trumps: the highest card of the led suit takes the trick. Only the
  * last trick scores: 1 point, or 3 if it's won with a 6 and 2 with a 7. Win the last two tricks with
  * 6s/7s and both count (6 + 7 = 5, 6 + 6 = 6, 7 + 7 = 4). First to the target wins.
  *
@@ -15,7 +15,7 @@ import { HAND } from './deal'
 export const TRICKS = HAND
 export const TARGETS = [5, 10, 15] as const
 
-/** Cards are numbers 0–35: suit = k ÷ 9, rank = k mod 9 (0 is the 6, 8 the Ace). */
+/** Cards are numbers 0–35: suit = k ÷ 9, rank = k mod 9 (0 is the 6, 8 the Ace). 8, the Ace of Spades, isn't dealt. */
 export const suitOf = (k: number) => Math.floor(k / 9)
 export const rankOf = (k: number) => k % 9
 export const SUITS = ['♠', '♥', '♦', '♣'] as const
@@ -122,7 +122,7 @@ export function postLock(live: Live, seat: number, deck: string[]): Live | undef
   const r = live.cur
   const chain = chainOf(live)
   const locked = r.locked ?? 0
-  if (live.phase !== 'deal' || r.dealt || chain[locked] !== seat || deck?.length !== 36) return undefined
+  if (live.phase !== 'deal' || r.dealt || chain[locked] !== seat || deck?.length !== (r.deck?.length ?? DECK_SIZE)) return undefined
   if (locked + 1 < chain.length) return { ...live, cur: { ...r, deck, locked: locked + 1 }, turn: chain[locked + 1] }
   return { ...live, cur: { ...r, deck, locked: locked + 1, dealt: deck.slice(0, HAND * chain.length), stripped: 0 }, turn: chain[0] }
 }
@@ -148,7 +148,7 @@ export function dealLocal(live: Live, hands: number[][]): Live | undefined {
 
 /** Five cards for each of `seats`, by seat (other seats get none). */
 export function shuffledHands(seats: number[]): number[][] {
-  const deck = Array.from({ length: 36 }, (_, k) => k)
+  const deck = [...CARDS]
   for (let i = deck.length - 1; i > 0; i--) {
     const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1)
     ;[deck[i], deck[j]] = [deck[j], deck[i]]
@@ -188,6 +188,26 @@ export function playable(hand: number[], plays: Play[], n: number): number[] {
 /** What's left in a seat's hand, given the five dealt. */
 export const remaining = (hand: number[], plays: Play[], seat: number) => hand.filter((c) => !plays.some((p) => p.s === seat && p.c === c))
 
+/** Seats that haven't played to the trick in progress yet (none of them, while it's still to be led). */
+function stillToPlay(seats: number[], plays: Play[], n: number): number[] {
+  const trick = plays.slice(plays.length - (plays.length % n))
+  return seats.filter((s) => !trick.some((p) => p.s === s))
+}
+
+/** Who may play now: the leader to start a trick, then anyone who hasn't played to it yet, in any order. */
+export function toPlay(live: Live): number[] {
+  if (live.phase !== 'play') return []
+  const plays = playsOf(live.cur)
+  const seats = roundSeats(live)
+  return plays.length % seats.length === 0 ? [live.turn] : stillToPlay(seats, plays, seats.length)
+}
+
+/** Pass & play: hand the phone to any player still to play this trick. */
+export function handTo(live: Live, seat: number): Live | undefined {
+  if (!toPlay(live).includes(seat) || live.turn === seat) return undefined
+  return { ...live, turn: seat }
+}
+
 /**
  * Play a card. `hand` is the player's own dealt hand when this device knows it; online the other
  * phones can't check it, so that waits for the end-of-round check.
@@ -197,12 +217,13 @@ export function play(live: Live, seat: number, card: number, hand?: number[]): L
   const plays = playsOf(r)
   const seats = roundSeats(live)
   const n = seats.length
-  if (live.phase !== 'play' || live.turn !== seat || !Number.isInteger(card) || card < 0 || card > 35) return undefined
+  if (live.phase !== 'play' || !toPlay(live).includes(seat) || !Number.isInteger(card) || card < 0 || card > 35) return undefined
   if (plays.some((p) => p.c === card)) return undefined
   if (hand && !playable(remaining(hand, plays, seat), plays, n).includes(card)) return undefined
   const next = [...plays, { s: seat, c: card }]
   const cur = { ...r, plays: next }
-  if (next.length % n !== 0) return { ...live, cur, turn: nextSeat(seats, seat) }
+  // after the lead anyone still to play can go; `turn` just suggests who (the next round the table)
+  if (next.length % n !== 0) return { ...live, cur, turn: nextSeat(stillToPlay(seats, next, n), seat) }
   const won = trickWinner(next.slice(-n))
   if (next.length < TRICKS * n) return { ...live, cur, turn: won }
   return finish({ ...live, cur })
