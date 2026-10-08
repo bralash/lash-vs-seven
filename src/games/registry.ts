@@ -115,7 +115,7 @@ export const GAMES: GameMeta[] = [
     players: [2, 4],
     tagline: 'Five cards · follow suit · only the last trick counts · 2–4 players',
     rules: [
-      { title: 'Five cards each', body: 'Two to four players and a 32-card deck — 6 up to King in every suit, with all the Aces taken out. Online, every phone helps shuffle it, so nobody can see anyone else’s hand.' },
+      { title: 'Five cards each', body: 'Two to four players and a 35-card deck — 6 up to Ace in every suit, with the Ace of Spades taken out (spades stop at the King). Online, every phone helps shuffle it, so nobody can see anyone else’s hand.' },
       { title: 'Follow suit', body: 'The leader plays any card, then everyone else plays one, in any order — whoever’s ready goes next. You must follow the same suit if you can; the highest card of that suit wins the trick. No trumps. The winner leads the next trick.' },
       { title: 'Only the last trick counts', body: 'Whoever takes the fifth trick wins the round: 1 point, or 3 if they take it with a 6 and 2 with a 7. Take the last two tricks with 6s and 7s and both count — 6 + 7 is 5.' },
       { title: 'First to the target', body: 'The host picks 5, 10 or 15 points. The round’s winner leads the next one. When a round ends, every phone checks the shuffle and every card played.' },
