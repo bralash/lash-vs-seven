@@ -50,6 +50,8 @@ const RESULT_MS = 3600
 const SETTLE_MS = 1400
 /** a shot's "Hit at B4" line stays this long */
 const FLASH_MS = 1800
+/** phones: the sea on screen changes this long after the turn does, so the last shot is seen landing */
+const SWITCH_MS = 1100
 
 export interface BattleshipState {
   best: 1 | 3
@@ -63,6 +65,7 @@ export function initialBattleshipState(best: 1 | 3 = 1, match = 1): BattleshipSt
   return { best, match, live: freshLive(best, (match % 2 === 1 ? 0 : 1) as Seat) }
 }
 
+type Sea = 'theirs' | 'yours'
 const other = (s: Seat) => (1 - s) as Seat
 const afloat = (w: Waters) => FLEET.length - (w.sunk ?? []).length
 
@@ -156,6 +159,19 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, live.waters[0].layout, live.waters[1].layout, local, me.seat, session])
+
+  // phones show one sea: theirs on your shot, yours on theirs (pass & play: always the shooter's target).
+  // The tabs peek at the other one until the turn moves on.
+  const autoSea: Sea = local || live.turn === me.seat ? 'theirs' : 'yours'
+  const [sea, setSea] = useState<Sea>(autoSea)
+  const [peek, setPeek] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSea(autoSea)
+      setPeek(false)
+    }, SWITCH_MS)
+    return () => clearTimeout(t)
+  }, [autoSea, live.turn])
 
   // the shooter waits on the other phone's answer; say so if it's slow
   const oppPending = live.waters[other(me.seat)].pending
@@ -321,13 +337,35 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
             : 'Your shot · tap a square'
           : `${name(live.turn)} is aiming…`
 
-  // online, the board that matters right now is the big one: theirs on your turn, yours on theirs
-  const theirsBig = done || local || live.turn === me.seat
-  // (wide screens show both seas side by side at full size)
+  // wide screens and the final reveal show both seas; phones one at a time, with tabs to look at the other
+  const single = !wide && !done
+  const shown: Sea = peek ? (sea === 'theirs' ? 'yours' : 'theirs') : sea
+  const theirsName = local ? `${name(foe)}’s waters` : 'Their waters'
+  const yoursName = local ? `${name(view)}’s fleet` : 'Your fleet'
+  const tabs = (
+    <div className="bs-tabs" role="tablist" aria-label="Which sea">
+      {(['theirs', 'yours'] as Sea[]).map((k) => (
+        <button
+          key={k}
+          type="button"
+          role="tab"
+          aria-selected={shown === k}
+          className={`bs-tab${shown === k ? ' bs-tab--on' : ''}${k === 'theirs' && canFire && shown !== k ? ' bs-tab--call' : ''}`}
+          onClick={() => {
+            if (shown === k) return
+            sound('tap')
+            setPeek(k !== sea)
+          }}
+        >
+          {k === 'theirs' ? theirsName : yoursName}
+        </button>
+      ))}
+    </div>
+  )
   const theirs = (
-    <section className="bs-panel" aria-label={`${local ? `${name(foe)}’s` : 'Their'} waters`}>
+    <section className="bs-panel" aria-label={theirsName}>
       <header className="bs-panel__head">
-        <span className="label">{local ? `${name(foe)}’s waters` : 'Their waters'}</span>
+        {single ? tabs : <span className="label">{theirsName}</span>}
         <FleetStatus sunk={live.waters[foe].sunk ?? []} label={`${name(foe)}’s ships`} />
       </header>
       <WatersGrid
@@ -338,15 +376,14 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
         pending={live.waters[foe].pending}
         armed={canFire}
         onTap={canFire ? fireAt : undefined}
-        mini={!theirsBig && !wide}
         label={`${name(foe)}’s waters`}
       />
     </section>
   )
   const yours = (
-    <section className="bs-panel" aria-label={local ? `${name(view)}’s fleet` : 'Your fleet'}>
+    <section className="bs-panel" aria-label={yoursName}>
       <header className="bs-panel__head">
-        <span className="label">{local ? `${name(view)}’s fleet` : 'Your fleet'}</span>
+        {single ? tabs : <span className="label">{yoursName}</span>}
         <FleetStatus sunk={live.waters[view].sunk ?? []} label={`${name(view)}’s ships`} />
       </header>
       <WatersGrid
@@ -355,7 +392,6 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
         shots={live.waters[view].shots}
         hits={live.waters[view].hits}
         pending={live.waters[view].pending}
-        mini={theirsBig && !done && !wide}
         label={local ? `${name(view)}’s fleet` : 'Your fleet'}
       />
     </section>
@@ -371,16 +407,13 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
       >
         {status}
       </p>
-      <div className={`bs-boards${theirsBig ? '' : ' bs-boards--mine'}`}>
-        {theirsBig ? (
-          <>
-            {theirs}
-            {yours}
-          </>
+      <div className="bs-boards">
+        {single ? (
+          shown === 'theirs' ? theirs : yours
         ) : (
           <>
-            {yours}
             {theirs}
+            {yours}
           </>
         )}
       </div>

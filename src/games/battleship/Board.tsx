@@ -47,7 +47,6 @@ interface WatersProps {
   /** placement: the picked-up ship, and a square that just refused a move */
   selected?: string | null
   bad?: number[]
-  mini?: boolean
   label: string
 }
 
@@ -55,10 +54,10 @@ const PAD = 0.62
 const GAP = 0.06
 
 /** The 10×10 sea: ships, wrecks, splashes and hits. One tap handler for the whole board. */
-export function WatersGrid({ ships, sunk, shots = [], hits = [], pending, onTap, armed, selected, bad, mini, label }: WatersProps) {
+export function WatersGrid({ ships, sunk, shots = [], hits = [], pending, onTap, armed, selected, bad, label }: WatersProps) {
   const hitSet = new Set(hits)
   const last = shots[shots.length - 1]
-  const off = mini ? 0 : PAD
+  const off = PAD
   const view = `${-off} ${-off} ${SIZE + off + 0.04} ${SIZE + off + 0.04}`
   const tap = (e: MouseEvent<SVGSVGElement>) => {
     if (!onTap) return
@@ -76,20 +75,19 @@ export function WatersGrid({ ships, sunk, shots = [], hits = [], pending, onTap,
 
   return (
     <svg
-      className={`bs-grid${mini ? ' bs-grid--mini' : ''}${armed ? ' bs-grid--armed' : ''}${onTap ? ' bs-grid--tap' : ''}`}
+      className={`bs-grid${armed ? ' bs-grid--armed' : ''}${onTap ? ' bs-grid--tap' : ''}`}
       viewBox={view}
       onClick={tap}
       role="img"
       aria-label={label}
     >
       <rect x={-off} y={-off} width={SIZE + off + 0.04} height={SIZE + off + 0.04} className="bs-grid__bg" />
-      {!mini &&
-        Array.from({ length: SIZE }, (_, k) => (
-          <g key={k} className="bs-grid__label">
-            <text x={k + 0.5} y={-0.18} textAnchor="middle">{COLS[k]}</text>
-            <text x={-0.3} y={k + 0.62} textAnchor="middle">{k + 1}</text>
-          </g>
-        ))}
+      {Array.from({ length: SIZE }, (_, k) => (
+        <g key={k} className="bs-grid__label">
+          <text x={k + 0.5} y={-0.18} textAnchor="middle">{COLS[k]}</text>
+          <text x={-0.3} y={k + 0.62} textAnchor="middle">{k + 1}</text>
+        </g>
+      ))}
       {Array.from({ length: CELLS }, (_, i) => (
         <rect key={i} x={(i % SIZE) + GAP} y={Math.floor(i / SIZE) + GAP} width={1 - GAP * 2} height={1 - GAP * 2} className="bs-sea" />
       ))}
