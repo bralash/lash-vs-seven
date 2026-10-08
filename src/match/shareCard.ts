@@ -35,6 +35,8 @@ export type CardDetail =
   /** Ludo: the final board — yards in their colours (null = not in play), every token where it ended */
   | { kind: 'ludo'; yards: { x: number; y: number; hex: string | null }[]; tokens: { x: number; y: number; hex: string; home: boolean }[]; stats: [string, string][] }
   | { kind: 'dots'; size: number; lines: string; boxes: string; initials: [string, string]; stats: [string, string][] }
+  /** Battleship: the loser's sea as the winner left it — hits in the winner's colour, misses, unhit ships, plus stats */
+  | { kind: 'battleship'; board: string; seat: Seat01; stats: [string, string][] }
 
 export interface CardInput {
   game: string
@@ -352,6 +354,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
   }
   if (d.kind === 'ludo') {
     drawLudo(ctx, d, x, y, h, pad)
+    return
+  }
+  if (d.kind === 'battleship') {
+    drawBattleship(ctx, d, x, y, h, pad)
     return
   }
   if (d.kind === 'c4') {
@@ -766,5 +772,49 @@ function statRow(ctx: Ctx, stats: [string, string][], x: number, y: number, colW
     const sx = x + i * colW
     text(ctx, label.toUpperCase(), sx, y, 20, C.paper2, { family: MONO, weight: 500, spacing: 3 })
     text(ctx, value.toUpperCase(), sx, y + 46, 40, C.paper)
+  })
+}
+
+/** Battleship: a 10×10 sea — hits as crosses in the winner's colour, misses as dots, ships never hit in grey. */
+function drawBattleship(ctx: Ctx, d: Extract<CardDetail, { kind: 'battleship' }>, x: number, y: number, h: number, pad: number) {
+  const cell = 22
+  const gap = 3
+  const inset = 10
+  const side = cell * 10 + gap * 9 + inset * 2
+  const bx = x + pad
+  const by = y + (h - side) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx, by, side, side)
+  for (let i = 0; i < 100; i++) {
+    const cx = bx + inset + (i % 10) * (cell + gap)
+    const cy = by + inset + Math.floor(i / 10) * (cell + gap)
+    const v = d.board[i]
+    ctx.fillStyle = v === 's' ? C.dim : '#2f2b38'
+    ctx.fillRect(cx, cy, cell, cell)
+    const mx = cx + cell / 2
+    const my = cy + cell / 2
+    if (v === 'x') {
+      ctx.fillStyle = SEAT[d.seat]
+      ctx.fillRect(cx, cy, cell, cell)
+      ctx.strokeStyle = C.paper
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(mx - 6, my - 6)
+      ctx.lineTo(mx + 6, my + 6)
+      ctx.moveTo(mx + 6, my - 6)
+      ctx.lineTo(mx - 6, my + 6)
+      ctx.stroke()
+    } else if (v === 'o') {
+      ctx.fillStyle = C.paper
+      ctx.beginPath()
+      ctx.arc(mx, my, 3.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  // three stats: a little tighter than statLines so they fit the panel
+  d.stats.forEach(([label, value], i) => {
+    const sy = y + 62 + i * 80
+    text(ctx, label.toUpperCase(), bx + side + 56, sy, 20, C.paper2, { family: MONO, weight: 500, spacing: 4 })
+    text(ctx, value.toUpperCase(), bx + side + 56, sy + 42, 36, C.paper)
   })
 }

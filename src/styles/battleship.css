@@ -1,0 +1,151 @@
+.bsm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 12px;
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.bsm > * { width: 100%; }
+
+/* ── HUD centre ────────────────────────────────────────── */
+.bs-game {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-width: 84px;
+  padding: 6px 10px;
+  background: var(--board);
+  color: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+.bs-game .label { color: var(--paper-2); font-size: 10px; }
+.bs-game strong { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.1; }
+
+/* ── Status line: whose shot, and what the last one did ── */
+.bs-status {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(17px, 4.4vw, 26px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.bs-status--you { background: var(--hit); }
+.bs-status--hit { background: var(--strike); color: var(--paper); animation: stamp-in .3s var(--ease-snap) both; }
+.bs-status--sunk { background: var(--ink); color: var(--hit); animation: stamp-in .4s var(--ease-snap) both; }
+.bs-status--miss { animation: stamp-in .25s var(--ease-out) both; }
+.bs-status--result { background: var(--hit); animation: stamp-in .4s var(--ease-snap) both; }
+
+/* ── Pass & play cover ─────────────────────────────────── */
+.bs-cover { display: grid; justify-items: center; gap: 12px; padding: 28px 8px; text-align: center; }
+.bs-cover__title { font-size: clamp(30px, 8vw, 52px); }
+.bs-cover p { max-width: 36ch; color: var(--ink-soft); }
+
+/* ── The sea ───────────────────────────────────────────── */
+.bs-grid {
+  display: block;
+  width: 100%;
+  height: auto;
+  box-shadow: var(--shadow);
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.bs-grid--mini { box-shadow: var(--shadow-sm); }
+.bs-grid__bg { fill: var(--board); }
+.bs-grid__label text { font: 500 .34px var(--mono); fill: var(--paper-2); }
+.bs-sea { fill: #1d2a45; transition: fill .12s; }
+.bs-grid--tap { cursor: pointer; }
+.bs-grid--armed { cursor: crosshair; outline: 3px solid var(--hit); outline-offset: 3px; }
+@media (hover: hover) { .bs-grid--armed .bs-sea:hover { fill: #34497a; } }
+
+/* ship sprites (Ships.tsx) */
+.bs-ship { transition: transform .18s var(--ease-out); }
+.bs-ship image { pointer-events: none; }
+.bs-ship__pick { fill: none; }
+.bs-ship--sel .bs-ship__pick { fill: rgb(255 210 63 / .28); stroke: var(--hit); stroke-width: .07; }
+.bs-bad { fill: var(--strike); opacity: .65; }
+
+.bs-hit circle { fill: var(--strike); stroke: var(--ink); stroke-width: .04; }
+.bs-hit path { stroke: var(--paper); stroke-width: .08; stroke-linecap: round; }
+.bs-hit--wreck { transform: scale(.42); transform-box: fill-box; transform-origin: center; }
+.bs-hit--last { animation: bs-boom .45s var(--ease-snap) both; transform-box: fill-box; transform-origin: center; }
+.bs-miss { fill: var(--paper); opacity: .75; }
+.bs-miss--last { animation: bs-splash .5s var(--ease-out) both; transform-box: fill-box; transform-origin: center; }
+.bs-aim circle { fill: none; stroke: var(--hit); stroke-width: .07; }
+.bs-aim path { stroke: var(--hit); stroke-width: .07; }
+.bs-aim { animation: bs-aim .7s ease-in-out infinite alternate; }
+@keyframes bs-boom { from { transform: scale(2.2); opacity: 0; } 60% { transform: scale(.85); opacity: 1; } }
+@keyframes bs-splash { from { transform: scale(3); opacity: 0; } }
+@keyframes bs-aim { from { opacity: .35; } }
+
+/* ── Boards: big one first, the other small beside its header ── */
+.bs-boards { display: grid; gap: 14px; }
+.bs-panel { display: grid; gap: 6px; }
+.bs-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bs-panel__head .label { font-size: 11px; }
+.bsm--play:not(.bsm--done) .bs-boards > .bs-panel:nth-child(2) {
+  grid-template-columns: minmax(0, 44%) minmax(0, 1fr);
+  align-items: start;
+  column-gap: 14px;
+}
+.bsm--play:not(.bsm--done) .bs-boards > .bs-panel:nth-child(2) .bs-panel__head {
+  order: 2;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ships still afloat */
+.bs-fleet { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.bs-fleet__ship { display: flex; align-items: center; }
+.bs-fleet__ship img { display: block; height: auto; }
+.bs-fleet__ship--sunk img { opacity: .55; }
+
+/* ── Placing ───────────────────────────────────────────── */
+.bs-place { display: grid; gap: 12px; }
+.bs-place__hint { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-align: center; text-transform: uppercase; color: var(--ink-soft); }
+.bs-place__actions { display: flex; justify-content: center; gap: 12px; }
+
+.bs-reveal { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.bs-warn { padding: 8px 12px; border: 2px solid var(--strike); background: #ffe3dd; font-weight: 500; }
+
+/* ── Results ───────────────────────────────────────────── */
+.bsm-results { gap: 20px; padding-top: clamp(8px, 4vh, 40px); }
+.bsm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.bsm-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.bsm-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+.bs-stats { border-collapse: collapse; border: var(--edge) solid var(--ink); background: var(--slot); box-shadow: var(--shadow-sm); }
+.bs-stats th, .bs-stats td { padding: 10px 12px; border-bottom: 2px solid var(--paper-2); text-align: center; }
+.bs-stats thead th { font-family: var(--display); font-weight: 400; font-size: 18px; text-transform: uppercase; }
+.bs-stats thead th:nth-child(2) { color: var(--lash); }
+.bs-stats thead th:nth-child(3) { color: var(--seven); }
+.bs-stats tbody th { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .1em; text-align: left; text-transform: uppercase; }
+.bs-stats td { font-family: var(--display); font-size: 24px; }
+.bs-stats tr:last-child > * { border-bottom: 0; }
+
+/* ── Wide screens: both seas side by side ──────────────── */
+@media (width >= 900px) {
+  .bsm--play { width: min(1100px, 100%); }
+  .bs-boards { grid-template-columns: 1fr 1fr; align-items: start; }
+  .bsm--play:not(.bsm--done) .bs-boards > .bs-panel:nth-child(2) { grid-template-columns: minmax(0, 1fr); }
+  .bsm--play:not(.bsm--done) .bs-boards > .bs-panel:nth-child(2) .bs-panel__head { order: 0; flex-direction: row; align-items: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bs-hit--last, .bs-miss--last, .bs-aim, .bs-status--hit, .bs-status--sunk, .bs-status--miss, .bs-status--result { animation: none !important; }
+  .bs-ship { transition: none; }
+}

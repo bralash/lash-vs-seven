@@ -7,6 +7,7 @@ import { Othello } from './games/othello/Othello'
 import { Hangman } from './games/hangman/Hangman'
 import { Oware } from './games/oware/Oware'
 import { Ludo } from './games/ludo/Ludo'
+import { Battleship } from './games/battleship/Battleship'
 import { Spar } from './games/spar/Spar'
 import { Checkers } from './games/checkers/Checkers'
 import { Sudoku } from './games/sudoku/Sudoku'
@@ -38,6 +39,7 @@ const routes: RouteObject[] = [
   { path: '/hangman', element: <Hangman /> },
   { path: '/spar', element: <Spar /> },
   { path: '/ludo', element: <Ludo /> },
+  { path: '/battleship', element: <Battleship /> },
   { path: '/sudoku', element: <Sudoku /> },
   { path: '/checkers', element: <Checkers /> },
   ...(BoardLab ? [{ path: '/dev/board', element: <Suspense><BoardLab /></Suspense> }] : []),

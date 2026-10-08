@@ -61,13 +61,8 @@
       },
       {
         "source": "/battleship.html",
-        "destination": "/classic/battleship",
-        "type": 302
-      },
-      {
-        "source": "/battleship",
-        "destination": "/classic/battleship",
-        "type": 302
+        "destination": "/battleship",
+        "type": 301
       },
       {
         "source": "/battleword.html",
