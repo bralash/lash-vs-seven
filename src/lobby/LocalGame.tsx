@@ -3,7 +3,7 @@ import type { GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
 import { KEYS, load, save } from '../lib/storage'
 import { LocalSessionProvider, type Session } from '../match/session'
-import type { MatchExit, MatchOption, Me } from './Lobby'
+import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
 import type { Room, Seat } from './rooms'
 
 /** A pass-and-play match: two names, the host's option, and the whole game state, all on this device. */
@@ -43,13 +43,14 @@ export function LocalSetup({
   onBack,
 }: {
   game: GameMeta
-  option?: MatchOption
-  initialState?: (choice?: string) => Record<string, unknown>
+  option?: MatchOption | MatchOption[]
+  initialState?: (choice?: string, all?: string[]) => Record<string, unknown>
   onStart: (m: LocalMatch) => void
   onBack: () => void
 }) {
   const [names, setNames] = useState<[string, string]>(() => [load(KEYS.name) ?? '', load(KEYS.name2) ?? ''])
-  const [choice, setChoice] = useState(option?.initial)
+  const options = optionList(option)
+  const [choices, setChoices] = useState(() => options.map((o) => o.initial))
   const { play } = useSound()
 
   const start = (e: FormEvent) => {
@@ -58,7 +59,7 @@ export function LocalSetup({
     if (names[0].trim()) save(KEYS.name, clean[0])
     if (names[1].trim()) save(KEYS.name2, clean[1])
     play('start')
-    onStart({ names: clean, state: initialState?.(choice) ?? {}, startedAt: Date.now() })
+    onStart({ names: clean, state: initialState?.(choices[0], choices) ?? {}, startedAt: Date.now() })
   }
 
   return (
@@ -81,18 +82,7 @@ export function LocalSetup({
             />
           ))}
         </div>
-        {option && (
-          <div className="lobby-option">
-            <span className="label">{option.label}</span>
-            <div className="seg" role="group" aria-label={option.label}>
-              {option.choices.map((c) => (
-                <button key={c.value} type="button" className="seg__btn" aria-pressed={choice === c.value} onClick={() => setChoice(c.value)}>
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <OptionPicker options={options} choices={choices} onChange={setChoices} />
         <button type="submit" className="btn btn--primary btn--lg btn--block">
           Start game <span className="keycap">↵</span>
         </button>

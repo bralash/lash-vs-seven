@@ -34,6 +34,35 @@ export interface MatchOption {
   initial: string
 }
 
+/** One or more host settings, normalised to a list. */
+export const optionList = (o?: MatchOption | MatchOption[]) => (Array.isArray(o) ? o : o ? [o] : [])
+
+/** The host's settings as segmented buttons — used in the waiting room and the pass & play setup. */
+export function OptionPicker({ options, choices, onChange }: { options: MatchOption[]; choices: string[]; onChange: (next: string[]) => void }) {
+  return (
+    <>
+      {options.map((o, i) => (
+        <div key={o.label} className="lobby-option">
+          <span className="label">{o.label}</span>
+          <div className="seg" role="group" aria-label={o.label}>
+            {o.choices.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                className="seg__btn"
+                aria-pressed={choices[i] === c.value}
+                onClick={() => onChange(choices.map((v, j) => (j === i ? c.value : v)))}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
 export interface MatchExit {
   /** asks "Leave the match?" first — use while the match is live */
   request: () => void
@@ -52,9 +81,9 @@ interface Props {
   /** Rendered once the host starts the match. */
   renderGame: (room: Room, me: Me, exit: MatchExit) => ReactNode
   /** Initial game state written when the host presses Start. */
-  initialState?: (choice?: string) => Record<string, unknown>
-  /** a setting the host picks in the waiting room (e.g. best of 3/5/7), passed to initialState */
-  option?: MatchOption
+  initialState?: (choice?: string, all?: string[]) => Record<string, unknown>
+  /** settings the host picks in the waiting room (e.g. best of 3/5/7), passed to initialState: the first as `choice`, every one in `all` */
+  option?: MatchOption | MatchOption[]
 }
 
 const FAILURE_COPY: Record<JoinFailure, string> = {
@@ -567,12 +596,13 @@ function WaitingRoom({
   onRequestLeave: () => void
   renderGame: Props['renderGame']
   initialState?: Props['initialState']
-  option?: MatchOption
+  option?: Props['option']
 }) {
   const live = useRoom(game.slug, code)
   const [toast, setToast] = useState('')
   const [starting, setStarting] = useState(false)
-  const [choice, setChoice] = useState(option?.initial)
+  const options = optionList(option)
+  const [choices, setChoices] = useState(() => options.map((o) => o.initial))
   const { play } = useSound()
   const pid = playerId()
 
@@ -658,7 +688,7 @@ function WaitingRoom({
     setStarting(true)
     play('start')
     try {
-      await startMatch(game.slug, code, initialState?.(choice) ?? {})
+      await startMatch(game.slug, code, initialState?.(choices[0], choices) ?? {})
     } catch {
       setStarting(false)
       setToast('Couldn’t start. Try again.')
@@ -712,18 +742,7 @@ function WaitingRoom({
       </ul>
 
       <div className="lobby__stack" aria-live="polite">
-        {isHost && option && (
-          <div className="lobby-option">
-            <span className="label">{option.label}</span>
-            <div className="seg" role="group" aria-label={option.label}>
-              {option.choices.map((c) => (
-                <button key={c.value} type="button" className="seg__btn" aria-pressed={choice === c.value} onClick={() => setChoice(c.value)}>
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {isHost && <OptionPicker options={options} choices={choices} onChange={setChoices} />}
         {isHost ? (
           <button type="button" className="btn btn--primary btn--lg btn--block" disabled={!ready || starting} onClick={start}>
             {starting ? 'Starting…' : ready ? 'Start match' : 'Waiting for opponent'} <span className="keycap">↵</span>

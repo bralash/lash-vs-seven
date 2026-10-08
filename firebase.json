@@ -91,13 +91,8 @@
       },
       {
         "source": "/ludo.html",
-        "destination": "/classic/ludo",
-        "type": 302
-      },
-      {
-        "source": "/ludo",
-        "destination": "/classic/ludo",
-        "type": 302
+        "destination": "/ludo",
+        "type": 301
       },
       {
         "source": "/memory.html",

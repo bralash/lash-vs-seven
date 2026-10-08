@@ -30,6 +30,8 @@ export type CardDetail =
   /** Oware: the final pits (seat 1's row across the top, right to left), plus stats */
   | { kind: 'oware'; pits: number[]; stats: [string, string][] }
   /** Dots & Boxes: the final board with every box in its owner's colour, plus stats */
+  /** Ludo: the final board — yards in their colours (null = not in play), every token where it ended */
+  | { kind: 'ludo'; yards: { x: number; y: number; hex: string | null }[]; tokens: { x: number; y: number; hex: string; home: boolean }[]; stats: [string, string][] }
   | { kind: 'dots'; size: number; lines: string; boxes: string; initials: [string, string]; stats: [string, string][] }
 
 export interface CardInput {
@@ -319,6 +321,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
   }
   if (d.kind === 'dots') {
     drawDots(ctx, d, x, y, h, pad)
+    return
+  }
+  if (d.kind === 'ludo') {
+    drawLudo(ctx, d, x, y, h, pad)
     return
   }
   if (d.kind === 'c4') {
@@ -615,6 +621,39 @@ function drawOware(ctx: Ctx, d: Extract<CardDetail, { kind: 'oware' }>, x: numbe
     })
   })
   statLines(ctx, d.stats, bx + w + 56, y + 86)
+}
+
+/** Ludo: the board at the end, every token where it finished. */
+function drawLudo(ctx: Ctx, d: Extract<CardDetail, { kind: 'ludo' }>, x: number, y: number, h: number, pad: number) {
+  const side = Math.min(h - pad * 2, 330)
+  const u = side / 15
+  const bx = x + pad
+  const by = y + (h - side) / 2
+  ctx.fillStyle = '#211e28'
+  ctx.fillRect(bx - 6, by - 6, side + 12, side + 12)
+  // the cross of track squares
+  for (let r = 0; r < 15; r++)
+    for (let c = 0; c < 15; c++) {
+      if ((r >= 6 && r <= 8) === (c >= 6 && c <= 8)) continue
+      ctx.fillStyle = C.paper
+      ctx.fillRect(bx + c * u + 1, by + r * u + 1, u - 2, u - 2)
+    }
+  for (const yd of d.yards) {
+    ctx.fillStyle = yd.hex ?? '#3a3644'
+    ctx.fillRect(bx + yd.x * u, by + yd.y * u, u * 6, u * 6)
+    ctx.fillStyle = '#211e28'
+    ctx.fillRect(bx + (yd.x + 1) * u, by + (yd.y + 1) * u, u * 4, u * 4)
+  }
+  ctx.fillStyle = C.ink
+  ctx.fillRect(bx + 6 * u, by + 6 * u, u * 3, u * 3)
+  for (const t of d.tokens) {
+    const tx = bx + t.x * u
+    const ty = by + t.y * u
+    disc(ctx, tx + 2, ty + 3, u * 0.36, C.ink)
+    disc(ctx, tx, ty, u * 0.36, t.hex)
+    if (t.home) disc(ctx, tx, ty, u * 0.14, C.ink)
+  }
+  statLines(ctx, d.stats, bx + side + 56, y + 86)
 }
 
 /** Sudoku: the solved grid — clues in ink, the squares the winner filled in their colour. */

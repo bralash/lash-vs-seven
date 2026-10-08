@@ -1,0 +1,152 @@
+.ldm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 12px;
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+.ldm > * { width: 100%; }
+
+/* ── Under the board: status + die, in thumb reach ─────── */
+.ld-controls { display: flex; align-items: stretch; gap: 12px; }
+.ld-controls .ld-status { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; }
+
+/* ── The die ───────────────────────────────────────────── */
+.ld-die {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  flex: none;
+  width: clamp(56px, 15vw, 72px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 4px solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  cursor: default;
+  transition: transform .12s var(--ease-out), box-shadow .12s var(--ease-out);
+}
+.ld-die:disabled { opacity: 1; }
+.ld-die--go { cursor: pointer; background: var(--hit); animation: ld-nudge 1.4s ease-in-out infinite; }
+.ld-die--go:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.ld-die--shake { animation: ld-shake .48s linear; }
+@keyframes ld-nudge { 0%, 70%, 100% { transform: none; } 80% { transform: rotate(-7deg); } 90% { transform: rotate(6deg); } }
+@keyframes ld-shake {
+  20% { transform: translate(-3px, 2px) rotate(-14deg); }
+  40% { transform: translate(3px, -2px) rotate(12deg); }
+  60% { transform: translate(-2px, -1px) rotate(-8deg); }
+  80% { transform: translate(2px, 1px) rotate(5deg); }
+}
+.ld-die__face {
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  width: 70%;
+  aspect-ratio: 1;
+}
+.ld-die__face i { display: block; width: 62%; aspect-ratio: 1; margin: auto; border-radius: 50%; }
+.ld-die__face i.on { background: var(--ink); }
+
+.ld-swatches { display: inline-flex; gap: 4px; }
+.ld-swatches i { width: 12px; height: 12px; border: 2px solid var(--ink); }
+
+.ld-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(16px, 4.2vw, 24px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.ld-status--you { background: var(--hit); }
+.ld-status__dot { flex: none; width: 14px; height: 14px; border: 2px solid var(--ink); }
+
+/* ── The board ─────────────────────────────────────────── */
+.ld-stage { display: grid; place-items: center; }
+.ld-board {
+  display: block;
+  width: min(100% - 10px, max(260px, calc(100dvh - 300px)), 600px);
+  height: auto;
+  box-shadow: var(--shadow-lg);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ld-board__bg { fill: var(--board); }
+.ld-sq { stroke: var(--board); stroke-width: .06; }
+.ld-sq:not([fill]) { fill: #ece2cc; }
+.ld-sq--home { stroke-width: .06; }
+.ld-off .ld-yard, .ld-off .ld-yard__spot { opacity: .5; }
+.ld-yard { stroke: var(--board); stroke-width: .08; }
+.ld-yard__in { fill: var(--board); }
+.ld-yard__spot { fill: var(--tile); stroke-width: .07; }
+.ld-yard__pulse { fill: none; stroke: #fff; stroke-width: .16; animation: ld-pulse 1s ease-in-out infinite alternate; }
+@keyframes ld-pulse { from { opacity: .15; } to { opacity: .95; } }
+.ld-exit-dot { fill: var(--board); opacity: .55; pointer-events: none; }
+.ld-centre { stroke: var(--board); stroke-width: .06; }
+
+.ld-tok__shadow { fill: var(--ink); }
+.ld-tok__body { stroke: var(--ink); stroke-width: .07; }
+.ld-tok__eye { fill: rgb(255 255 255 / .35); }
+.ld-tok--home .ld-tok__eye { fill: var(--ink); }
+.ld-tok--pick { cursor: pointer; }
+.ld-tok__ring { fill: none; stroke: #fff; stroke-width: .07; stroke-dasharray: .18 .12; animation: ld-spin 1.6s linear infinite; transform-box: fill-box; transform-origin: center; }
+.ld-tok--sel .ld-tok__ring { stroke: var(--hit); stroke-dasharray: none; stroke-width: .12; animation: none; }
+@keyframes ld-spin { to { transform: rotate(360deg); } }
+
+.ld-dest { cursor: pointer; }
+.ld-dest circle { stroke-width: .1; fill-opacity: .82; animation: ld-pop .3s var(--ease-snap) both; transform-box: fill-box; transform-origin: center; }
+.ld-dest__arrow { font: 400 .55px var(--display); pointer-events: none; }
+@keyframes ld-pop { from { transform: scale(.4); opacity: 0; } }
+
+/* ── Results ───────────────────────────────────────────── */
+.ldm-results { gap: 20px; padding-top: clamp(8px, 4vh, 40px); }
+.ldm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.ldm-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.ldm-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+}
+.ldm-results__line { font-family: var(--display); font-size: clamp(20px, 4.6vw, 28px); text-transform: uppercase; }
+.ldm-results__cards { align-items: center; }
+
+/* ── Full screen (iPad / desktop): let the board fill the height ── */
+html.is-fullscreen .ldm { width: min(1000px, 100%); }
+html.is-fullscreen .ld-board { width: min(100% - 10px, max(260px, calc(100dvh - 260px)), 980px); }
+
+/* ── Phones during the match: pinned to one screen ─────── */
+@media (width < 900px) {
+  html.scroll-locked .ldm {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: 0;
+    gap: 10px;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  /* the board takes exactly the space between the scores and the die row (as big as fits), and sits
+     right on top of the die row so tokens and die share the bottom of the screen */
+  html.scroll-locked .ld-stage {
+    container-type: size;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 0;
+    padding-bottom: 8px;
+  }
+  html.scroll-locked .ld-board { width: min(calc(100cqw - 10px), calc(100cqh - 10px), 900px); }
+  html.scroll-locked .ldm .mt-score { padding-block: 6px 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-die--go, .ld-die--shake, .ld-yard__pulse, .ld-tok__ring, .ld-dest circle { animation: none !important; }
+}
