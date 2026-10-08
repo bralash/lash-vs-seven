@@ -7,13 +7,15 @@ import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
 import { VsBlock } from '../../components/VsBlock'
+import { ResultMark } from '../../match/ResultMark'
+import { BOT_SEAT } from '../../match/bot'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import { battleshipFeats } from './feats'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
-import { useSession } from '../../match/session'
+import { useSession, useVsOps } from '../../match/session'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
@@ -35,6 +37,7 @@ import {
   newSalt,
   norm,
   nextGame,
+  randomLayout,
   reveal,
   shipName,
   verify,
@@ -80,11 +83,14 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
   const mine = (s: Seat) => !local && s === me.seat
+  // against Ops her fleet is kept and answered on this device too (her brain never reads yours)
+  const vsOps = useVsOps()
+  const holds = (s: Seat) => local || s === me.seat || (vsOps && s === BOT_SEAT)
 
   // each fleet lives only on its owner's device (both, in pass & play)
   const secretId = (s: Seat) => `${room.code}:${room.createdAt}:${st.match}:${live.game}:${s}`
   const [mem, setMem] = useState<Record<string, Secret>>({})
-  const secretOf = (s: Seat): Secret | null => (local || s === me.seat ? (mem[secretId(s)] ?? loadSecret(secretId(s))) : null)
+  const secretOf = (s: Seat): Secret | null => (holds(s) ? (mem[secretId(s)] ?? loadSecret(secretId(s))) : null)
   const layoutOf = (s: Seat): Layout | null => {
     const sec = secretOf(s)
     return sec ? decode(sec.layout) : null
@@ -105,9 +111,19 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
     const commit = await commitOf(enc, salt)
     saveSecret(secretId(seat), { layout: enc, salt })
     setMem((m) => ({ ...m, [secretId(seat)]: { layout: enc, salt } }))
-    sound('start')
+    if (!(vsOps && seat === BOT_SEAT)) sound('start')
     session.move<Live>((cur) => lock(cur, seat, commit)).catch(() => {})
   }
+
+  // Ops places her fleet at random as soon as a game starts
+  const opsPlaced = useRef('')
+  useEffect(() => {
+    const id = secretId(BOT_SEAT)
+    if (!vsOps || live.phase !== 'placing' || live.waters[BOT_SEAT].commit || opsPlaced.current === id) return
+    opsPlaced.current = id
+    lockFleet(BOT_SEAT, randomLayout())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vsOps, live.phase, live.game, st.match, live.waters[BOT_SEAT].commit])
 
   /* ── firing ── */
   const shotsTotal = (live.waters[0].shots ?? []).length + (live.waters[1].shots ?? []).length
@@ -148,18 +164,28 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myPending, mySecret?.layout, local, me.seat, session])
 
+  // against Ops: this device answers your shots at her fleet
+  const opsPending = live.waters[BOT_SEAT].pending
+  useEffect(() => {
+    if (!vsOps || opsPending === undefined) return
+    const sec = secretOf(BOT_SEAT)
+    const lay = sec && decode(sec.layout)
+    if (sec && lay) session.move<Live>((cur) => answer(cur, BOT_SEAT, lay, sec.salt)).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opsPending, vsOps, session])
+
   // when a game ends, each fleet still hidden is shown (the loser's already is)
   const done = live.phase === 'done'
   useEffect(() => {
     if (!done) return
     for (const s of [0, 1] as Seat[]) {
-      if (live.waters[s].layout || !(local || s === me.seat)) continue
+      if (live.waters[s].layout || !holds(s)) continue
       const sec = secretOf(s)
       const lay = sec && decode(sec.layout)
       if (sec && lay) session.move<Live>((cur) => reveal(cur, s, lay, sec.salt)).catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [done, live.waters[0].layout, live.waters[1].layout, local, me.seat, session])
+  }, [done, live.waters[0].layout, live.waters[1].layout, local, vsOps, me.seat, session])
 
   // phones show one sea: theirs on your shot, yours on theirs (pass & play: always the shooter's target).
   // The tabs peek at the other one until the turn moves on.
@@ -536,7 +562,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
     <main className="bsm bsm-results screen-in">
       {iWon && <Confetti />}
       <div className="bsm-results__head">
-        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
+        <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Battleship{live.best === 3 ? ' · best of 3' : ''}</p>
         <h1 className={`bsm-results__title${iWon ? ' bsm-results__title--win' : ''}`}>
           {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
