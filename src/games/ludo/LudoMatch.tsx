@@ -7,7 +7,7 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
-import { VsBlock } from '../../components/VsBlock'
+import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -369,7 +369,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
     <main className="ldm ldm-results screen-in">
       {iWon && <Confetti />}
       <div className="ldm-results__head">
-        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
+        <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Ludo · {st.mode === 'full' ? '2 colours each' : '1 colour each'}</p>
         <h1 className={`ldm-results__title${iWon ? ' ldm-results__title--win' : ''}`}>
           {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
