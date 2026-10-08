@@ -1,12 +1,40 @@
+import { useState } from 'react'
 import type { RivalryView } from './useRivalry'
 
-/** The all-time head-to-head under a match's result. */
+/** The all-time head-to-head under a match's result, and any feats earned in it. */
 export function RivalryLine({ r }: { r: RivalryView | null }) {
+  const [open, setOpen] = useState<string | null>(null)
   if (!r) return null
+  const shown = r.feats.find((f) => `${f.id}:${f.who}` === open)
   return (
     <div className="mt-rivalry">
       <p className="mt-rivalry__line">{r.line}</p>
       {(r.streak || r.split) && <p className="mt-rivalry__meta">{[r.streak, r.split].filter(Boolean).join(' · ')}</p>}
+      {r.feats.length > 0 && (
+        <>
+          <ul className="mt-feats" aria-label="Feats this match">
+            {r.feats.map((f) => {
+              const key = `${f.id}:${f.who}`
+              return (
+                <li key={key}>
+                  <button
+                    type="button"
+                    className={`mt-feat${f.first ? ' mt-feat--first' : ''}`}
+                    aria-expanded={open === key}
+                    onClick={() => setOpen(open === key ? null : key)}
+                  >
+                    <b>{f.name}</b>
+                    <span>
+                      {f.who} · {f.note}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          {shown && <p className="mt-feats__why">{shown.blurb}</p>}
+        </>
+      )}
     </div>
   )
 }

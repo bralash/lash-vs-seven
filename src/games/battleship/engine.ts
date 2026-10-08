@@ -79,6 +79,8 @@ export interface GameLog {
   shots: [number, number]
   hits: [number, number]
   run: [number, number]
+  /** ships each player sank (missing on games logged before it was kept) */
+  sank?: [number, number]
 }
 
 const other = (s: Seat) => (1 - s) as Seat
@@ -230,7 +232,13 @@ function endGame(live: Live, winner: Seat, forfeit: boolean): Live {
   wins[winner]++
   // seat 0 shot at seat 1's waters, and the other way round
   const by = [shooting(live.waters[1]), shooting(live.waters[0])]
-  const log: GameLog = { winner, shots: [by[0].shots, by[1].shots], hits: [by[0].hits, by[1].hits], run: [by[0].run, by[1].run] }
+  const log: GameLog = {
+    winner,
+    shots: [by[0].shots, by[1].shots],
+    hits: [by[0].hits, by[1].hits],
+    run: [by[0].run, by[1].run],
+    sank: [(live.waters[1].sunk ?? []).length, (live.waters[0].sunk ?? []).length],
+  }
   if (forfeit) log.forfeit = true
   return { ...live, phase: 'done', winner, wins, played: [...(live.played ?? []), log], ...(forfeit ? { forfeit } : {}) }
 }

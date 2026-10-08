@@ -1,6 +1,8 @@
 // Every game on the site. The homepage and each game's lobby read from here,
 // so adding a game = one entry + one route component.
 
+import { BATTLESHIP_FEATS } from './battleship/feats'
+
 export type Category = 'word' | 'board' | 'card' | 'puzzle'
 
 export interface RuleStep {
@@ -114,6 +116,7 @@ export const GAMES: GameMeta[] = [
       { title: 'Take your shot', body: 'Players take turns firing at a square of the other’s sea — one shot a turn, hit or miss. A hit is marked in red, a miss with a splash.' },
       { title: 'Sink them all', body: 'When every square of a ship is hit, it sinks and its outline shows. Sink all five of your opponent’s ships first to win. The host picks one battle or best of 3.' },
       { title: 'No peeking', body: 'Online, your fleet never leaves your phone — it answers each shot. At the end both fleets are revealed and checked against what was locked in at the start and every answer given, so nobody can move a ship or fib about a hit.' },
+      { title: 'Feats', body: `Brag-worthy moments, kept against each rival: ${BATTLESHIP_FEATS.map((f) => `${f.name} — ${f.blurb.charAt(0).toLowerCase()}${f.blurb.slice(1, -1)}`).join('; ')}.` },
     ],
   },
   {

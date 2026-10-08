@@ -30,3 +30,12 @@ record that matters is **you vs this one person**. No accounts, no public rankin
 ## Test
 - Unit-ish: record wins/losses/draws, dedupe on re-render/refresh, streak flips.
 - Two-tab online match ×2 (rematch) → both tabs show matching records; pass & play match → local key.
+
+## Feats (added 2026-10-08, Battleship first)
+Brag-worthy moments kept per rival on the same record (`Rival.feats[id] = { me, them }`: matches each side earned it in).
+- Each game defines its feats in `src/games/<game>/feats.ts` (`FeatDef[]` + a function that reads the finished match
+  and returns the feat ids earned by each seat), and registers the list in `src/match/feats.ts`.
+- Results pass them as the last argument of `useRivalry(…, feats)`; `RivalryLine` shows them as tags
+  ("UNTOUCHED · You · first vs Seven", yellow the first time) and tapping one shows what it takes.
+- The homepage rival card lists them when opened ("Untouched — You ×2 · Seven ×1").
+- Add a "Feats" step to the game's rules in the registry so players know what to aim for.

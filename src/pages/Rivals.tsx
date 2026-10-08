@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { gameBySlug } from '../games/registry'
 import { useSound } from '../lib/sound'
+import { featById } from '../match/feats'
 import { lastGame, listRivals, type Rival, type Tally } from '../match/rivalry'
 
 /** rivals shown before "Show all" */
@@ -64,6 +65,7 @@ export function Rivals() {
           const streak = r.streak && r.streak.n >= 2 ? `${r.streak.who === 'me' ? me : them} won ${r.streak.n} in a row` : null
           const games = Object.entries(r.byGame).sort((x, y) => y[1].w + y[1].l + y[1].d - (x[1].w + x[1].l + x[1].d))
           const isOpen = open === r.key
+          const feats = Object.entries(r.feats ?? {}).filter(([id]) => featById(id))
           return (
             <li key={r.key} className={`rival${isOpen ? ' rival--open' : ''}`}>
               <button
@@ -117,6 +119,21 @@ export function Rivals() {
                       </button>
                     </li>
                   ))}
+                </ul>
+              )}
+              {isOpen && feats.length > 0 && (
+                <ul className="rival__feats" aria-label={`Feats against each other`}>
+                  {feats.map(([id, t]) => {
+                    const def = featById(id)!
+                    return (
+                      <li key={id} className="rival__feat" title={def.blurb}>
+                        <b>{def.name}</b>
+                        <span>
+                          {[t.me && `${me} ×${t.me}`, t.them && `${them} ×${t.them}`].filter(Boolean).join(' · ')}
+                        </span>
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </li>

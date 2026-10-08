@@ -20,6 +20,12 @@ export interface Rival {
   updatedAt: number
   /** the game you last played together (missing on records from before it was kept) */
   last?: string
+  /** feats earned against each other, by feat id: how many matches each side earned it in */
+  feats?: Record<string, FeatTally>
+}
+export interface FeatTally {
+  me: number
+  them: number
 }
 interface Store {
   rivals: Record<string, Rival>
@@ -59,16 +65,30 @@ export function localKey(names: [string, string]) {
 }
 
 /**
- * Count one finished match (from "my" side — in pass & play, the side of the name that sorts first).
- * Safe to call repeatedly: a matchId already counted is ignored. Returns the rival's record either way.
+ * Count one finished match (from "my" side — in pass & play, the side of the name that sorts first),
+ * with the feats each side earned in it. Safe to call repeatedly: a matchId already counted is ignored.
+ * Returns the rival's record either way.
  */
-export function recordResult(r: { game: string; key: string; name: string; outcome: Outcome; matchId: string }): Rival {
+export function recordResult(r: {
+  game: string
+  key: string
+  name: string
+  outcome: Outcome
+  matchId: string
+  feats?: { me: string[]; them: string[] }
+}): Rival {
   const s = read()
   const prev = s.rivals[r.key]
   if (s.seen.includes(r.matchId) && prev) return prev
 
   const base: Rival = prev ?? { name: r.name, total: empty(), byGame: {}, streak: null, updatedAt: 0 }
   const who = r.outcome === 'win' ? 'me' : r.outcome === 'loss' ? 'them' : null
+  const feats = { ...base.feats }
+  for (const side of ['me', 'them'] as const)
+    for (const id of r.feats?.[side] ?? []) {
+      const t = feats[id] ?? { me: 0, them: 0 }
+      feats[id] = { ...t, [side]: t[side] + 1 }
+    }
   const next: Rival = {
     name: r.name,
     total: bump(base.total, r.outcome),
@@ -76,6 +96,7 @@ export function recordResult(r: { game: string; key: string; name: string; outco
     streak: who ? { who, n: base.streak?.who === who ? base.streak.n + 1 : 1 } : null,
     updatedAt: Date.now(),
     last: r.game,
+    ...(Object.keys(feats).length ? { feats } : {}),
   }
   s.rivals[r.key] = next
   s.seen = [...s.seen, r.matchId].slice(-SEEN_MAX)
@@ -91,6 +112,7 @@ export function flip(r: Rival): Rival {
     total: f(r.total),
     byGame: Object.fromEntries(Object.entries(r.byGame).map(([g, t]) => [g, f(t)])),
     streak: r.streak && { who: r.streak.who === 'me' ? 'them' : 'me', n: r.streak.n },
+    feats: r.feats && Object.fromEntries(Object.entries(r.feats).map(([id, t]) => [id, { me: t.them, them: t.me }])),
   }
 }
 

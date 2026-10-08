@@ -233,6 +233,28 @@
 .mt-rivalry { display: grid; justify-items: center; gap: 2px; text-align: center; font-family: var(--mono); font-size: 13px; color: var(--ink-soft); }
 .mt-rivalry__line { font-weight: 500; letter-spacing: .04em; color: var(--ink); }
 .mt-rivalry__meta { max-width: 44ch; }
+/* feats earned this match: small tags, the first time against this rival in yellow */
+.mt-feats { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.mt-feat {
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  background: var(--slot);
+  box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink-soft);
+  font: 500 10px var(--mono);
+  letter-spacing: .06em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.mt-feat b { font: 400 15px/1.1 var(--display); letter-spacing: 0; color: var(--ink); }
+.mt-feat--first { background: var(--hit); color: var(--ink); animation: stamp-in .4s var(--ease-snap) both; }
+.mt-feat[aria-expanded="true"] { transform: translate(2px, 2px); box-shadow: none; }
+.mt-feats__why { max-width: 36ch; margin-top: 4px; color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .mt-feat--first { animation: none; } }
 
 /* ── Win strike (shared by grid games) ──────────────────── */
 /* boards may set --strike-delay / --strike-time to time it after their last piece lands */

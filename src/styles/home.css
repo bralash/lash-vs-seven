@@ -338,6 +338,26 @@
 .rival__game small { font-family: var(--mono); font-size: 10px; color: var(--dim); }
 .rival__game:hover:not(:disabled) { background: var(--hit); }
 .rival__game:disabled { cursor: default; opacity: .55; }
+.rival__feats {
+  grid-column: 1 / -1;
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rival__feat {
+  display: grid;
+  gap: 1px;
+  padding: 5px 9px;
+  border: 2px solid var(--ink);
+  background: var(--hit);
+  font: 500 10px var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.rival__feat b { font: 400 14px/1.1 var(--display); letter-spacing: 0; }
 .rivals__more {
   justify-self: start;
   min-height: 44px;
