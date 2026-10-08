@@ -6,7 +6,7 @@
  * added and removed in any order. Each card is a quadratic residue, so locking can't leak anything
  * through its Legendre symbol.
  *
- *  1. The phones take turns in a chain: the first locks all 35 cards (no Ace of Spades) with its key and shuffles, and
+ *  1. The phones take turns in a chain: the first locks all 32 cards (no Aces) with its key and shuffles, and
  *     each next one locks every card again and reshuffles (`deck`). Once every phone has, nobody can
  *     tell which card is where — as long as any one of them shuffled honestly.
  *  2. The first five cards go to the first player in seat order, the next five to the next, and so on
@@ -26,13 +26,12 @@ const P = BigInt(
 const P1 = P - 1n
 const Q = P1 / 2n
 
-/** card number of the Ace of Spades, which isn't played (house rule) */
-export const ACE_OF_SPADES = 8
-/** the cards in play: 0–35 without the Ace of Spades */
-export const CARDS = Array.from({ length: 36 }, (_, k) => k).filter((k) => k !== ACE_OF_SPADES)
-export const DECK_SIZE = CARDS.length
-/** rounds dealt before the Ace of Spades came out had all 36 */
+/** Card numbers 0–35 are 6 to Ace in each suit (k mod 9 = 8 is an Ace). No Aces are played (house rule): 32 cards. */
 const ALL_36 = Array.from({ length: 36 }, (_, k) => k)
+export const CARDS = ALL_36.filter((k) => k % 9 !== 8)
+export const DECK_SIZE = CARDS.length
+/** decks from rounds dealt under earlier rules, by size: all 36, then 35 without the Ace of Spades */
+const OLD_DECKS: Record<number, number[]> = { 36: ALL_36, 35: ALL_36.filter((k) => k !== 8) }
 export const HAND = 5
 
 /** card k → its number in the group: (k + 2)², always a quadratic residue */
@@ -128,13 +127,13 @@ export interface DealRecord {
 
 /**
  * With every key out: was the deal honest? Returns each player's hand (card numbers, in seat order),
- * or the reason it wasn't. The deck must be exactly the 35 cards under everyone's locks, and each
+ * or the reason it wasn't. The deck must be exactly the 32 cards under everyone's locks, and each
  * player's five must be the cards in those slots of the deck with only their own lock left on.
  */
 export function verifyDeal(d: DealRecord): { hands: number[][] } | { error: string } {
   const n = d.keys.length
   if (!d.keys.every(keyOk)) return { error: 'bad key' }
-  const cards = d.deck?.length === 36 ? ALL_36 : CARDS
+  const cards = OLD_DECKS[d.deck?.length] ?? CARDS
   if (d.deck?.length !== cards.length || d.dealt?.length !== HAND * n) return { error: 'short deck' }
   // every lock at once: the keys multiply (mod p − 1)
   const all = d.keys.reduce((e, k) => (e * big(k)) % P1, 1n)

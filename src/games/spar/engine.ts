@@ -1,7 +1,7 @@
 import { CARDS, DECK_SIZE, HAND } from './deal'
 
 /**
- * Spar, two to four players. 35 cards (6 to Ace in four suits, without the Ace of Spades), five each, the leader plays first and
+ * Spar, two to four players. 32 cards (6 to King in four suits, no Aces), five each, the leader plays first and
  * then the rest in any order, follow suit if you can, no trumps: the highest card of the led suit takes the trick. Only the
  * last trick scores: 1 point, or 3 if it's won with a 6 and 2 with a 7. Win the last two tricks with
  * 6s/7s and both count (6 + 7 = 5, 6 + 6 = 6, 7 + 7 = 4). First to the target wins.
@@ -15,7 +15,7 @@ import { CARDS, DECK_SIZE, HAND } from './deal'
 export const TRICKS = HAND
 export const TARGETS = [5, 10, 15] as const
 
-/** Cards are numbers 0–35: suit = k ÷ 9, rank = k mod 9 (0 is the 6, 8 the Ace). 8, the Ace of Spades, isn't dealt. */
+/** Cards are numbers 0–35: suit = k ÷ 9, rank = k mod 9 (0 is the 6, 8 the Ace). Aces aren't dealt any more. */
 export const suitOf = (k: number) => Math.floor(k / 9)
 export const rankOf = (k: number) => k % 9
 export const SUITS = ['♠', '♥', '♦', '♣'] as const
