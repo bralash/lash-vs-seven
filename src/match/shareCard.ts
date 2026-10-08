@@ -1,6 +1,8 @@
 // Draws the shareable result card (1080×1350, portrait — fits WhatsApp status / Instagram)
 // on a canvas in the player's browser. No server involved.
 
+import { MARK_7, MARK_L } from '../components/Logo'
+
 export type Seat01 = 0 | 1
 
 export interface CardPlayer {
@@ -106,6 +108,31 @@ function fit(ctx: Ctx, text: string, width: number, max: number, family = DISPLA
   return size
 }
 
+/** The L and 7 of the logo, inside a tile of side `size` at (x, y) — same geometry as the site's mark. */
+function logoLetters(ctx: Ctx, x: number, y: number, size: number) {
+  const s = size / 54
+  ctx.save()
+  ctx.translate(x - 2 * s, y - 2 * s)
+  ctx.scale(s, s)
+  const L = new Path2D(MARK_L)
+  const seven = new Path2D(MARK_7)
+  ctx.save()
+  ctx.translate(2.5, 2.5)
+  ctx.fillStyle = C.ink
+  ctx.fill(L)
+  ctx.fill(seven)
+  ctx.restore()
+  ctx.lineWidth = 2.5
+  ctx.strokeStyle = C.ink
+  ctx.lineJoin = 'miter'
+  for (const [p, fill] of [[L, C.lash], [seven, C.seven]] as const) {
+    ctx.fillStyle = fill
+    ctx.fill(p)
+    ctx.stroke(p)
+  }
+  ctx.restore()
+}
+
 function text(ctx: Ctx, s: string, x: number, y: number, size: number, color: string, opts: { family?: string; weight?: number; align?: CanvasTextAlign; spacing?: number } = {}) {
   ctx.font = font(size, opts.family ?? DISPLAY, opts.weight ?? 400)
   ctx.fillStyle = color
@@ -192,7 +219,7 @@ export async function drawShareCard(input: CardInput): Promise<Blob> {
 
   // header: logo + game stamp
   block(ctx, M, M, 72, 72, C.hit, 7, 4)
-  text(ctx, 'VS', M + 36, M + 49, 28, C.ink, { align: 'center' })
+  logoLetters(ctx, M, M, 72)
   text(ctx, 'LASH VS', M + 96, M + 32, 30, C.ink)
   text(ctx, 'SEVEN', M + 96, M + 66, 30, C.ink)
   stamp(ctx, input.game.toUpperCase(), W - M - 150, M + 38, 34, C.ink, C.paper, -0.04)
