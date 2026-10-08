@@ -23,8 +23,6 @@ export interface GameMeta {
   status: 'live' | 'soon'
   /** offer a fullscreen button during the match (big boards that benefit on iPad / desktop) */
   fullscreen?: boolean
-  /** the original version is still playable at /classic/<slug> until this one is rebuilt */
-  classic?: boolean
   /** short tagline shown under the title in the game's lobby */
   tagline?: string
   rules?: RuleStep[]

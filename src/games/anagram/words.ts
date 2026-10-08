@@ -1,4 +1,4 @@
-// Anagram Race targets — ported from public/classic/js/anagram-words.js. Common English words, 5–8 letters.
+// Anagram Race targets — ported from the original site. Common English words, 5–8 letters.
 // Any real word using all the same letters is accepted as an answer (see engine.ts).
 export const TARGETS: readonly string[] = [
   "ACORN","ADORN","AGILE","AISLE","ALARM","ALBUM","ALERT","ALLOT","ALTAR","ALTER",

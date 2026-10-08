@@ -18,7 +18,6 @@ firebase deploy --only hosting   # builds first (predeploy); needs: npm i -g fir
 | `src/lobby/` | Shared lobby: create/join room, invite links, waiting room, presence. `rooms.ts` is the Firebase layer. |
 | `src/games/<slug>/` | One folder per game. Renders `<Lobby>` and supplies the in-match screen. |
 | `src/styles/tokens.css` | Colours, type, shadows — change the look here. |
-| `public/classic/` | The original site (recovered from the old deploy), served untouched at `/classic/` so games not rebuilt yet stay playable. |
 
 ## Adding a game
 

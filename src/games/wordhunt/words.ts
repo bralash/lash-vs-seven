@@ -1,4 +1,4 @@
-// Word Hunt dictionary — ported from public/classic/js/wordhunt-words.js (3–8 letters, uppercase).
+// Word Hunt dictionary — ported from the original site (3–8 letters, uppercase).
 export const WORDS: readonly string[] = [
   "ABACK","ABATE","ABIDE","ABLAZE","ABLE","ABODE","ABORT","ABOUT","ABOVE","ABSENT","ABSOLUTE","ABSTRACT",
   "ABSURD","ABUSE","ACCENT","ACCEPT","ACCLAIM","ACE","ACES","ACHE","ACID","ACIDIC","ACME","ACORN",

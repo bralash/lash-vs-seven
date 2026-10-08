@@ -10,6 +10,21 @@
     "cleanUrls": true,
     "redirects": [
       {
+        "source": "/classic",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/classic/:slug",
+        "destination": "/:slug",
+        "type": 301
+      },
+      {
+        "source": "/classic/**",
+        "destination": "/",
+        "type": 301
+      },
+      {
         "source": "/wordhunt.html",
         "destination": "/wordhunt",
         "type": 301
