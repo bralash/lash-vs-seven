@@ -26,6 +26,7 @@ import {
 import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
 import { Reactions } from '../match/Reactions'
+import { BOT_NAME, type Brain } from '../match/bot'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -85,6 +86,8 @@ interface Props {
   initialState?: (choice?: string, all?: string[]) => Record<string, unknown>
   /** settings the host picks in the waiting room (e.g. best of 3/5/7), passed to initialState: the first as `choice`, every one in `all` */
   option?: MatchOption | MatchOption[]
+  /** lets you play Ops, the computer, on this device */
+  bot?: Brain
 }
 
 const FAILURE_COPY: Record<JoinFailure, string> = {
@@ -114,7 +117,7 @@ interface LeaveGuard {
   leave: () => void
 }
 
-export function Lobby({ game, renderGame, initialState, option }: Props) {
+export function Lobby({ game, renderGame, initialState, option, bot }: Props) {
   const [params, setParams] = useSearchParams()
   const urlCode = normalizeCode(params.get('room') ?? '')
   const [inRoom, setInRoom] = useState<string | null>(null)
@@ -130,7 +133,8 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
   // a rival's Challenge opens a room even if a pass & play match is saved here (it stays saved for next time)
   const challenging = !!(useLocation().state as { challenge?: string } | null)?.challenge
   const [local, setLocal] = useState<LocalMatch | null>(() => (canLocal && !challenging ? loadLocal(game.slug) : null))
-  const [setup, setSetup] = useState(false)
+  // which one-device setup is open: two people, or you against Ops
+  const [setup, setSetup] = useState<false | 'local' | 'bot'>(false)
   const endLocal = useCallback(() => {
     saveLocal(game.slug, null)
     setLocal(null)
@@ -281,6 +285,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
         onChange={keepLocal}
         exit={{ request: () => setAsking(true), now: endLocal }}
         renderGame={renderGame}
+        brain={local.bot ? bot : undefined}
       />
     )
   } else if (setup) {
@@ -289,6 +294,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
         game={game}
         option={option}
         initialState={initialState}
+        vsBot={setup === 'bot'}
         onStart={(m) => {
           saveLocal(game.slug, m)
           setLocal(m)
@@ -336,7 +342,14 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
   } else if (urlCode && invite) {
     screen = <InviteScreen game={game} code={urlCode} invite={invite} onJoined={enterRoom} onDismiss={exitRoom} />
   } else {
-    screen = <StartScreen game={game} onEnter={enterRoom} onLocal={canLocal ? () => setSetup(true) : undefined} />
+    screen = (
+      <StartScreen
+        game={game}
+        onEnter={enterRoom}
+        onLocal={canLocal ? () => setSetup('local') : undefined}
+        onBot={canLocal && bot ? () => setSetup('bot') : undefined}
+      />
+    )
   }
 
   return (
@@ -347,7 +360,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
             // mid-match the only way out is the Leave button, so there's no back arrow to mis-tap
             <span className="topbar__title">
               {game.name}
-              <span className="hide-sm">{local ? ' · Pass & play' : ` · Room ${inRoom}`}</span>
+              <span className="hide-sm">{local ? (local.bot ? ` · vs ${BOT_NAME}` : ' · Pass & play') : ` · Room ${inRoom}`}</span>
             </span>
           ) : (
             <>
@@ -427,7 +440,7 @@ function NameField({
 
 /* ── Start: create a room or join with a code ───────────────────────────── */
 
-function StartScreen({ game, onEnter, onLocal }: { game: GameMeta; onEnter: (code: string) => void; onLocal?: () => void }) {
+function StartScreen({ game, onEnter, onLocal, onBot }: { game: GameMeta; onEnter: (code: string) => void; onLocal?: () => void; onBot?: () => void }) {
   const { name, setName, commit } = useSavedName()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState<'create' | 'join' | null>(null)
@@ -509,9 +522,16 @@ function StartScreen({ game, onEnter, onLocal }: { game: GameMeta; onEnter: (cod
       {onLocal && (
         <>
           <div className="divider" role="separator"><span>or on one device</span></div>
-          <button type="button" className="btn btn--block lobby__local" onClick={onLocal}>
-            Pass &amp; play
-          </button>
+          <div className={onBot ? 'lobby__solo' : undefined}>
+            <button type="button" className="btn btn--block lobby__local" onClick={onLocal}>
+              Pass &amp; play
+            </button>
+            {onBot && (
+              <button type="button" className="btn btn--block lobby__local" onClick={onBot}>
+                Play {BOT_NAME}
+              </button>
+            )}
+          </div>
         </>
       )}
     </main>

@@ -43,9 +43,11 @@ export function useRivalry(
   matchNo: number,
   feats?: [string[], string[]],
 ): RivalryView | null {
-  const { local } = useSession(game, room.code)
+  const { local, bot } = useSession(game, room.code)
   // recording is idempotent per match id, so doing it while rendering is safe (and avoids a flicker)
   const [view] = useState(() => {
+    // the record is about people: games against Ops aren't kept
+    if (bot) return null
     const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
     const matchId = `${game}:${room.code}:${room.createdAt}:${matchNo}`
     const name = (slug: string) => gameBySlug(slug)?.name ?? slug

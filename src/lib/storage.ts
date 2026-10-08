@@ -21,6 +21,8 @@ export const KEYS = {
   name: 'lvs_name_0',
   /** the second player's name in pass-and-play */
   name2: 'lvs_name_1',
+  /** last level picked for Ops */
+  botLevel: 'lvs_bot_level',
   sound: 'lvs_sound',
 } as const
 

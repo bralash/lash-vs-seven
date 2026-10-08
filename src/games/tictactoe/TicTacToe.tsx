@@ -1,5 +1,6 @@
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
+import { tttBrain } from './bot'
 import { TttMatch, initialTttState } from './TttMatch'
 
 const game = gameBySlug('tictactoe')!
@@ -19,6 +20,7 @@ export function TicTacToe() {
         ],
       }}
       initialState={(choice) => ({ ...initialTttState(Number(choice ?? 2)) })}
+      bot={tttBrain}
       renderGame={(room, me, exit) => <TttMatch room={room} me={me} exit={exit} />}
     />
   )

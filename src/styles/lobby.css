@@ -190,3 +190,5 @@
 .local-names .local-name input { font-size: clamp(26px, 6vw, 40px); }
 .local-names .local-name input::placeholder { color: color-mix(in srgb, var(--ink) 35%, var(--slot)); }
 .lobby__local { justify-content: center; }
+/* Pass & play and Play Ops, side by side */
+.lobby__solo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

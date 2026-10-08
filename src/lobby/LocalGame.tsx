@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
 import { KEYS, load, save } from '../lib/storage'
+import { BOT_NAME, LEVELS, type Brain, type Level } from '../match/bot'
 import { LocalSessionProvider, type Session } from '../match/session'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
 import type { Room, Seat } from './rooms'
@@ -12,6 +13,8 @@ export interface LocalMatch {
   state: Record<string, unknown>
   /** when the players sat down — tells this pass & play match apart from earlier ones (rivalry record) */
   startedAt?: number
+  /** playing Ops at this level (Ops is seat 1) */
+  bot?: Level
 }
 
 // Kept for the tab's lifetime, so a refresh mid-game picks up where you were.
@@ -39,49 +42,64 @@ export function LocalSetup({
   game,
   option,
   initialState,
+  vsBot,
   onStart,
   onBack,
 }: {
   game: GameMeta
   option?: MatchOption | MatchOption[]
   initialState?: (choice?: string, all?: string[]) => Record<string, unknown>
+  /** setting up a game against Ops: one name, plus how hard Ops plays */
+  vsBot?: boolean
   onStart: (m: LocalMatch) => void
   onBack: () => void
 }) {
   const [names, setNames] = useState<[string, string]>(() => [load(KEYS.name) ?? '', load(KEYS.name2) ?? ''])
   const options = optionList(option)
   const [choices, setChoices] = useState(() => options.map((o) => o.initial))
+  const [level, setLevel] = useState<Level>(() => (load(KEYS.botLevel) as Level | null) ?? 'medium')
   const { play } = useSound()
 
   const start = (e: FormEvent) => {
     e.preventDefault()
     const clean = names.map((n, i) => n.trim().slice(0, 16) || `Player ${i + 1}`) as [string, string]
     if (names[0].trim()) save(KEYS.name, clean[0])
-    if (names[1].trim()) save(KEYS.name2, clean[1])
+    if (vsBot) {
+      save(KEYS.botLevel, level)
+      clean[1] = BOT_NAME
+    } else if (names[1].trim()) save(KEYS.name2, clean[1])
     play('start')
-    onStart({ names: clean, state: initialState?.(choices[0], choices) ?? {}, startedAt: Date.now() })
+    onStart({ names: clean, state: initialState?.(choices[0], choices) ?? {}, startedAt: Date.now(), ...(vsBot ? { bot: level } : {}) })
   }
 
   return (
     <main className="lobby__main screen-in">
       <div className="lobby__hero">
-        <p className="label">Pass &amp; play</p>
+        <p className="label">{vsBot ? `You vs ${BOT_NAME}` : <>Pass &amp; play</>}</p>
         <h1 className="lobby__title">{game.name}</h1>
-        <p className="hint">One device · take turns · no room needed</p>
+        <p className="hint">{vsBot ? `No friend handy? ${BOT_NAME} will play you` : 'One device · take turns · no room needed'}</p>
       </div>
 
       <form className="lobby__stack" onSubmit={start}>
         <div className="local-names">
-          {[0, 1].map((i) => (
+          {(vsBot ? [0] : [0, 1]).map((i) => (
             <LocalName
               key={i}
               seat={i as Seat}
               value={names[i]}
               autoFocus={i === 0 && !names[0]}
+              label={vsBot ? 'Your name' : undefined}
               onChange={(v) => setNames((n) => (i === 0 ? [v, n[1]] : [n[0], v]))}
             />
           ))}
         </div>
+        {vsBot && (
+          <OptionPicker
+            options={[{ label: `How hard ${BOT_NAME} plays`, initial: 'medium', choices: LEVELS }]}
+            choices={[level]}
+            onChange={([l]) => setLevel(l as Level)}
+          />
+        )}
         <OptionPicker options={options} choices={choices} onChange={setChoices} />
         <button type="submit" className="btn btn--primary btn--lg btn--block">
           Start game <span className="keycap">↵</span>
@@ -94,12 +112,12 @@ export function LocalSetup({
   )
 }
 
-function LocalName({ seat, value, onChange, autoFocus }: { seat: Seat; value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+function LocalName({ seat, value, onChange, autoFocus, label }: { seat: Seat; value: string; onChange: (v: string) => void; autoFocus?: boolean; label?: string }) {
   const id = useId()
   return (
     <div className={`field-card local-name local-name--${seat}`}>
       <label className="label" htmlFor={id}>
-        Player {seat + 1}
+        {label ?? `Player ${seat + 1}`}
       </label>
       <input
         id={id}
@@ -123,24 +141,30 @@ export function LocalGame({
   onChange,
   exit,
   renderGame,
+  brain,
 }: {
   game: GameMeta
   match: LocalMatch
   onChange: (m: LocalMatch) => void
   exit: MatchExit
   renderGame: (room: Room, me: Me, exit: MatchExit) => ReactNode
+  /** how Ops picks its moves, when this is a game against Ops */
+  brain?: Brain
 }) {
+  const level = brain ? match.bot : undefined
   const [state, setState] = useState(match.state)
   const [startedAt] = useState(() => match.startedAt ?? Date.now())
 
   // keep the lobby (and the tab's storage) in step, so a refresh resumes the game
   useEffect(() => {
-    onChange({ names: match.names, state, startedAt })
-  }, [state, match.names, startedAt, onChange])
+    onChange({ names: match.names, state, startedAt, ...(match.bot ? { bot: match.bot } : {}) })
+  }, [state, match.names, startedAt, match.bot, onChange])
 
   const session = useMemo<Session>(
     () => ({
-      local: true,
+      // against Ops the screens word it like an online match: "Your turn", "Ops wins"
+      local: !level,
+      bot: !!level,
       move: (mutate) => {
         setState((prev) => {
           const next = mutate(prev.live as never)
@@ -152,8 +176,19 @@ export function LocalGame({
       ready: () => setState((prev) => ({ ...prev, ready: { p0: true, p1: true } })),
       start: (next) => setState(next),
     }),
-    [],
+    [level],
   )
+
+  // Ops thinks for a moment, then moves. Any change to the state (including its own move) re-checks.
+  const sessionRef = useRef(session)
+  sessionRef.current = session
+  useEffect(() => {
+    if (!brain || !level) return
+    const move = brain(state, level)
+    if (!move) return
+    const t = setTimeout(() => sessionRef.current.move(move as (live: unknown) => unknown), 550 + Math.random() * 650)
+    return () => clearTimeout(t)
+  }, [state, brain, level])
 
   const room: Room = {
     game: game.slug,
@@ -167,9 +202,10 @@ export function LocalGame({
     },
     state,
   }
-  // the device belongs to whoever's turn it is
+  // the device belongs to whoever's turn it is — or, against Ops, always to you
   const turn = ((state.live as { turn?: Seat } | undefined)?.turn ?? 0) as Seat
-  const me: Me = { id: `p${turn}`, seat: turn, isHost: true }
+  const seat: Seat = level ? 0 : turn
+  const me: Me = { id: `p${seat}`, seat, isHost: true }
 
   return <LocalSessionProvider value={session}>{renderGame(room, me, exit)}</LocalSessionProvider>
 }

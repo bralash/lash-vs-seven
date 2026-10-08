@@ -12,6 +12,8 @@ import { applyMove } from './turns'
  */
 export interface Session {
   local: boolean
+  /** playing Ops on this device: worded like an online match (you vs Ops), but nothing is recorded */
+  bot?: boolean
   /** change state.live — the mutator returns the next position, or undefined to refuse */
   move: <T>(mutate: (live: T) => T | undefined) => Promise<boolean>
   /** this player wants a rematch */
