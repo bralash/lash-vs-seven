@@ -16,6 +16,9 @@ import type { Seat } from '../../lobby/rooms'
  *    arm (the parallel lane), it goes back to its yard and your token jumps to its square.
  *  - Back kick: when going *backwards* by the roll would capture (directly or by line kick), you may
  *    choose that instead of moving forward.
+ *  - A 6 only kicks (any of the three ways) if you have another token out on the board to use the
+ *    bonus roll on. Otherwise the token just lands next to the opponent's and both stay there, so
+ *    you can't kick a token just because it was in your way. (House rule, added 2026-10-08.)
  *  - The home column needs an exact roll. First to bring every token home wins.
  *  - Quick: one colour each (diagonal opposites). Full: two colours each, eight tokens.
  */
@@ -163,6 +166,12 @@ function victimsAt(live: Live, seat: Seat, abs: number): { c: Color; i: number }
   return out
 }
 
+/** A 6 can only kick if another of this player's tokens is out on the board (not in the yard or home). */
+function mayKick(live: Live, color: Color, i: number, roll: number) {
+  if (roll !== 6) return true
+  return colorsOf(live, seatOf(live, color)).some((c) => toks(live, c).some((p, k) => (c !== color || k !== i) && p >= 1 && p < HOME))
+}
+
 /**
  * Back kick: going backwards by `roll` lands where it would capture — on an opponent or across the
  * arm from one. Returns the landing position, or null. (Like the classic game, a token near its exit
@@ -170,7 +179,7 @@ function victimsAt(live: Live, seat: Seat, abs: number): { c: Color; i: number }
  */
 export function backKick(live: Live, color: Color, i: number, roll: number): number | null {
   const pos = toks(live, color)[i]
-  if (pos === undefined || pos < 1 || pos >= COLUMN) return null
+  if (pos === undefined || pos < 1 || pos >= COLUMN || !mayKick(live, color, i, roll)) return null
   const start = absOf(color, pos)
   const land = (start - roll + 52) % 52
   if (relOf(color, land) === 52) return null
@@ -237,10 +246,11 @@ export function move(live: Live, seat: Seat, color: Color, i: number, dir: 'forw
   for (const c of active(live)) tokens[c] = [...toks(live, c)]
   const next: Live = { ...live, tokens }
   tokens[color]![i] = to
+  const kicking = mayKick(live, color, i, r)
 
   // capture where it lands, then a line kick from there
   const kicks: Kick[] = []
-  const abs = absOf(color, to)
+  const abs = kicking ? absOf(color, to) : -1
   for (const v of victimsAt(next, seat, abs)) {
     kicks.push({ ...v, from: tokens[v.c]![v.i] })
     tokens[v.c]![v.i] = 0

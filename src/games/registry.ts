@@ -264,6 +264,7 @@ export const GAMES: GameMeta[] = [
       { title: 'Roll a six to start', body: 'Tap the die on your turn. A 6 brings a token out of your yard onto your start square. Every 6 earns another roll — but a roll with no possible move ends your turn, even a 6.' },
       { title: 'Race round', body: 'Tap a token to move it by the roll, clockwise round the board and up your home column. Getting home needs an exact roll.' },
       { title: 'Kick them home', body: 'Land on a lone opponent token to send it back to its yard. Line kick: land directly across the lane from one and it’s sent home too — and your token jumps onto its square. Back kick: if moving backwards by your roll would capture, you can choose ↶ instead of →.' },
+      { title: 'No kicking on a lone 6', body: 'A 6 only kicks (any of the three ways) if you have another token out on the board. If that token is your only one out, it lands beside the opponent’s token and leaves it alone, and they share the square until one of you moves on.' },
       { title: 'Blockades', body: 'Two tokens of one colour on a square form a blockade. Nothing can pass or land on it — not even your own tokens — and it can’t be captured. An opponent’s blockade on your start square keeps your tokens in the yard.' },
       { title: '1 or 2 colours each', body: 'The host picks 1 colour each (four tokens) or 2 colours each (diagonally opposite, eight tokens, one die for both). First to bring every token home wins.' },
     ],
