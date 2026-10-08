@@ -1,5 +1,6 @@
 /**
  * The mental-poker deal: two phones shuffle and deal one deck without either seeing the other's hand.
+ * (Memory reuses the locks, shuffle and card encoding below for its face-down board.)
  *
  * Commutative (SRA / Pohlig–Hellman) locks: a card m locked with key e is m^e mod p, and locks can be
  * added and removed in any order. Each card is a quadratic residue, so locking can't leak anything
@@ -28,7 +29,7 @@ export const DECK_SIZE = 36
 export const HAND = 5
 
 /** card k → its number in the group: (k + 2)², always a quadratic residue */
-const encode = (k: number) => (BigInt(k + 2) * BigInt(k + 2)) % P
+export const encode = (k: number) => (BigInt(k + 2) * BigInt(k + 2)) % P
 
 function modpow(b: bigint, e: bigint, m: bigint) {
   let r = 1n
@@ -51,8 +52,8 @@ function inverse(a: bigint, m: bigint) {
   return r0 === 1n ? ((s0 % m) + m) % m : null
 }
 
-const hex = (n: bigint) => n.toString(16)
-const big = (h: string) => BigInt('0x' + h)
+export const hex = (n: bigint) => n.toString(16)
+export const big = (h: string) => BigInt('0x' + h)
 
 function randomBig(bytes: number) {
   return crypto.getRandomValues(new Uint8Array(bytes)).reduce((n, b) => (n << 8n) | BigInt(b), 0n)
@@ -67,12 +68,12 @@ export function newKey(): string {
 }
 
 /** a valid key has an inverse mod p − 1 */
-const keyOk = (k: string) => /^[0-9a-f]{1,300}$/.test(k) && inverse(big(k), P1) !== null
+export const keyOk = (k: string) => /^[0-9a-f]{1,300}$/.test(k) && inverse(big(k), P1) !== null
 
-const lock = (x: bigint, key: string) => modpow(x, big(key), P)
-const unlockWith = (x: bigint, key: string) => modpow(x, inverse(big(key), P1)!, P)
+export const lock = (x: bigint, key: string) => modpow(x, big(key), P)
+export const unlockWith = (x: bigint, key: string) => modpow(x, inverse(big(key), P1)!, P)
 
-function shuffle<T>(xs: T[]): T[] {
+export function shuffle<T>(xs: T[]): T[] {
   const a = [...xs]
   for (let i = a.length - 1; i > 0; i--) {
     const j = Number(randomBig(4) % BigInt(i + 1))

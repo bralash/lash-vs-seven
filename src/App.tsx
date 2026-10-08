@@ -13,6 +13,7 @@ import { Spar } from './games/spar/Spar'
 import { Checkers } from './games/checkers/Checkers'
 import { Quoridor } from './games/quoridor/Quoridor'
 import { Battleword } from './games/battleword/Battleword'
+import { Memory } from './games/memory/Memory'
 import { Sudoku } from './games/sudoku/Sudoku'
 import { TicTacToe } from './games/tictactoe/TicTacToe'
 import { WordHunt } from './games/wordhunt/WordHunt'
@@ -49,6 +50,7 @@ const routes: RouteObject[] = [
   { path: '/crossword', element: <Crossword /> },
   { path: '/quoridor', element: <Quoridor /> },
   { path: '/battleword', element: <Battleword /> },
+  { path: '/memory', element: <Memory /> },
   ...(BoardLab ? [{ path: '/dev/board', element: <Suspense><BoardLab /></Suspense> }] : []),
   ...(TttLab ? [{ path: '/dev/ttt', element: <Suspense><TttLab /></Suspense> }] : []),
   ...(ShareLab ? [{ path: '/dev/share', element: <Suspense><ShareLab /></Suspense> }] : []),

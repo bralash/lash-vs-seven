@@ -312,7 +312,23 @@ export const GAMES: GameMeta[] = [
       { title: 'Pass & play', body: 'On one phone, each of you solves the same puzzle in turn against the clock. The faster time wins.' },
     ],
   },
-  { slug: 'memory', tiles: 'PAIRS', name: 'Memory', blurb: 'Flip cards, find pairs. Whoever collects the most wins.', category: 'puzzle', length: '~5 min', modes: 'online + local', status: 'soon', classic: true },
+  {
+    slug: 'memory',
+    tiles: 'PAIRS',
+    name: 'Memory',
+    blurb: 'Flip cards, find pairs. Whoever collects the most wins.',
+    category: 'puzzle',
+    length: '~5 min',
+    modes: 'online + local',
+    status: 'live',
+    tagline: 'Flip two · find a pair · go again',
+    rules: [
+      { title: 'Flip two', body: 'On your turn, tap two face-down cards to turn them over. Both players see them.' },
+      { title: 'A pair? Go again', body: 'If the pictures match, the pair is yours (it stays up in your colour) and you take another turn. If not, they turn back over and it’s the other player’s go, so remember where they were.' },
+      { title: 'Most pairs wins', body: 'When every pair is found, whoever found more wins; level is a draw. The host picks the board: the classic 4×4 (8 pairs) or a bigger 6×6 (18 pairs).' },
+      { title: 'No peeking', body: 'Online, neither phone knows where the cards are: both shuffle the board, locked, and every card is turned over by the two phones together. At the end the shuffle and every card shown are checked.' },
+    ],
+  },
 ]
 
 export const CATEGORY_LABEL: Record<Category, string> = {

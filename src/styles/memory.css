@@ -1,0 +1,133 @@
+.memm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 12px;
+  width: min(600px, 100%);
+  margin: 0 auto;
+  padding-bottom: 28px;
+}
+.memm > * { width: 100%; }
+
+.mem-mid {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-width: 76px;
+  padding: 6px 10px;
+  background: var(--board);
+  color: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+.mem-mid .label { color: var(--paper-2); font-size: 10px; }
+.mem-mid strong { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.1; }
+
+.mem-status {
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(16px, 4.4vw, 26px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.mem-status--you { background: var(--hit); }
+
+/* ── The board ─────────────────────────────────────────── */
+.mem-board {
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  gap: clamp(6px, 2vw, 12px);
+  padding: clamp(10px, 3vw, 18px);
+  background: var(--board);
+  box-shadow: var(--shadow);
+}
+.mem-board--6 { gap: clamp(4px, 1.4vw, 9px); }
+
+.mem-card {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  perspective: 700px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.mem-card:disabled { cursor: default; }
+.mem-card__inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .38s cubic-bezier(.3, 1.3, .5, 1);
+}
+.mem-card--up .mem-card__inner { transform: rotateY(180deg); }
+.mem-card__back, .mem-card__face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.mem-card__back {
+  border: 2px solid #3a3542;
+  background: var(--tile);
+  box-shadow: inset 0 0 0 4px #1d1b22;
+  color: #4a4554;
+  font-size: clamp(14px, 4vw, 24px);
+}
+.mem-card__face {
+  border: 3px solid var(--ink);
+  background: var(--bg, var(--slot));
+  transform: rotateY(180deg);
+}
+.mem-face__art { width: 74%; height: 74%; }
+
+/* hover and tap feedback on cards you can turn over */
+.mem-board--live .mem-card:not(:disabled):hover .mem-card__back { border-color: var(--hit); color: var(--hit); }
+.mem-board--live .mem-card:not(:disabled):active .mem-card__inner { transform: scale(.95); }
+/* the other phone is taking its lock off this one */
+.mem-card--lifting .mem-card__back { border-color: var(--hit); animation: pulse .5s ease-in-out infinite alternate; }
+/* a miss: a little shake before they turn back */
+.mem-card--miss .mem-card__face { animation: mem-nope .4s .35s ease-out; }
+@keyframes mem-nope { 25% { translate: -4px 0; } 50% { translate: 4px 0; } 75% { translate: -2px 0; } }
+/* found: in the finder's colour */
+.mem-card--found .mem-card__face { box-shadow: inset 0 0 0 4px var(--seat-colour); }
+.mem-card--0 { --seat-colour: var(--lash); }
+.mem-card--1 { --seat-colour: var(--seven); }
+.mem-card--found .mem-card__inner { animation: mem-pop .35s .3s var(--ease-snap) both; }
+@keyframes mem-pop { 50% { scale: 1.08; } }
+
+.mem-warn-box { display: grid; justify-items: center; gap: 10px; }
+.mem-warn { padding: 8px 12px; border: 2px solid var(--strike); background: var(--slot); color: var(--strike); font-weight: 500; text-align: center; }
+.mem-check { text-align: center; }
+
+/* ── Results ───────────────────────────────────────────── */
+.memm-results { gap: 18px; padding-top: clamp(8px, 3vh, 32px); }
+.memm-results__head { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.memm-results__title { font-size: clamp(52px, 12vw, 104px); animation: stamp-in .5s var(--ease-snap) both; }
+.memm-results__title--win {
+  justify-self: center;
+  width: auto;
+  padding: 0 .15em;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-2deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mem-card__inner { transition: none; }
+  .mem-card--miss .mem-card__face, .mem-card--found .mem-card__inner, .mem-card--lifting .mem-card__back { animation: none; }
+}
+
+/* the finished board on the results screen */
+.mem-board--recap { width: min(320px, 100%); justify-self: center; gap: 5px; padding: 10px; }
+.mem-board--recap .mem-card__inner { animation: none; transition: none; }
+.mem-board--recap .mem-card__face { border-width: 2px; }

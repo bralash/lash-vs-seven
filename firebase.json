@@ -81,13 +81,8 @@
       },
       {
         "source": "/memory.html",
-        "destination": "/classic/memory",
-        "type": 302
-      },
-      {
-        "source": "/memory",
-        "destination": "/classic/memory",
-        "type": 302
+        "destination": "/memory",
+        "type": 301
       }
     ],
     "rewrites": [
