@@ -25,6 +25,7 @@ import {
 } from './rooms'
 import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
+import { Reactions } from '../match/Reactions'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -326,6 +327,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
         }
         right={
           <>
+            {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} />}
             {inMatch && game.fullscreen && fullscreen.supported && (
               <button type="button" className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
                 {fullscreen.on ? <Minimize /> : <Maximize />}
@@ -336,8 +338,8 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
         }
         end={
           inMatch && (
-            <button type="button" className="icon-btn icon-btn--leave" onClick={() => setAsking(true)}>
-              <Exit /> Leave
+            <button type="button" className="icon-btn icon-btn--leave" onClick={() => setAsking(true)} aria-label="Leave">
+              <Exit /> <span className="hide-sm" aria-hidden="true">Leave</span>
             </button>
           )
         }

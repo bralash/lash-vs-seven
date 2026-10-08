@@ -195,6 +195,21 @@
               ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)"
             }
           },
+          "react": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)",
+              ".validate": "newData.hasChildren(['k', 'n'])",
+              "k": {
+                ".validate": "newData.isString() && newData.val().length <= 12"
+              },
+              "n": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
           "$other": {
             ".validate": false
           }

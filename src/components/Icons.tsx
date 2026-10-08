@@ -33,3 +33,6 @@ export const Minimize = () => (
 export const Exit = () => (
   <svg {...base}><path d="M14 4H5v16h9" /><path d="M10 12h11M17 8l4 4-4 4" /></svg>
 )
+export const Smile = () => (
+  <svg {...base}><path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5" /><path d="M8.5 14.5c1 1.4 2.2 2 3.5 2s2.5-.6 3.5-2" /><path d="M9 9.5v.5M15 9.5v.5M19 2v6M16 5h6" /></svg>
+)
