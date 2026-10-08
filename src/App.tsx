@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Link, RouterProvider, type RouteObject } from 'react-router-dom'
 import { Anagram } from './games/anagram/Anagram'
 import { ConnectFour } from './games/connect4/ConnectFour'
+import { Crossword } from './games/crossword/Crossword'
 import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
 import { Othello } from './games/othello/Othello'
 import { Hangman } from './games/hangman/Hangman'
@@ -42,6 +43,7 @@ const routes: RouteObject[] = [
   { path: '/battleship', element: <Battleship /> },
   { path: '/sudoku', element: <Sudoku /> },
   { path: '/checkers', element: <Checkers /> },
+  { path: '/crossword', element: <Crossword /> },
   ...(BoardLab ? [{ path: '/dev/board', element: <Suspense><BoardLab /></Suspense> }] : []),
   ...(TttLab ? [{ path: '/dev/ttt', element: <Suspense><TttLab /></Suspense> }] : []),
   ...(ShareLab ? [{ path: '/dev/share', element: <Suspense><ShareLab /></Suspense> }] : []),

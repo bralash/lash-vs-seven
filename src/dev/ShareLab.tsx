@@ -9,6 +9,7 @@ import { autoplay as othelloPlay } from './OthelloLab'
 import { generate } from '../games/sudoku/engine'
 import { count as ckCount, freshLive as ckLive, kings } from '../games/checkers/engine'
 import { autoplay as ckPlay } from './CheckersLab'
+import { makePuzzle, freshLive as cwLive, answer as cwAnswer, colours as cwColours } from '../games/crossword/engine'
 import { drawShareCard, type CardInput } from '../match/shareCard'
 
 // Dev-only preview of result cards (route: /dev/share), with sample data for each game.
@@ -35,6 +36,22 @@ function c4Sample(moves: number[]): CardInput {
 }
 
 // a full game played through the engine
+function crosswordSample(): CardInput {
+  const p = makePuzzle('ghana')
+  let live = cwLive(p, 0)
+  // claim all but three words, alternating every two
+  p.words.slice(0, -3).forEach((x, w) => {
+    const seat = (Math.floor(w / 2) % 2) as 0 | 1
+    live = cwAnswer({ ...live, turn: seat }, p, seat, w, x.word) ?? live
+  })
+  const s = [0, 1].map((k) => [...live.owners].filter((v) => v === String(k)).length)
+  return {
+    game: 'Crossword', winner: s[0] === s[1] ? -1 : s[0] > s[1] ? 0 : 1, scoreLine: `${s[0]} — ${s[1]}`, link: 'lash-vs-seven.web.app/crossword',
+    players: players({ score: String(s[0]), meta: 'Orange · words' }, { score: String(s[1]), meta: 'Blue · words' }),
+    detail: { kind: 'crossword', rows: p.rows, cols: p.cols, colours: cwColours(p, live), stats: [['Theme', 'Ghana'], ['Unsolved', '3']] },
+  }
+}
+
 function dotsSample(n: number): CardInput {
   const live = autoplay(dotsLive(n, 0), 0)
   const s = [0, 1].map((k) => live.boxes.split('').filter((v) => v === String(k)).length)
@@ -99,6 +116,7 @@ const SAMPLES: Record<string, CardInput> = {
   },
   connect4: c4Sample([3, 3, 4, 2, 2, 4, 5, 6, 1, 5, 4, 3, 2, 5, 5, 6]),
   dots: dotsSample(5),
+  crossword: crosswordSample(),
   othello: othelloSample(),
   sudoku: sudokuSample(),
   checkers: checkersSample(),

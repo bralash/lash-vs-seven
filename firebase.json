@@ -76,13 +76,8 @@
       },
       {
         "source": "/crossword.html",
-        "destination": "/classic/crossword",
-        "type": 302
-      },
-      {
-        "source": "/crossword",
-        "destination": "/classic/crossword",
-        "type": 302
+        "destination": "/crossword",
+        "type": 301
       },
       {
         "source": "/ludo.html",
