@@ -109,8 +109,15 @@
 .sp-pips__pip--now { outline: 2px solid var(--paper); outline-offset: 2px; }
 .sp-pips__pip--0 { background: var(--lash); border-color: var(--lash); }
 .sp-pips__pip--1 { background: var(--seven); border-color: var(--seven); }
+.sp-pips__pip--2 { background: var(--p3); border-color: var(--p3); }
+.sp-pips__pip--3 { background: var(--p4); border-color: var(--p4); }
 
-.sp-trick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sp-trick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sp-trick--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sp-trick--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.sp-trick--4 .sp-card--lg { --w: clamp(46px, 13vw, 76px); }
+.sp-trick--4 .sp-slot__empty { width: clamp(46px, 13vw, 76px); }
+.sp-trick--3 .sp-slot, .sp-trick--4 .sp-slot { padding-inline: 2px; }
 .sp-slot {
   position: relative;
   display: grid;
@@ -123,6 +130,8 @@
 }
 .sp-slot--0 { border-top-color: var(--lash); }
 .sp-slot--1 { border-top-color: var(--seven); }
+.sp-slot--2 { border-top-color: var(--p3); }
+.sp-slot--3 { border-top-color: var(--p4); }
 .sp-slot__who {
   max-width: 100%;
   overflow: hidden;
@@ -232,6 +241,8 @@
 }
 .sp-rounds__row--0 { border-left-color: var(--lash); }
 .sp-rounds__row--1 { border-left-color: var(--seven); }
+.sp-rounds__row--2 { border-left-color: var(--p3); }
+.sp-rounds__row--3 { border-left-color: var(--p4); }
 .sp-rounds__n { color: var(--dim); }
 .sp-rounds__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sp-rounds__row strong { font-family: var(--display); font-weight: 400; font-size: 18px; }
@@ -246,6 +257,7 @@
     gap: 10px;
     grid-template-rows: auto auto minmax(0, 1fr) auto;
   }
+  html.scroll-locked .spm--many { grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
   html.scroll-locked .sp-table { align-self: center; }
   html.scroll-locked .spm .mt-score { padding-block: 6px 8px; }
 }
@@ -253,3 +265,51 @@
 @media (prefers-reduced-motion: reduce) {
   .sp-slot__card, .sp-slot__stamp, .is-now .sp-deal__mark { animation: none !important; }
 }
+
+/* ── Three or four players ─────────────────────────────── */
+.sp-hud-many { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.sp-hud-many .mt-score { text-align: left; padding-inline: 8px; }
+.sp-hud-many .mt-score__n { font-size: clamp(20px, 5vw, 30px); }
+.sp-roundline { margin-top: -6px; text-align: center; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.sp-opps { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 16px; min-width: 0; }
+.sp-table__top--many { align-items: flex-end; flex-wrap: wrap; }
+.sp-opp { display: grid; gap: 4px; }
+.sp-opp__who {
+  max-width: 96px;
+  overflow: hidden;
+  padding-left: 6px;
+  border-left: 4px solid var(--dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--paper-2);
+}
+.sp-opp--0 .sp-opp__who { border-left-color: var(--lash); }
+.sp-opp--1 .sp-opp__who { border-left-color: var(--seven); }
+.sp-opp--2 .sp-opp__who { border-left-color: var(--p3); }
+.sp-opp--3 .sp-opp__who { border-left-color: var(--p4); }
+
+.sp-standings { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sp-standings__row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  border-left-width: 10px;
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.sp-standings__row--0 { border-left-color: var(--lash); }
+.sp-standings__row--1 { border-left-color: var(--seven); }
+.sp-standings__row--2 { border-left-color: var(--p3); }
+.sp-standings__row--3 { border-left-color: var(--p4); }
+.sp-standings__row--win { background: #fff6d6; }
+.sp-standings__place { font-family: var(--display); font-size: 20px; color: var(--dim); }
+.sp-standings__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+.sp-standings__who em { font-style: normal; font-weight: 400; color: var(--ink-soft); }
+.sp-standings__row strong { font-family: var(--display); font-weight: 400; font-size: 28px; }

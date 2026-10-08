@@ -20,6 +20,8 @@
 }
 .mt-score--0 { border-top-color: var(--lash); }
 .mt-score--1 { border-top-color: var(--seven); text-align: right; }
+.mt-score--2 { border-top-color: var(--p3); }
+.mt-score--3 { border-top-color: var(--p4); }
 .mt-score--you { background: #fff6d6; }
 .mt-score__name {
   overflow: hidden;

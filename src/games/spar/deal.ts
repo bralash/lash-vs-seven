@@ -1,18 +1,19 @@
 /**
- * The mental-poker deal: two phones shuffle and deal one deck without either seeing the other's hand.
- * (Memory reuses the locks, shuffle and card encoding below for its face-down board.)
+ * The mental-poker deal: two to four phones shuffle and deal one deck without anyone seeing anyone
+ * else's hand. (Memory reuses the locks, shuffle and card encoding below for its face-down board.)
  *
  * Commutative (SRA / Pohlig–Hellman) locks: a card m locked with key e is m^e mod p, and locks can be
  * added and removed in any order. Each card is a quadratic residue, so locking can't leak anything
  * through its Legendre symbol.
  *
- *  1. The dealer locks all 36 cards with key a and shuffles them → `deckA`.
- *  2. The other player locks every card again with key b and shuffles → `deckB`.
- *     Nobody can tell which card is where now.
- *  3. Each player takes the lock off the *opponent's* five cards (`unlock`), so those are left
- *     under the opponent's lock only. The opponent removes their own lock privately and sees their hand.
- *  4. Played cards go into the room face up. When the round ends both keys are revealed and each
- *     phone re-checks the whole deal and every card played (`verifyDeal`).
+ *  1. The phones take turns in a chain: the first locks all 36 cards with its key and shuffles, and
+ *     each next one locks every card again and reshuffles (`deck`). Once every phone has, nobody can
+ *     tell which card is where — as long as any one of them shuffled honestly.
+ *  2. The first five cards go to the first player in seat order, the next five to the next, and so on
+ *     (`dealt`). In a second turn round the chain, each phone takes its lock off everyone else's
+ *     cards, so each hand ends up under its owner's lock only. The owner removes it privately.
+ *  3. Played cards go into the room face up. When the round ends every key is revealed and each
+ *     phone re-checks the deal and every card played (`verifyDeal`).
  *
  * p is the 1024-bit safe prime from RFC 2409 (Oakley group 2): p = 2q + 1 with q prime.
  */
@@ -82,65 +83,62 @@ export function shuffle<T>(xs: T[]): T[] {
   return a
 }
 
-/** Step 1 (dealer): every card locked with my key, shuffled. */
+/** Step 1, first phone in the chain: every card locked with my key, shuffled. */
 export function lockDeck(key: string): string[] {
   return shuffle(Array.from({ length: DECK_SIZE }, (_, k) => hex(lock(encode(k), key))))
 }
 
-/** Step 2 (the other player): lock every card again and shuffle. */
-export function relockDeck(deckA: string[], key: string): string[] {
-  return shuffle(deckA.map((c) => hex(lock(big(c), key))))
+/** Step 1, every next phone: lock every card again and shuffle. */
+export function relockDeck(deck: string[], key: string): string[] {
+  return shuffle(deck.map((c) => hex(lock(big(c), key))))
 }
 
-/** Which slots of the final deck are dealt to a seat. */
-export const slotsOf = (seat: 0 | 1) => Array.from({ length: HAND }, (_, i) => seat * HAND + i)
+/** Which of the dealt cards belong to the player at `pos` in seat order. */
+export const slotsOf = (pos: number) => Array.from({ length: HAND }, (_, i) => pos * HAND + i)
+const ownerOf = (slot: number) => Math.floor(slot / HAND)
 
-/** Step 3: take my lock off the opponent's five cards. */
-export function unlockFor(deckB: string[], oppSeat: 0 | 1, myKey: string): string[] {
-  return slotsOf(oppSeat).map((i) => hex(unlockWith(big(deckB[i]), myKey)))
+/** Step 2: take my lock off everyone else's cards (mine stay as they are). */
+export function stripLocks(dealt: string[], myPos: number, myKey: string): string[] {
+  const undo = inverse(big(myKey), P1)!
+  return dealt.map((c, i) => (ownerOf(i) === myPos ? c : hex(modpow(big(c), undo, P))))
 }
 
 const DECODE = new Map(Array.from({ length: DECK_SIZE }, (_, k) => [encode(k), k]))
 
-/** Step 3, privately: remove my own lock from the five the opponent unlocked for me → card numbers. */
-export function readHand(unlocked: string[], myKey: string): number[] | null {
-  const hand = unlocked.map((c) => DECODE.get(unlockWith(big(c), myKey)))
+/** Step 2, privately: remove my own lock from my five, once everyone else has removed theirs → card numbers. */
+export function readHand(mine: string[], myKey: string): number[] | null {
+  const hand = mine.map((c) => DECODE.get(unlockWith(big(c), myKey)))
   return hand.every((k) => k !== undefined) ? (hand as number[]) : null
 }
 
 export interface DealRecord {
-  dealer: 0 | 1
-  deckA: string[]
-  deckB: string[]
-  /** unlock[s]: seat s's five cards, with the opponent's lock taken off */
-  unlock: [string[], string[]]
-  /** keys[s]: seat s's key, revealed when the round ends */
-  keys: [string, string]
+  /** the deck after every phone locked and shuffled it */
+  deck: string[]
+  /** the dealt cards once every phone took its lock off the others' */
+  dealt: string[]
+  /** each player's key, in seat order, revealed when the round ends */
+  keys: string[]
 }
 
 /**
- * With both keys out: was the deal honest? Returns both hands (card numbers), or the reason it wasn't.
- * The dealer's deck must be exactly the 36 cards under their lock, the second deck exactly the
- * first one relocked, and each unlock exactly the slots it claims to be.
+ * With every key out: was the deal honest? Returns each player's hand (card numbers, in seat order),
+ * or the reason it wasn't. The deck must be exactly the 36 cards under everyone's locks, and each
+ * player's five must be the cards in those slots of the deck with only their own lock left on.
  */
-export function verifyDeal(d: DealRecord): { hands: [number[], number[]] } | { error: string } {
-  const other = (1 - d.dealer) as 0 | 1
-  if (!keyOk(d.keys[0]) || !keyOk(d.keys[1])) return { error: 'bad key' }
-  if (d.deckA?.length !== DECK_SIZE || d.deckB?.length !== DECK_SIZE) return { error: 'short deck' }
-  const ka = d.keys[d.dealer]
-  const kb = d.keys[other]
-  const expectA = new Set(Array.from({ length: DECK_SIZE }, (_, k) => hex(lock(encode(k), ka))))
-  if (new Set(d.deckA).size !== DECK_SIZE || !d.deckA.every((c) => expectA.has(c))) return { error: 'dealer’s deck' }
-  const expectB = new Set(d.deckA.map((c) => hex(lock(big(c), kb))))
-  if (new Set(d.deckB).size !== DECK_SIZE || !d.deckB.every((c) => expectB.has(c))) return { error: 'second shuffle' }
-  const hands: [number[], number[]] = [[], []]
-  for (const s of [0, 1] as const) {
-    const oppKey = d.keys[1 - s]
-    const want = unlockFor(d.deckB, s, oppKey)
-    if (want.some((c, i) => c !== d.unlock[s]?.[i])) return { error: 'unlock' }
-    const hand = readHand(d.unlock[s], d.keys[s])
-    if (!hand) return { error: 'hand' }
-    hands[s] = hand
+export function verifyDeal(d: DealRecord): { hands: number[][] } | { error: string } {
+  const n = d.keys.length
+  if (!d.keys.every(keyOk)) return { error: 'bad key' }
+  if (d.deck?.length !== DECK_SIZE || d.dealt?.length !== HAND * n) return { error: 'short deck' }
+  // every lock at once: the keys multiply (mod p − 1)
+  const all = d.keys.reduce((e, k) => (e * big(k)) % P1, 1n)
+  const full = (k: number) => hex(modpow(encode(k), all, P))
+  const expect = new Set(Array.from({ length: DECK_SIZE }, (_, k) => full(k)))
+  if (new Set(d.deck).size !== DECK_SIZE || !d.deck.every((c) => expect.has(c))) return { error: 'shuffle' }
+  const hands: number[][] = Array.from({ length: n }, () => [])
+  for (let i = 0; i < HAND * n; i++) {
+    const card = DECODE.get(unlockWith(big(d.dealt[i]), d.keys[ownerOf(i)]))
+    if (card === undefined || full(card) !== d.deck[i]) return { error: 'unlock' }
+    hands[ownerOf(i)].push(card)
   }
   return { hands }
 }

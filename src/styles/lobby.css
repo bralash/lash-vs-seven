@@ -121,6 +121,10 @@
   text-transform: uppercase;
 }
 .seat--1 .seat__tag { background: var(--seven); }
+.seat--2 .seat__tag { background: var(--p3); }
+.seat--3 .seat__tag { background: var(--p4); }
+/* four seats: smaller names so the 2×2 grid stays compact */
+.seats--many .seat__name { font-size: clamp(20px, 3.2vw, 28px); }
 .seat__name {
   font-family: var(--display);
   font-size: clamp(24px, 4vw, 34px);
@@ -187,6 +191,10 @@
 .local-names .local-name { padding: 12px 18px 14px; background: var(--slot); border-top-width: 10px; }
 .local-names .local-name--0 { border-top-color: var(--lash); }
 .local-names .local-name--1 { border-top-color: var(--seven); }
+.local-names .local-name--2 { border-top-color: var(--p3); }
+.local-names .local-name--3 { border-top-color: var(--p4); }
+.local-names--many { grid-template-columns: 1fr 1fr; gap: 12px; }
+.local-names--many .local-name input { font-size: clamp(20px, 5vw, 30px); }
 .local-names .local-name input { font-size: clamp(26px, 6vw, 40px); }
 .local-names .local-name input::placeholder { color: color-mix(in srgb, var(--ink) 35%, var(--slot)); }
 .lobby__local { justify-content: center; }
@@ -194,3 +202,10 @@
 .lobby__solo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .lobby__ops { gap: 10px; }
 .lobby__hero .opsf { justify-self: center; margin-bottom: 4px; }
+
+/* a room for up to four: keep the seats two across, even on a phone */
+@media (width < 640px) {
+  .seats--many { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .seats--many .seat { padding: 0 12px 12px; }
+  .seats--many .seat__tag { margin: 0 -12px 4px; padding: 5px 12px; }
+}

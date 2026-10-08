@@ -1,4 +1,3 @@
-import type { Seat } from '../../lobby/rooms'
 import { SUITS, cardLabel, isRed, rankLabel, suitOf } from './engine'
 
 /* ── One card, face up ───────────────────────────────────────────────── */
@@ -60,21 +59,29 @@ export function Hand({
   )
 }
 
-/* ── The opponent's hand, face down ──────────────────────────────────── */
+/* ── An opponent's hand, face down ───────────────────────────────────── */
 
-export function Backs({ n, seat, name }: { n: number; seat: Seat; name: string }) {
-  return (
+/** `label`: show their name over the cards (with more than one opponent) */
+export function Backs({ n, seat, name, label }: { n: number; seat: number; name: string; label?: boolean }) {
+  const backs = (
     <div className={`sp-backs sp-backs--${seat}`} aria-label={`${name}: ${n} card${n === 1 ? '' : 's'} left`}>
       {Array.from({ length: n }, (_, i) => (
         <Back key={i} size="sm" />
       ))}
     </div>
   )
+  if (!label) return backs
+  return (
+    <div className={`sp-opp sp-opp--${seat}`}>
+      <span className="sp-opp__who">{name}</span>
+      {backs}
+    </div>
+  )
 }
 
 /* ── Tricks so far: a pip per trick, in the winner's colour ──────────── */
 
-export function TrickPips({ winners, current }: { winners: Seat[]; current: number }) {
+export function TrickPips({ winners, current }: { winners: number[]; current: number }) {
   return (
     <ol className="sp-pips" aria-label={`Trick ${Math.min(current + 1, 5)} of 5`}>
       {Array.from({ length: 5 }, (_, i) => (

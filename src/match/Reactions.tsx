@@ -31,6 +31,8 @@ export interface Pop {
   said: string
   e?: string
   face?: OpsMood
+  /** who sent it, when more than one other player could have */
+  who?: string
 }
 
 /** The stickers currently showing, and a way to add one (it removes itself after SHOW_MS). */
@@ -125,7 +127,7 @@ export function Pops({ pops, other }: { pops: Pop[]; other: string | null }) {
             ) : (
               <span className="react__emoji" aria-hidden="true">{p.e}</span>
             )}
-            <span className="react__who">{p.mine ? 'You' : (other ?? 'Opponent')}</span>
+            <span className="react__who">{p.mine ? 'You' : (p.who ?? other ?? 'Opponent')}</span>
             <span className="react__said">{p.said}</span>
           </div>
         ))}
@@ -138,8 +140,10 @@ export function Pops({ pops, other }: { pops: Pop[]; other: string | null }) {
  * Reactions in an online match. Each player writes only their latest reaction to
  * matches/{game}/{code}/react/{uid}; the other screen shows it when it changes.
  */
-export function Reactions({ game, code, pid, other }: { game: string; code: string; pid: string; other: string | null }) {
+export function Reactions({ game, code, pid, other, names }: { game: string; code: string; pid: string; other: string | null; names?: Record<string, string> }) {
   const { pops, pop } = usePops()
+  const namesRef = useRef(names)
+  namesRef.current = names
   const seen = useRef<Record<string, number> | null>(null)
   const { play } = useSound()
 
@@ -153,7 +157,7 @@ export function Reactions({ game, code, pid, other }: { game: string; code: stri
         for (const [u, r] of Object.entries(all)) {
           const known = BY_KEY[r.k]
           if (u === pid || r.n === before[u] || !known) continue
-          pop({ mine: false, e: known.e, said: known.label })
+          pop({ mine: false, e: known.e, said: known.label, who: namesRef.current?.[u] })
           play('tap')
           navigator.vibrate?.(40)
         }

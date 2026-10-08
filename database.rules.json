@@ -14,7 +14,17 @@
             ".validate": "newData.val() === $code"
           },
           "hostId": {
+            ".write": "auth != null && newData.val() === auth.uid && data.parent().child('status').val() === 'playing' && data.parent().child('players').hasChild(auth.uid) && data.parent().child('out').hasChild(data.val()) && !data.parent().child('out').hasChild(auth.uid)",
             ".validate": "newData.isString()"
+          },
+          "seatCount": {
+            ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4 && (!data.exists() || newData.val() === data.val())"
+          },
+          "out": {
+            "$uid": {
+              ".write": "auth != null && !data.exists() && root.child('matches/' + $game + '/' + $code).child('status').val() === 'playing' && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid) && root.child('matches/' + $game + '/' + $code).child('players').hasChild($uid)",
+              ".validate": "newData.val() === 'left' || newData.val() === 'dropped'"
+            }
           },
           "createdAt": {
             ".validate": "newData.isNumber()"
@@ -24,7 +34,15 @@
               ".validate": "newData.isString()"
             },
             "s1": {
-              ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('status').val() === 'waiting' && ((!data.exists() && newData.val() === auth.uid) || (data.val() === auth.uid && (!newData.exists() || newData.val() === auth.uid)))",
+              ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('status').val() === 'waiting' && ((!data.exists() && newData.val() === auth.uid && data.parent().child('s0').val() !== auth.uid && data.parent().child('s2').val() !== auth.uid && data.parent().child('s3').val() !== auth.uid) || (data.val() === auth.uid && (!newData.exists() || newData.val() === auth.uid)))",
+              ".validate": "newData.isString()"
+            },
+            "s2": {
+              ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('status').val() === 'waiting' && root.child('matches/' + $game + '/' + $code).child('seatCount').val() >= 3 && ((!data.exists() && newData.val() === auth.uid && data.parent().child('s0').val() !== auth.uid && data.parent().child('s1').val() !== auth.uid && data.parent().child('s3').val() !== auth.uid) || (data.val() === auth.uid && (!newData.exists() || newData.val() === auth.uid)))",
+              ".validate": "newData.isString()"
+            },
+            "s3": {
+              ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('status').val() === 'waiting' && root.child('matches/' + $game + '/' + $code).child('seatCount').val() >= 4 && ((!data.exists() && newData.val() === auth.uid && data.parent().child('s0').val() !== auth.uid && data.parent().child('s1').val() !== auth.uid && data.parent().child('s2').val() !== auth.uid) || (data.val() === auth.uid && (!newData.exists() || newData.val() === auth.uid)))",
               ".validate": "newData.isString()"
             },
             "$other": {
@@ -33,13 +51,13 @@
           },
           "players": {
             "$uid": {
-              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || newData.parent().parent().child('seats/s0').val() === auth.uid || newData.parent().parent().child('seats/s1').val() === auth.uid)",
+              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || newData.parent().parent().child('seats/s0').val() === auth.uid || newData.parent().parent().child('seats/s1').val() === auth.uid || newData.parent().parent().child('seats/s2').val() === auth.uid || newData.parent().parent().child('seats/s3').val() === auth.uid)",
               ".validate": "newData.hasChildren(['name', 'seat'])",
               "name": {
                 ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
               },
               "seat": {
-                ".validate": "(newData.val() === 0 && newData.parent().parent().parent().child('seats/s0').val() === $uid) || (newData.val() === 1 && newData.parent().parent().parent().child('seats/s1').val() === $uid)"
+                ".validate": "(newData.val() === 0 && newData.parent().parent().parent().child('seats/s0').val() === $uid) || (newData.val() === 1 && newData.parent().parent().parent().child('seats/s1').val() === $uid) || (newData.val() === 2 && newData.parent().parent().parent().child('seats/s2').val() === $uid) || (newData.val() === 3 && newData.parent().parent().parent().child('seats/s3').val() === $uid)"
               },
               "online": {
                 ".validate": "newData.isBoolean()"

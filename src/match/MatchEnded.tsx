@@ -8,7 +8,7 @@ import type { Seated } from './types'
 interface Props {
   room: Room
   me: Me
-  seats: [Seated | null, Seated | null]
+  seats: (Seated | null)[]
   exit: MatchExit
   /** the game's own score summary (usually two ScoreCards) */
   scoreboard: ReactNode

@@ -6,11 +6,11 @@ import { BOT_NAME, LEVELS, type Brain, type Level } from '../match/bot'
 import { PokeOps } from '../components/PokeOps'
 import { LocalSessionProvider, type Session } from '../match/session'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
-import type { Room, Seat } from './rooms'
+import type { AnySeat, Room, Seat } from './rooms'
 
-/** A pass-and-play match: two names, the host's option, and the whole game state, all on this device. */
+/** A pass-and-play match: the names (two, or up to four in games for more), the host's option, and the whole game state, all on this device. */
 export interface LocalMatch {
-  names: [string, string]
+  names: string[]
   state: Record<string, unknown>
   /** when the players sat down — tells this pass & play match apart from earlier ones (rivalry record) */
   startedAt?: number
@@ -49,28 +49,32 @@ export function LocalSetup({
 }: {
   game: GameMeta
   option?: MatchOption | MatchOption[]
-  initialState?: (choice?: string, all?: string[]) => Record<string, unknown>
+  initialState?: (choice?: string, all?: string[], seats?: number[]) => Record<string, unknown>
   /** setting up a game against Ops: one name, plus how hard Ops plays */
   vsBot?: boolean
   onStart: (m: LocalMatch) => void
   onBack: () => void
 }) {
-  const [names, setNames] = useState<[string, string]>(() => [load(KEYS.name) ?? '', load(KEYS.name2) ?? ''])
+  const [names, setNames] = useState<string[]>(() => [load(KEYS.name) ?? '', load(KEYS.name2) ?? '', '', ''])
   const options = optionList(option)
   const [choices, setChoices] = useState(() => options.map((o) => o.initial))
   const [level, setLevel] = useState<Level>(() => (load(KEYS.botLevel) as Level | null) ?? 'medium')
+  // games for more than two: how many are sharing this device (Ops plays one-on-one)
+  const [fewest, most] = game.players ?? [2, 2]
+  const [count, setCount] = useState(fewest)
+  const seats = vsBot ? 1 : count
   const { play } = useSound()
 
   const start = (e: FormEvent) => {
     e.preventDefault()
-    const clean = names.map((n, i) => n.trim().slice(0, 16) || `Player ${i + 1}`) as [string, string]
+    const clean = names.slice(0, vsBot ? 2 : count).map((n, i) => n.trim().slice(0, 16) || `Player ${i + 1}`)
     if (names[0].trim()) save(KEYS.name, clean[0])
     if (vsBot) {
       save(KEYS.botLevel, level)
       clean[1] = BOT_NAME
     } else if (names[1].trim()) save(KEYS.name2, clean[1])
     play('start')
-    onStart({ names: clean, state: initialState?.(choices[0], choices) ?? {}, startedAt: Date.now(), ...(vsBot ? { bot: level } : {}) })
+    onStart({ names: clean, state: initialState?.(choices[0], choices, clean.map((_, i) => i)) ?? {}, startedAt: Date.now(), ...(vsBot ? { bot: level } : {}) })
   }
 
   return (
@@ -83,15 +87,22 @@ export function LocalSetup({
       </div>
 
       <form className="lobby__stack" onSubmit={start}>
-        <div className="local-names">
-          {(vsBot ? [0] : [0, 1]).map((i) => (
+        {!vsBot && most > fewest && (
+          <OptionPicker
+            options={[{ label: 'Players', initial: String(fewest), choices: Array.from({ length: most - fewest + 1 }, (_, i) => ({ value: String(fewest + i), label: String(fewest + i) })) }]}
+            choices={[String(count)]}
+            onChange={([c]) => setCount(Number(c))}
+          />
+        )}
+        <div className={`local-names${seats > 2 ? ' local-names--many' : ''}`}>
+          {Array.from({ length: seats }, (_, i) => (
             <LocalName
               key={i}
-              seat={i as Seat}
+              seat={i as AnySeat}
               value={names[i]}
               autoFocus={i === 0 && !names[0]}
               label={vsBot ? 'Your name' : undefined}
-              onChange={(v) => setNames((n) => (i === 0 ? [v, n[1]] : [n[0], v]))}
+              onChange={(v) => setNames((n) => n.map((x, j) => (j === i ? v : x)))}
             />
           ))}
         </div>
@@ -114,7 +125,7 @@ export function LocalSetup({
   )
 }
 
-function LocalName({ seat, value, onChange, autoFocus, label }: { seat: Seat; value: string; onChange: (v: string) => void; autoFocus?: boolean; label?: string }) {
+function LocalName({ seat, value, onChange, autoFocus, label }: { seat: AnySeat; value: string; onChange: (v: string) => void; autoFocus?: boolean; label?: string }) {
   const id = useId()
   return (
     <div className={`field-card local-name local-name--${seat}`}>
@@ -176,10 +187,10 @@ export function LocalGame({
         return Promise.resolve(true)
       },
       // one device: "play again" is both players at once, and the screen's host logic deals it
-      ready: () => setState((prev) => ({ ...prev, ready: { p0: true, p1: true } })),
+      ready: () => setState((prev) => ({ ...prev, ready: Object.fromEntries(match.names.map((_, i) => [`p${i}`, true])) })),
       start: (next) => setState(next),
     }),
-    [level],
+    [level, match.names],
   )
 
   // Ops thinks for a moment, then moves. Any change to the state (including its own move) re-checks.
@@ -199,16 +210,14 @@ export function LocalGame({
     status: 'playing',
     hostId: 'p0',
     createdAt: startedAt,
-    players: {
-      p0: { name: match.names[0], seat: 0, online: true, joinedAt: 0 },
-      p1: { name: match.names[1], seat: 1, online: true, joinedAt: 0 },
-    },
+    ...(match.names.length > 2 ? { seatCount: match.names.length } : {}),
+    players: Object.fromEntries(match.names.map((name, i) => [`p${i}`, { name, seat: i as AnySeat, online: true, joinedAt: 0 }])),
     state,
   }
   // the device belongs to whoever's turn it is — or, against Ops, always to you
-  const turn = ((state.live as { turn?: Seat } | undefined)?.turn ?? 0) as Seat
-  const seat: Seat = level ? 0 : turn
-  const me: Me = { id: `p${seat}`, seat, isHost: true }
+  const turn = ((state.live as { turn?: AnySeat } | undefined)?.turn ?? 0) as AnySeat
+  const seat: AnySeat = level ? 0 : turn
+  const me: Me = { id: `p${seat}`, seat: (seat < 2 ? seat : 0) as Seat, seatN: seat, isHost: true }
 
   return <LocalSessionProvider value={session}>{renderGame(room, me, exit)}</LocalSessionProvider>
 }

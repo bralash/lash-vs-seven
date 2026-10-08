@@ -4,10 +4,12 @@
 import { MARK_7, MARK_L } from '../components/Logo'
 
 export type Seat01 = 0 | 1
+/** any seat, for games for up to four */
+export type SeatN = 0 | 1 | 2 | 3
 
 export interface CardPlayer {
   name: string
-  seat: Seat01
+  seat: SeatN
   /** the big number on their card (points, rounds, games…) */
   score: string
   /** small caption under the score */
@@ -18,7 +20,7 @@ export type CardDetail =
   /** Word Hunt: the 4×4 board with one word's path lit up, plus a few stats on the right */
   | { kind: 'grid'; letters: string[]; path: number[]; word: string; points: string; stats: [string, string][] }
   /** Anagram Race: one row per round */
-  | { kind: 'rounds'; rows: { word: string; seat: Seat01 | null; note: string }[] }
+  | { kind: 'rounds'; rows: { word: string; seat: SeatN | null; note: string }[] }
   /** Tic-Tac-Toe: the deciding board and its strike, plus stats */
   | { kind: 'ttt'; board: string; line?: number[]; stats: [string, string][] }
   /** Connect Four: the deciding 7×6 board with the winning four struck through, plus stats */
@@ -48,7 +50,8 @@ export interface CardInput {
   game: string
   /** index into players, or -1 for a draw */
   winner: number
-  players: [CardPlayer, CardPlayer]
+  /** two, or up to four in games for more */
+  players: CardPlayer[]
   /** e.g. "2 — 1" */
   scoreLine: string
   /** the line under the winner's name, when "WINS 2 — 1" doesn't fit the game (e.g. "SOLVED IN 6:42") */
@@ -76,10 +79,12 @@ const C = {
   good: '#1f9d55',
   lash: '#ff5a1f',
   seven: '#2d5bff',
+  p3: '#1f9d55',
+  p4: '#9b3fd6',
   board: '#17151c',
   tileEdge: '#cbbd9f',
 }
-const SEAT = [C.lash, C.seven]
+const SEAT = [C.lash, C.seven, C.p3, C.p4]
 const DISPLAY = '"Bowlby One", "Arial Black", Impact, sans-serif'
 const MONO = '"DM Mono", ui-monospace, Menlo, monospace'
 
@@ -171,7 +176,7 @@ function tileLetter(ctx: Ctx, x: number, y: number, size: number, letter: string
   text(ctx, letter, x + size / 2, y + size * 0.7, size * 0.52, C.ink, { align: 'center' })
 }
 
-function avatar(ctx: Ctx, cx: number, cy: number, r: number, name: string, seat: Seat01) {
+function avatar(ctx: Ctx, cx: number, cy: number, r: number, name: string, seat: SeatN) {
   ctx.fillStyle = C.ink
   ctx.beginPath()
   ctx.arc(cx + 5, cy + 5, r, 0, Math.PI * 2)
@@ -250,22 +255,33 @@ export async function drawShareCard(input: CardInput): Promise<Blob> {
   ctx.restore()
   text(ctx, input.headline ?? (draw ? input.scoreLine : `WINS ${input.scoreLine}`), W / 2, 548, 64, C.ink, { align: 'center' })
 
-  // player cards
+  // player cards: two side by side, or three or four as a 2×2 grid of shorter cards
   const cardY = 610
-  const cardH = 210
   const cardW = (W - 2 * M - 48) / 2
+  const many = input.players.length > 2
+  const cardH = many ? 96 : 210
   input.players.forEach((p, i) => {
-    const x = M + i * (cardW + 48)
+    const x = M + (i % 2) * (cardW + 48)
+    const y = cardY + Math.floor(i / 2) * (cardH + 18)
     const won = input.winner === i
-    block(ctx, x, cardY, cardW, cardH, won ? '#fff6d6' : C.slot, 10, 5)
+    block(ctx, x, y, cardW, cardH, won ? '#fff6d6' : C.slot, many ? 7 : 10, 5)
     ctx.fillStyle = SEAT[p.seat]
-    ctx.fillRect(x + 5, cardY + 5, cardW - 10, 16)
-    avatar(ctx, x + 70, cardY + 112, 44, p.name, p.seat)
+    if (many) {
+      ctx.fillRect(x + 5, y + 5, 12, cardH - 10)
+      avatar(ctx, x + 62, y + cardH / 2, 28, p.name, p.seat)
+      ctx.font = font(26)
+      text(ctx, ellipsize(ctx, p.name.toUpperCase(), cardW - 220), x + 104, y + 58, 26, C.ink)
+      text(ctx, p.score, x + cardW - 26, y + 66, 52, C.ink, { align: 'right' })
+      if (won) stamp(ctx, 'WINNER', x + cardW - 120, y + 4, 18, C.ink, C.hit, 0.06)
+      return
+    }
+    ctx.fillRect(x + 5, y + 5, cardW - 10, 16)
+    avatar(ctx, x + 70, y + 112, 44, p.name, p.seat)
     ctx.font = font(34)
-    text(ctx, ellipsize(ctx, p.name.toUpperCase(), cardW - 150), x + 132, cardY + 88, 34, C.ink)
-    text(ctx, p.score, x + 132, cardY + 160, 64, C.ink)
-    text(ctx, p.meta.toUpperCase(), x + 132, cardY + 192, 20, C.dim, { family: MONO, weight: 500, spacing: 2 })
-    if (won) stamp(ctx, 'WINNER', x + cardW - 70, cardY + 4, 22, C.ink, C.hit, 0.06)
+    text(ctx, ellipsize(ctx, p.name.toUpperCase(), cardW - 150), x + 132, y + 88, 34, C.ink)
+    text(ctx, p.score, x + 132, y + 160, 64, C.ink)
+    text(ctx, p.meta.toUpperCase(), x + 132, y + 192, 20, C.dim, { family: MONO, weight: 500, spacing: 2 })
+    if (won) stamp(ctx, 'WINNER', x + cardW - 70, y + 4, 22, C.ink, C.hit, 0.06)
   })
 
   // game highlight panel
@@ -285,7 +301,7 @@ export async function drawShareCard(input: CardInput): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png'))
 }
 
-function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h: number, players: [CardPlayer, CardPlayer]) {
+function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h: number, players: CardPlayer[]) {
   const pad = 34
   if (d.kind === 'grid') {
     const size = 54
@@ -823,7 +839,7 @@ function drawQuoridor(ctx: Ctx, d: Extract<CardDetail, { kind: 'quoridor' }>, x:
 }
 
 /** Battleword: both players' boards as colours only, side by side, each headed by who guessed and the word they were after. */
-function drawBattleword(ctx: Ctx, d: Extract<CardDetail, { kind: 'battleword' }>, players: [CardPlayer, CardPlayer], x: number, y: number, w: number, h: number, pad: number) {
+function drawBattleword(ctx: Ctx, d: Extract<CardDetail, { kind: 'battleword' }>, players: CardPlayer[], x: number, y: number, w: number, h: number, pad: number) {
   const tile = 32
   const gap = 6
   const gridW = tile * 5 + gap * 4

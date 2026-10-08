@@ -94,3 +94,63 @@ function earned(r: Rival, ids: [string[], string[]] | undefined, me: string, the
 function cardLine(names: [string, string], wins: [number, number]) {
   return `${names[0]} ${wins[0]} — ${wins[1]} ${names[1]} · all-time`.toUpperCase()
 }
+
+/**
+ * Results of a game for up to four: counted pairwise by final score — a win against everyone who
+ * finished below you, a loss against everyone above, a draw on equal points. Only players still in
+ * at the end count (leavers aren't recorded, as in two-player games). Online that's one line for each
+ * person you played; in pass & play every pair is kept, shown from the top scorer's side.
+ */
+export function useRivalryMulti(
+  game: string,
+  room: Room,
+  me: Me,
+  players: (Seated | null)[],
+  scores: number[],
+  /** the seats still in at the end */
+  finished: number[],
+  matchNo: number,
+): RivalryView[] {
+  const { local, bot } = useSession(game, room.code)
+  const [views] = useState(() => {
+    if (bot) return []
+    const base = `${game}:${room.code}:${room.createdAt}:${matchNo}`
+    const gameName = (slug: string) => gameBySlug(slug)?.name ?? slug
+    const nameOf = (s: number) => players[s]?.name ?? `Player ${s + 1}`
+    const outcome = (a: number, b: number): Outcome => (scores[a] === scores[b] ? 'draw' : scores[a] > scores[b] ? 'win' : 'loss')
+    const view = (r: Rival, a: string, b: string, pair?: [string, string]): RivalryView => ({
+      ...describe(r, a, b, gameName),
+      card: pair ? cardLine(pair, [r.total.w, r.total.l]) : '',
+      feats: [],
+    })
+
+    if (local) {
+      const top = [...finished].sort((a, b) => scores[b] - scores[a])[0]
+      const out: RivalryView[] = []
+      finished.forEach((a, i) =>
+        finished.slice(i + 1).forEach((b) => {
+          const names: [string, string] = [nameOf(a), nameOf(b)]
+          const aFirst = names[0].trim().toLowerCase() <= names[1].trim().toLowerCase()
+          const [first, second] = aFirst ? [a, b] : [b, a]
+          const stored = recordResult({ game, key: localKey(names), name: `${names[0]} & ${names[1]}`, outcome: outcome(first, second), matchId: `${base}:${a}-${b}` })
+          // shown from the top scorer's side (or player a's, for pairs without them)
+          const side = b === top ? b : a
+          const r = side === first ? stored : flip(stored)
+          if (a === top || b === top) out.push(view(r, nameOf(side), nameOf(side === a ? b : a), finished.length === 2 ? [nameOf(0), nameOf(1)] : undefined))
+        }),
+      )
+      return out
+    }
+
+    return finished
+      .filter((s) => s !== me.seatN && players[s])
+      .map((s) => {
+        const opp = players[s]!
+        const r = recordResult({ game, key: opp.id, name: opp.name, outcome: outcome(me.seatN, s), matchId: `${base}:${opp.id}` })
+        const pair: [string, string] | undefined = finished.length === 2 ? [nameOf(finished[0]), nameOf(finished[1])] : undefined
+        const bySeat = me.seatN < s ? r : flip(r)
+        return { ...view(r, 'You', opp.name), card: pair ? cardLine(pair, [bySeat.total.w, bySeat.total.l]) : '' }
+      })
+  })
+  return views
+}

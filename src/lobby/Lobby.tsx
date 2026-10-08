@@ -15,11 +15,15 @@ import {
   inviteUrl,
   joinRoom,
   leaveRoom,
+  abandonRoom,
   normalizeCode,
   peekRoom,
-  playersBySeat,
+  seatedPlayers,
   startMatch,
+  stillIn,
+  takeOverHost,
   trackPresence,
+  type AnySeat,
   type JoinFailure,
   type Room,
 } from './rooms'
@@ -77,7 +81,10 @@ export interface MatchExit {
 
 export interface Me {
   id: string
+  /** your seat in a two-player game */
   seat: 0 | 1
+  /** your seat in a game for up to four (the same as `seat` in two-player games) */
+  seatN: AnySeat
   isHost: boolean
 }
 
@@ -85,8 +92,8 @@ interface Props {
   game: GameMeta
   /** Rendered once the host starts the match. */
   renderGame: (room: Room, me: Me, exit: MatchExit) => ReactNode
-  /** Initial game state written when the host presses Start. */
-  initialState?: (choice?: string, all?: string[]) => Record<string, unknown>
+  /** Initial game state written when the host presses Start. `seats`: the seats taken, in order (games for more than two need it) */
+  initialState?: (choice?: string, all?: string[], seats?: number[]) => Record<string, unknown>
   /** settings the host picks in the waiting room (e.g. best of 3/5/7), passed to initialState: the first as `choice`, every one in `all` */
   option?: MatchOption | MatchOption[]
   /** lets you play Ops, the computer, on this device */
@@ -100,7 +107,7 @@ interface Props {
 const FAILURE_COPY: Record<JoinFailure, string> = {
   missing: 'That room doesn’t exist or has closed.',
   started: 'That match has already started.',
-  full: 'That room already has two players.',
+  full: 'That room is full.',
   ended: 'That match has ended — a player left.',
   youLeft: 'You left this match, so it’s over for both of you.',
   youDropped: 'You lost connection, and the match ended while you were away.',
@@ -118,6 +125,10 @@ type Invite =
 interface LeaveGuard {
   kind: LeaveKind
   other: string | null
+  /** two or more others are still in, so the match goes on without you */
+  carryOn?: boolean
+  /** everyone else in the room by id, so a reaction says whose it is */
+  names?: Record<string, string>
   /** identifies the match, so the back-buffer below is pushed once per match */
   key: string
   /** what confirming does: end the online match, or drop the pass-and-play game */
@@ -250,7 +261,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
     if (!name) return
     challenged.current = true
     setOpening(true)
-    createRoom(game.slug, name).then(
+    createRoom(game.slug, name, game.players?.[1]).then(
       (code) => {
         setOpening(false)
         setChallengeFor(challenge)
@@ -388,7 +399,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         }
         right={
           <>
-            {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} />}
+            {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
             {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
             {inMatch && game.fullscreen && fullscreen.supported && (
               <button type="button" className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
@@ -408,7 +419,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
       />
       {screen}
       {showRules && game.rules && <HowToPlay rules={game.rules} demo={rulesDemo} onClose={() => setShowRules(false)} />}
-      {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} onStay={stay} onLeave={confirmLeave} />}
+      {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} carryOn={guard.carryOn} onStay={stay} onLeave={confirmLeave} />}
     </div>
   )
 }
@@ -476,7 +487,7 @@ function StartScreen({ game, onEnter, onLocal, onBot }: { game: GameMeta; onEnte
     setBusy('create')
     setError('')
     try {
-      const c = await createRoom(game.slug, n)
+      const c = await createRoom(game.slug, n, game.players?.[1])
       play('join')
       onEnter(c)
     } catch {
@@ -688,28 +699,51 @@ function WaitingRoom({
     return () => clearTimeout(t)
   }, [toast])
 
-  // chime when the opponent arrives
+  // chime whenever someone arrives
   const count = live.status === 'ready' ? Object.keys(live.room.players ?? {}).length : 0
+  const lastCount = useRef(count)
   useEffect(() => {
-    if (count === 2) play('join')
+    if (count >= 2 && count > lastCount.current) play('join')
+    lastCount.current = count
   }, [count, play])
 
   // Tell the lobby when leaving needs a confirmation: during a match, or when a host has a guest waiting.
   const snapshot = live.status === 'ready' ? live.room : null
   useEffect(() => {
     const mine = snapshot?.players?.[pid]
-    if (!snapshot || !mine) return onGuard(null)
-    const other = Object.entries(snapshot.players).find(([id]) => id !== pid)?.[1]?.name ?? null
+    if (!snapshot || !mine || snapshot.out?.[pid]) return onGuard(null)
+    const others = Object.entries(snapshot.players).filter(([id]) => id !== pid)
+    const names = Object.fromEntries(others.map(([id, p]) => [id, p.name]))
+    const inWith = stillIn(snapshot).filter((p) => p.id !== pid)
+    const other = (snapshot.status === 'waiting' ? others.map(([, p]) => p) : inWith).map((p) => p.name).join(' & ') || null
     const leave = () => {
       leaveRoom(game.slug, snapshot)
       markLeft(game.slug, snapshot.code)
     }
     if (snapshot.status === 'abandoned') onGuard(null) // match already over — nothing to protect
-    else if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, key: snapshot.code, leave })
+    else if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, carryOn: inWith.length >= 2, names, key: snapshot.code, leave })
     else if (snapshot.hostId === pid && other) onGuard({ kind: 'close', other, key: snapshot.code, leave })
     else onGuard(null)
   }, [snapshot, pid, onGuard, game.slug])
   useEffect(() => () => onGuard(null), [onGuard])
+
+  // A match that carried on without someone: if the host is out, the first player still in takes
+  // over; and if two people went at once and only one is left, it's over after all.
+  const playing = snapshot?.status === 'playing' ? snapshot : null
+  const left = playing ? stillIn(playing) : []
+  const hostOut = !!playing?.out?.[playing.hostId]
+  const nextHost = hostOut ? left[0]?.id : undefined
+  useEffect(() => {
+    if (nextHost === pid) takeOverHost(game.slug, code).catch(() => {})
+  }, [nextHost, pid, game.slug, code])
+  const lastOne = !!playing?.out && left.length < 2 && left[0]?.id === pid
+  const outIds = Object.keys(playing?.out ?? {}).join(',')
+  useEffect(() => {
+    if (!lastOne || !playing?.out) return
+    const [who, why] = Object.entries(playing.out).pop()!
+    abandonRoom(game.slug, code, who, why === 'left' ? 'left' : 'disconnected').catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastOne, outIds, game.slug, code])
 
   if (live.status === 'loading') {
     return <main className="lobby__main" aria-busy="true"><p className="hint">Opening room {code}…</p></main>
@@ -734,17 +768,38 @@ function WaitingRoom({
     onExit()
   }
 
+  // the match went on without me (I left, or dropped and didn't make it back in time)
+  if (room.status === 'playing' && room.out?.[pid]) {
+    const dropped = room.out[pid] === 'dropped'
+    return (
+      <main className="lobby__main screen-in">
+        <div className="lobby__hero">
+          <VsBlock mood="left" eyes size={64} />
+          <p className="label">Room {code}</p>
+          <h1 className="lobby__title">{dropped ? 'You dropped out' : 'You left'}</h1>
+          <p>{dropped ? 'You lost connection, so the match carried on without you.' : 'The match is carrying on without you.'}</p>
+        </div>
+        <button type="button" className="btn btn--primary" onClick={leave}>
+          Back to lobby
+        </button>
+      </main>
+    )
+  }
+
   if (room.status !== 'waiting') {
     return (
       <>
-        {renderGame(room, { id: pid, seat: me.seat, isHost }, { request: onRequestLeave, now: leave })}
+        {renderGame(room, { id: pid, seat: (me.seat < 2 ? me.seat : 0) as 0 | 1, seatN: me.seat, isHost }, { request: onRequestLeave, now: leave })}
         {room.status === 'playing' && <SelfOffline />}
       </>
     )
   }
 
-  const seats = playersBySeat(room)
-  const ready = seats[0] && seats[1]
+  const seats = seatedPlayers(room)
+  const seated = seats.filter(Boolean).length
+  const fewest = game.players?.[0] ?? 2
+  const many = seats.length > 2
+  const ready = seated >= fewest
   const url = inviteUrl(game.slug, code)
 
   const copy = async () => {
@@ -767,7 +822,7 @@ function WaitingRoom({
     setStarting(true)
     play('start')
     try {
-      await startMatch(game.slug, code, initialState?.(choices[0], choices) ?? {})
+      await startMatch(game.slug, code, initialState?.(choices[0], choices, seats.flatMap((p, i) => (p ? [i] : []))) ?? {})
     } catch {
       setStarting(false)
       setToast('Couldn’t start. Try again.')
@@ -795,7 +850,7 @@ function WaitingRoom({
         )}
       </div>
 
-      <ul className="seats" aria-label="Players">
+      <ul className={`seats${many ? ' seats--many' : ''}`} aria-label="Players">
         {seats.map((p, i) => (
           <li key={i} className={`seat seat--${i}${p ? '' : ' seat--empty'}`}>
             {p ? (
@@ -813,7 +868,7 @@ function WaitingRoom({
               <>
                 <span className="seat__tag">Player {i + 1}</span>
                 <span className="seat__name">Waiting<span className="dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></span>
-                <span className="seat__meta">Send the link to {challengeFor ?? 'a friend'}</span>
+                <span className="seat__meta">{many && i >= fewest ? 'Optional · ' : ''}Send the link to {challengeFor ?? 'a friend'}</span>
               </>
             )}
           </li>
@@ -824,13 +879,14 @@ function WaitingRoom({
         {isHost && <OptionPicker options={options} choices={choices} onChange={setChoices} />}
         {isHost ? (
           <button type="button" className="btn btn--primary btn--lg btn--block" disabled={!ready || starting} onClick={start}>
-            {starting ? 'Starting…' : ready ? 'Start match' : 'Waiting for opponent'} <span className="keycap">↵</span>
+            {starting ? 'Starting…' : ready ? (many ? `Start with ${seated} players` : 'Start match') : 'Waiting for opponent'} <span className="keycap">↵</span>
           </button>
         ) : (
           <p className="hint lobby__center">Waiting for {seats[0]?.name ?? 'the host'} to start…</p>
         )}
+        {many && isHost && ready && seated < seats.length && <p className="hint lobby__center">Up to {seats.length} can play — start now or wait for more.</p>}
         {/* a host with a guest waiting gets a confirm; otherwise leaving costs nobody anything */}
-        <button type="button" className="link-btn" onClick={isHost && seats[1] ? onRequestLeave : leave}>
+        <button type="button" className="link-btn" onClick={isHost && seated > 1 ? onRequestLeave : leave}>
           {isHost ? 'Close room' : 'Leave room'}
         </button>
       </div>

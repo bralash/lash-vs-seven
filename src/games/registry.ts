@@ -23,6 +23,8 @@ export interface GameMeta {
   status: 'live' | 'soon'
   /** has a computer opponent (Ops) in the lobby — shown on the homepage card */
   ops?: boolean
+  /** how many can play, [fewest, most] — missing means exactly two */
+  players?: [number, number]
   /** offer a fullscreen button during the match (big boards that benefit on iPad / desktop) */
   fullscreen?: boolean
   /** short tagline shown under the title in the game's lobby */
@@ -110,12 +112,14 @@ export const GAMES: GameMeta[] = [
     modes: 'online + local',
     status: 'live',
     ops: true,
-    tagline: 'Five cards · follow suit · only the last trick counts',
+    players: [2, 4],
+    tagline: 'Five cards · follow suit · only the last trick counts · 2–4 players',
     rules: [
-      { title: 'Five cards each', body: 'A 36-card deck — 6 up to Ace in every suit. Online, both phones shuffle it together, so neither can see the other’s hand.' },
-      { title: 'Follow suit', body: 'The leader plays any card. You must follow the same suit if you can; the higher card of that suit wins the trick. No trumps. The winner leads the next trick.' },
+      { title: 'Five cards each', body: 'Two to four players and a 36-card deck — 6 up to Ace in every suit. Online, every phone helps shuffle it, so nobody can see anyone else’s hand.' },
+      { title: 'Follow suit', body: 'The leader plays any card, then everyone plays one in turn, going round in seat order. You must follow the same suit if you can; the highest card of that suit wins the trick. No trumps. The winner leads the next trick.' },
       { title: 'Only the last trick counts', body: 'Whoever takes the fifth trick wins the round: 1 point, or 3 if they take it with a 6 and 2 with a 7. Take the last two tricks with 6s and 7s and both count — 6 + 7 is 5.' },
-      { title: 'First to the target', body: 'The host picks 5, 10 or 15 points. The round’s winner leads the next one. When a round ends, both phones check the shuffle and every card played.' },
+      { title: 'First to the target', body: 'The host picks 5, 10 or 15 points. The round’s winner leads the next one. When a round ends, every phone checks the shuffle and every card played.' },
+      { title: 'Someone leaves', body: 'With three or four playing, the game goes on without them: the round in progress is dealt again for those left, and the scores stand. If the host leaves, the next player takes over. Down to one player, the match is over.' },
     ],
   },
   {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { abandonRoom } from '../lobby/rooms'
+import { useEffect, useRef, useState } from 'react'
+import { abandonRoom, dropPlayer } from '../lobby/rooms'
 import type { Seated } from './types'
 
 /** An opponent who drops offline mid-round has this long to come back before the match ends. */
@@ -34,4 +34,37 @@ export function useOpponentAway(game: string, code: string, opp: Seated | null, 
   }, [since])
 
   return since === null ? null : Math.max(0, Math.ceil((since + RECONNECT_MS - Date.now()) / 1000))
+}
+
+/**
+ * useOpponentAway for games for up to four. Every other player still in who drops offline mid-round
+ * gets RECONNECT_MS to come back; then they're dropped (dropPlayer): the match carries on without them
+ * if two or more are left, otherwise it's over. Returns who's away and the seconds each has left.
+ */
+export function useAwayPlayers(game: string, code: string, others: Seated[], active: boolean): { id: string; name: string; secs: number }[] {
+  const away = active ? others.filter((p) => !p.online) : []
+  const awayKey = away.map((p) => p.id).join(',')
+  const since = useRef<Record<string, number>>({})
+  const [, tick] = useState(0)
+
+  useEffect(() => {
+    const now = Date.now()
+    const ids = awayKey ? awayKey.split(',') : []
+    // keep the clock running for anyone still away, start it for the newly away, forget the rest
+    since.current = Object.fromEntries(ids.map((id) => [id, since.current[id] ?? now]))
+    if (!ids.length) return
+    const t = setInterval(() => {
+      tick((n) => n + 1)
+      for (const [id, at] of Object.entries(since.current)) {
+        if (Date.now() - at < RECONNECT_MS) continue
+        delete since.current[id]
+        dropPlayer(game, code, id, 'disconnected').catch(() => {})
+      }
+    }, 500)
+    return () => clearInterval(t)
+  }, [awayKey, game, code])
+
+  return away
+    .filter((p) => since.current[p.id] !== undefined)
+    .map((p) => ({ id: p.id, name: p.name, secs: Math.max(0, Math.ceil((since.current[p.id] + RECONNECT_MS - Date.now()) / 1000)) }))
 }

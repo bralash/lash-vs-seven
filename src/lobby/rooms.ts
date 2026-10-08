@@ -18,14 +18,19 @@ import { load, save } from '../lib/storage'
 // Every write below targets the smallest piece the database rules allow for the caller
 // (see database.rules.json): a seat, your own player entry, your own words, a status flip.
 
-/** `abandoned`: a player left (or dropped and didn't come back) mid-match — the match is over for both. */
+/** `abandoned`: a player left (or dropped and didn't come back) mid-match and fewer than two were left — the match is over. */
 export type RoomStatus = 'waiting' | 'playing' | 'done' | 'abandoned'
 export type EndReason = 'left' | 'disconnected'
+/** the two seats of a two-player game */
 export type Seat = 0 | 1
+/** any seat, in games for up to four */
+export type AnySeat = 0 | 1 | 2 | 3
+/** how a player came to be out of a match that carried on without them */
+export type OutReason = 'left' | 'dropped'
 
 export interface Player {
   name: string
-  seat: Seat
+  seat: AnySeat
   online: boolean
   joinedAt: number
 }
@@ -36,8 +41,12 @@ export interface Room {
   status: RoomStatus
   hostId: string
   createdAt: number
-  /** who holds each seat; claiming s1 is how a guest joins */
-  seats?: { s0?: string; s1?: string }
+  /** how many seats the room has: 2, or up to 4 in games for more (missing on two-seat rooms) */
+  seatCount?: number
+  /** who holds each seat; claiming a free one is how a guest joins */
+  seats?: { s0?: string; s1?: string; s2?: string; s3?: string }
+  /** players a 3–4 player match carried on without, by id */
+  out?: Record<string, OutReason>
   /** server time the match (or latest rematch) was started */
   startedAt?: number
   players: Record<string, Player>
@@ -79,13 +88,30 @@ export function inviteUrl(game: string, code: string) {
 export function playersBySeat(room: Room): [(Player & { id: string }) | null, (Player & { id: string }) | null] {
   const seats: [(Player & { id: string }) | null, (Player & { id: string }) | null] = [null, null]
   Object.entries(room.players ?? {}).forEach(([id, p]) => {
-    seats[p.seat] = { ...p, id }
+    if (p.seat < 2) seats[p.seat as Seat] = { ...p, id }
   })
   return seats
 }
 
-/** Creates a fresh room with the caller in seat 0 and returns its code. */
-export async function createRoom(game: string, name: string): Promise<string> {
+export const seatCountOf = (room: Room) => room.seatCount ?? 2
+
+/** Every seat of the room in order, empty ones as null — for games for up to four. */
+export function seatedPlayers(room: Room): ((Player & { id: string }) | null)[] {
+  const seats: ((Player & { id: string }) | null)[] = Array.from({ length: seatCountOf(room) }, () => null)
+  Object.entries(room.players ?? {}).forEach(([id, p]) => {
+    if (p.seat < seats.length) seats[p.seat] = { ...p, id }
+  })
+  return seats
+}
+
+/** The players still in the match: seated, and not left or dropped out. */
+export const stillIn = (room: Room) => seatedPlayers(room).filter((p): p is Player & { id: string } => !!p && !room.out?.[p.id])
+
+const freeSeats = (room: Room) =>
+  Array.from({ length: seatCountOf(room) - 1 }, (_, i) => (i + 1) as AnySeat).filter((s) => !room.seats?.[`s${s}`])
+
+/** Creates a fresh room with the caller in seat 0 and returns its code. `seats`: how many can play (2–4). */
+export async function createRoom(game: string, name: string, seats = 2): Promise<string> {
   const pid = playerId()
   cleanUpMyOldRooms() // housekeeping, fire-and-forget
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -98,6 +124,7 @@ export async function createRoom(game: string, name: string): Promise<string> {
       status: 'waiting',
       hostId: pid,
       createdAt: serverTimestamp(),
+      ...(seats > 2 ? { seatCount: seats } : {}),
       seats: { s0: pid },
       players: {
         [pid]: { name, seat: 0, online: true, joinedAt: serverTimestamp() },
@@ -122,9 +149,11 @@ export async function peekRoom(game: string, code: string): Promise<{ room: Room
       if (room.players?.[pid]) return { error: dropped ? 'oppDropped' : 'oppLeft' }
       return { error: 'ended' }
     }
+    // the match carried on without me
+    if (room.out?.[pid]) return { error: room.out[pid] === 'dropped' ? 'youDropped' : 'youLeft' }
     if (room.players?.[pid]) return { room } // rejoining my own seat
     if (room.status !== 'waiting') return { error: 'started' }
-    if (room.seats?.s1) return { error: 'full' }
+    if (!freeSeats(room).length) return { error: 'full' }
     return { room }
   } catch {
     return { error: 'offline' }
@@ -132,8 +161,8 @@ export async function peekRoom(game: string, code: string): Promise<{ room: Room
 }
 
 /**
- * Takes the guest seat (or reclaims ours after a refresh).
- * Claiming `seats/s1` is a transaction, so two people opening the same link can't both get in.
+ * Takes the first free guest seat (or reclaims ours after a refresh).
+ * Claiming a seat is a transaction, so two people opening the same link can't both get the same one.
  */
 export async function joinRoom(game: string, code: string, name: string): Promise<{ ok: true } | { ok: false; error: JoinFailure }> {
   const pid = playerId()
@@ -150,10 +179,14 @@ export async function joinRoom(game: string, code: string, name: string): Promis
     }
     if (room.status !== 'waiting') return { ok: false, error: 'started' }
 
-    const claim = await runTransaction(at(game, code, 'seats/s1'), (cur: string | null) => (cur ? undefined : pid))
-    if (!claim.committed) return { ok: false, error: 'full' }
-    await set(at(game, code, `players/${pid}`), { name, seat: 1, online: true, joinedAt: serverTimestamp() })
-    return { ok: true }
+    // someone may take a seat between our read and our claim: then try the next one
+    for (const seat of freeSeats(room)) {
+      const claim = await runTransaction(at(game, code, `seats/s${seat}`), (cur: string | null) => (cur ? undefined : pid))
+      if (!claim.committed) continue
+      await set(at(game, code, `players/${pid}`), { name, seat, online: true, joinedAt: serverTimestamp() })
+      return { ok: true }
+    }
+    return { ok: false, error: 'full' }
   } catch {
     return { ok: false, error: 'offline' }
   }
@@ -206,23 +239,45 @@ export async function startMatch(game: string, code: string, state: Record<strin
 /**
  * Leaving a room:
  * - waiting room: the host closes it; a guest just gives up their seat
- * - live match: ends it for both players (status `abandoned`) so nobody is left sitting in a dead game
+ * - live match: see dropPlayer — it carries on if two or more are still in, otherwise it's over for everyone
  * - already abandoned: the last one out deletes it
  */
 export async function leaveRoom(game: string, room: Room) {
   const pid = playerId()
   try {
     if (room.status === 'waiting') {
+      const seat = room.players?.[pid]?.seat ?? 1
       if (room.hostId === pid) await remove(roomRef(game, room.code))
-      else await update(roomRef(game, room.code), { [`players/${pid}`]: null, 'seats/s1': null })
+      else await update(roomRef(game, room.code), { [`players/${pid}`]: null, [`seats/s${seat}`]: null })
     } else if (room.status === 'abandoned') {
       await remove(roomRef(game, room.code))
-    } else {
-      await abandonRoom(game, room.code, pid, 'left')
+    } else if (!room.out?.[pid]) {
+      await dropPlayer(game, room.code, pid, 'left')
     }
   } catch {
     /* best effort */
   }
+}
+
+/**
+ * A player leaves a live match, or dropped and didn't come back. With two or more still in, the match
+ * carries on without them (`out`) and the game deals them out; otherwise it's over (`abandoned`).
+ * Reads the room fresh, so phones acting on a stale copy can't miscount who's left.
+ */
+export async function dropPlayer(game: string, code: string, who: string, reason: EndReason) {
+  const room = (await get(roomRef(game, code))).val() as Room | null
+  if (!room || room.status !== 'playing' || room.out?.[who]) return
+  if (stillIn(room).filter((p) => p.id !== who).length < 2) return abandonRoom(game, code, who, reason)
+  const me = playerId()
+  await update(roomRef(game, code), {
+    [`out/${who}`]: reason === 'left' ? 'left' : 'dropped',
+    ...(who === me ? { [`players/${me}/online`]: false } : {}),
+  })
+}
+
+/** Once the host is out of a match that carried on, the next player still in takes over hosting. */
+export async function takeOverHost(game: string, code: string) {
+  await set(at(game, code, 'hostId'), playerId())
 }
 
 /** Ends a live match for both players. The rules make `abandoned` final, so a second exit can't undo it. */

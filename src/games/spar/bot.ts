@@ -1,7 +1,10 @@
 import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
-import type { Seat } from '../../lobby/rooms'
-import { TRICKS, matchOver, other, play, playable, playsOf, remaining, scoreRound, suitOf, trickWinner, type Live, type Play } from './engine'
+import { TRICKS, matchOver, play, playable, playsOf, remaining, scoreRound, suitOf, trickWinner, type Live, type Play } from './engine'
 import type { SparState } from './SparMatch'
+
+/** Ops only plays one-on-one, so there are always two seats: 0 (you) and 1 (her). */
+type Seat = number
+const other = (s: Seat) => 1 - s
 
 /**
  * Ops at Spar. She only ever looks at her own hand and the cards on the table — never yours. To
@@ -15,7 +18,7 @@ const BUDGET_MS = 140
 
 /** Points from `seat`'s side once all five tricks are down: theirs if they took it, minus the other's. */
 function value(plays: Play[], seat: Seat): number {
-  const { winner, points } = scoreRound(plays)
+  const { winner, points } = scoreRound(plays, 2)
   return winner === seat ? points : -points
 }
 
@@ -24,7 +27,7 @@ function solve(hands: number[][], plays: Play[], turn: Seat, seat: Seat, alpha: 
   if (plays.length === TRICKS * 2) return value(plays, seat)
   const maxing = turn === seat
   let best = maxing ? -Infinity : Infinity
-  for (const c of playable(hands[turn], plays)) {
+  for (const c of playable(hands[turn], plays, 2)) {
     const next = [...plays, { s: turn, c }]
     const h = hands.map((x, s) => (s === turn ? x.filter((y) => y !== c) : x))
     const nextTurn = next.length % 2 === 1 ? other(turn) : trickWinner(next.slice(-2))
@@ -74,7 +77,7 @@ function guess(dealt: number[], plays: Play[], seat: Seat): number[] {
 /** The cards that score best on average over the guesses. */
 export function bestCards(dealt: number[], plays: Play[], seat: Seat, level: Level): number[] {
   const mine = remaining(dealt, plays, seat)
-  const options = playable(mine, plays)
+  const options = playable(mine, plays, 2)
   if (options.length === 1) return options
   const totals = options.map(() => 0)
   const deadline = performance.now() + BUDGET_MS
@@ -99,7 +102,7 @@ export const sparBrain: Brain = (state, level) => {
   const dealt = live.cur.hands?.[BOT_SEAT]
   if (!dealt) return null
   const plays = playsOf(live.cur)
-  const options = playable(remaining(dealt, plays, BOT_SEAT), plays)
+  const options = playable(remaining(dealt, plays, BOT_SEAT), plays, 2)
   if (!options.length) return null
   const c = Math.random() < SLIP[level] ? pick(options) : pick(bestCards(dealt, plays, BOT_SEAT, level))
   return (cur: Live) => play(cur, BOT_SEAT, c, dealt)
@@ -112,7 +115,7 @@ export const sparBrain: Brain = (state, level) => {
 export const sparSense: OpsSense = {
   turn: (state) => {
     const live = (state as unknown as SparState).live
-    return !live || live.phase !== 'play' ? null : live.turn
+    return !live || live.phase !== 'play' ? null : (live.turn as 0 | 1)
   },
   standing: (state) => {
     const live = (state as unknown as SparState).live
@@ -122,6 +125,6 @@ export const sparSense: OpsSense = {
   ended: (state) => {
     const live = (state as unknown as SparState).live
     if (!live || live.phase !== 'done' || live.cur.winner === undefined) return null
-    return { winner: live.cur.winner, final: matchOver(live) }
+    return { winner: live.cur.winner as 0 | 1, final: matchOver(live) }
   },
 }

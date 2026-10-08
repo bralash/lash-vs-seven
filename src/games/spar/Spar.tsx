@@ -17,7 +17,7 @@ export function Spar() {
       }}
       bot={sparBrain}
       sense={sparSense}
-      initialState={(choice) => ({ ...initialSparState(Number(choice) || 10) })}
+      initialState={(choice, _all, seats) => ({ ...initialSparState(Number(choice) || 10, 1, seats) })}
       renderGame={(room, me, exit) => <SparMatch room={room} me={me} exit={exit} />}
     />
   )

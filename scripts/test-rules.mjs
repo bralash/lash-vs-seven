@@ -52,9 +52,11 @@ async function expect(label, allowed, attempt) {
   console.log(`${good ? 'ok  ' : 'FAIL'}  ${allowed ? 'allow' : 'deny '}  ${label}${good ? '' : `  (got ${ok ? 'allowed' : 'denied'})`}`)
 }
 
-const [host, guest, stranger] = await Promise.all([anon(), anon(), anon()])
+const [host, guest, stranger, third] = await Promise.all([anon(), anon(), anon(), anon()])
 const H = host.uid
 const G = guest.uid
+const T = third.uid
+const MROOM = `matches/spar/QZQX` // a room for up to three
 
 try {
   await call(host, 'DELETE', ROOM) // leftovers from an aborted run
@@ -72,6 +74,7 @@ try {
   await expect('stranger reads the room (has the code)', true, call(stranger, 'GET', ROOM))
   await expect('guest takes the empty seat', true, call(guest, 'PUT', `${ROOM}/seats/s1`, G))
   await expect('stranger steals the taken seat', false, call(stranger, 'PUT', `${ROOM}/seats/s1`, stranger.uid))
+  await expect('stranger takes a third seat in a two-seat room', false, call(stranger, 'PUT', `${ROOM}/seats/s2`, stranger.uid))
   await expect('guest writes their own player entry', true,
     call(guest, 'PUT', `${ROOM}/players/${G}`, { name: 'Seven', seat: 1, online: true, joinedAt: SERVER_TS }))
   await expect('stranger adds themselves as a player', false,
@@ -122,10 +125,44 @@ try {
   })
   await expect('stranger deletes a fresh waiting room', false, call(stranger, 'DELETE', ROOM))
   await expect('anyone cleans up a room over a day old', true, call(stranger, 'DELETE', OLD))
+
+  // ── more than two: seats, carrying on after someone leaves, host handover ──
+  await call(host, 'DELETE', MROOM)
+  await expect('host creates a room with a silly seat count', false,
+    call(host, 'PUT', MROOM, { game: 'spar', code: 'QZQX', status: 'waiting', hostId: H, createdAt: SERVER_TS, seatCount: 9, seats: { s0: H } }))
+  await expect('host creates a room for three', true,
+    call(host, 'PUT', MROOM, {
+      game: 'spar', code: 'QZQX', status: 'waiting', hostId: H, createdAt: SERVER_TS, seatCount: 3,
+      seats: { s0: H }, players: { [H]: { name: 'Lash', seat: 0, online: true, joinedAt: SERVER_TS } },
+    }))
+  await expect('guest takes seat 1', true, call(guest, 'PUT', `${MROOM}/seats/s1`, G))
+  await expect('guest grabs seat 2 as well', false, call(guest, 'PUT', `${MROOM}/seats/s2`, G))
+  await expect('third player takes seat 2', true, call(third, 'PUT', `${MROOM}/seats/s2`, T))
+  await expect('stranger takes a fourth seat in a room for three', false, call(stranger, 'PUT', `${MROOM}/seats/s3`, stranger.uid))
+  await expect('guest joins as a player', true, call(guest, 'PUT', `${MROOM}/players/${G}`, { name: 'Seven', seat: 1, online: true, joinedAt: SERVER_TS }))
+  await expect('third joins claiming seat 1', false, call(third, 'PUT', `${MROOM}/players/${T}`, { name: 'Esi', seat: 1, online: true, joinedAt: SERVER_TS }))
+  await expect('third joins as a player in seat 2', true, call(third, 'PUT', `${MROOM}/players/${T}`, { name: 'Esi', seat: 2, online: true, joinedAt: SERVER_TS }))
+  await expect('someone marks a player out before the match', false, call(guest, 'PUT', `${MROOM}/out/${T}`, 'left'))
+  await expect('host starts the match', true, call(host, 'PATCH', MROOM, { status: 'playing', startedAt: SERVER_TS, state: { live: { n: 1 } } }))
+  await expect('host changes the seat count mid-match', false, call(host, 'PUT', `${MROOM}/seatCount`, 4))
+  await expect('third player makes a move', true, call(third, 'PUT', `${MROOM}/state/live`, { n: 2 }))
+  await expect('stranger marks someone out', false, call(stranger, 'PUT', `${MROOM}/out/${T}`, 'left'))
+  await expect('guest takes over hosting while the host is in', false, call(guest, 'PUT', `${MROOM}/hostId`, G))
+  await expect('host leaves; the match carries on', true, call(host, 'PATCH', MROOM, { [`out/${H}`]: 'left', [`players/${H}/online`]: false }))
+  await expect('someone un-leaves the host', false, call(guest, 'PUT', `${MROOM}/out/${H}`, 'dropped'))
+  await expect('out with a made-up reason', false, call(guest, 'PUT', `${MROOM}/out/${T}`, 'bored'))
+  await expect('guest makes the third player the host', false, call(guest, 'PUT', `${MROOM}/hostId`, T))
+  await expect('guest takes over hosting once the host is out', true, call(guest, 'PUT', `${MROOM}/hostId`, G))
+  await expect('new host deals a rematch', true, call(guest, 'PATCH', MROOM, { status: 'playing', startedAt: SERVER_TS, state: { live: { n: 0 } } }))
+  await expect('old host takes hosting back', false, call(host, 'PUT', `${MROOM}/hostId`, H))
+  await expect('third drops out; the last one ends it', true, call(guest, 'PUT', `${MROOM}/out/${T}`, 'dropped'))
+  await expect('guest ends the match', true, call(guest, 'PATCH', MROOM, { status: 'abandoned', leftBy: T, endReason: 'disconnected', endedAt: SERVER_TS }))
+  await expect('a player deletes the abandoned room', true, call(third, 'DELETE', MROOM))
 } finally {
   await call(host, 'DELETE', ROOM).catch(() => {})
   await call(host, 'DELETE', `matches/${GAME}/QZQY`).catch(() => {})
-  await Promise.all([host, guest, stranger].map(dropUser))
+  await call(host, 'DELETE', MROOM).catch(() => {})
+  await Promise.all([host, guest, stranger, third].map(dropUser))
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
