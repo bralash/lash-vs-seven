@@ -41,6 +41,8 @@ export type CardDetail =
   | { kind: 'battleship'; board: string; seat: Seat01; stats: [string, string][] }
   /** Quoridor: the final 9×9 board — both pawns, every wall in its owner's colour (codes as in the game's engine), plus stats */
   | { kind: 'quoridor'; pos: [number, number]; walls: number[]; stats: [string, string][] }
+  /** Battleword: each player's colours only (no letters, Wordle-style), by seat, and the word each was cracking */
+  | { kind: 'battleword'; grids: [string[], string[]]; words: [string, string] }
 
 export interface CardInput {
   game: string
@@ -71,6 +73,7 @@ const C = {
   dim: '#6f6a7a',
   hit: '#ffd23f',
   hitDeep: '#f5b800',
+  good: '#1f9d55',
   lash: '#ff5a1f',
   seven: '#2d5bff',
   board: '#17151c',
@@ -366,6 +369,10 @@ function drawDetail(ctx: Ctx, d: CardDetail, x: number, y: number, w: number, h:
   }
   if (d.kind === 'quoridor') {
     drawQuoridor(ctx, d, x, y, h, pad)
+    return
+  }
+  if (d.kind === 'battleword') {
+    drawBattleword(ctx, d, players, x, y, w, h, pad)
     return
   }
   if (d.kind === 'crossword') {
@@ -813,6 +820,29 @@ function drawQuoridor(ctx: Ctx, d: Extract<CardDetail, { kind: 'quoridor' }>, x:
     ctx.stroke()
   })
   statLines(ctx, d.stats, bx + side + 56, y + 86)
+}
+
+/** Battleword: both players' boards as colours only, side by side, each headed by who guessed and the word they were after. */
+function drawBattleword(ctx: Ctx, d: Extract<CardDetail, { kind: 'battleword' }>, players: [CardPlayer, CardPlayer], x: number, y: number, w: number, h: number, pad: number) {
+  const tile = 32
+  const gap = 6
+  const gridW = tile * 5 + gap * 4
+  const colW = (w - pad * 2) / 2
+  const top = y + (h - (tile * 6 + gap * 5)) / 2 + 18
+  const fill = { '2': C.good, '1': C.hit, '0': '#3a3542' } as Record<string, string>
+  ;[0, 1].forEach((s) => {
+    const gx = x + pad + s * colW
+    const p = players[s]
+    text(ctx, ellipsize(ctx, p.name.toUpperCase(), colW - 24), gx, top - 18, 22, SEAT[s], { family: MONO, weight: 500, spacing: 3 })
+    text(ctx, d.words[1 - s], gx + gridW + 30, top + 40, 34, C.paper)
+    text(ctx, 'THEIR WORD', gx + gridW + 30, top + 4, 16, C.paper2, { family: MONO, weight: 500, spacing: 3 })
+    for (let r = 0; r < 6; r++)
+      for (let i = 0; i < 5; i++) {
+        const v = d.grids[s][r]?.[i]
+        ctx.fillStyle = v ? fill[v] : '#25222c'
+        ctx.fillRect(gx + i * (tile + gap), top + r * (tile + gap), tile, tile)
+      }
+  })
 }
 
 /** Label/value pairs stacked vertically on the dark panel. */

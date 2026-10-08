@@ -66,13 +66,8 @@
       },
       {
         "source": "/battleword.html",
-        "destination": "/classic/battleword",
-        "type": 302
-      },
-      {
-        "source": "/battleword",
-        "destination": "/classic/battleword",
-        "type": 302
+        "destination": "/battleword",
+        "type": 301
       },
       {
         "source": "/crossword.html",
