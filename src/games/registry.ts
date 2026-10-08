@@ -1,7 +1,7 @@
 // Every game on the site. The homepage and each game's lobby read from here,
 // so adding a game = one entry + one route component.
 
-export type Category = 'word' | 'board' | 'puzzle'
+export type Category = 'word' | 'board' | 'card' | 'puzzle'
 
 export interface RuleStep {
   title: string
@@ -78,6 +78,23 @@ export const GAMES: GameMeta[] = [
       { title: 'Guess letters', body: 'The other player taps letters. Right ones fill in everywhere they appear; each wrong one adds a part to the hangman.' },
       { title: 'Six strikes', body: 'Find the whole word before the sixth wrong guess and you escape — that round is yours. Otherwise the setter takes it.' },
       { title: 'Swap and settle it', body: 'Two rounds, roles swapped. Most rounds wins; one each is a draw. Online, the word never leaves the setter’s phone, and it’s checked against what they locked in when it’s revealed.' },
+    ],
+  },
+  {
+    slug: 'spar',
+    tiles: 'SPAR',
+    name: 'Spar',
+    blurb: 'Five cards each, follow suit — but only the last trick counts. Win it with a 6 or 7 for extra points.',
+    category: 'card',
+    length: '~10 min',
+    modes: 'online + local',
+    status: 'live',
+    tagline: 'Five cards · follow suit · only the last trick counts',
+    rules: [
+      { title: 'Five cards each', body: 'A 36-card deck — 6 up to Ace in every suit. Online, both phones shuffle it together, so neither can see the other’s hand.' },
+      { title: 'Follow suit', body: 'The leader plays any card. You must follow the same suit if you can; the higher card of that suit wins the trick. No trumps. The winner leads the next trick.' },
+      { title: 'Only the last trick counts', body: 'Whoever takes the fifth trick wins the round: 1 point, or 3 if they take it with a 6 and 2 with a 7. Take the last two tricks with 6s and 7s and both count — 6 + 7 is 5.' },
+      { title: 'First to the target', body: 'The host picks 5, 10 or 15 points. The round’s winner leads the next one. When a round ends, both phones check the shuffle and every card played.' },
     ],
   },
   { slug: 'crossword', tiles: 'KENTE', name: 'Crossword', blurb: 'Race to fill the grid. Claim words in your colour and outscore your opponent.', category: 'word', length: '~8 min', modes: 'online + local', status: 'soon', classic: true },
@@ -212,6 +229,7 @@ export const GAMES: GameMeta[] = [
 export const CATEGORY_LABEL: Record<Category, string> = {
   word: 'Word',
   board: 'Board',
+  card: 'Cards',
   puzzle: 'Puzzle',
 }
 

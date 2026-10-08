@@ -13,7 +13,7 @@ type Filter = 'all' | Category
 const ORDERED = [...GAMES].sort((a, b) => Number(a.status !== 'live') - Number(b.status !== 'live'))
 
 const MODES = ['Date nights', 'Friendly battles', 'Long-distance rivals', 'Family game night']
-const FILTERS: Filter[] = ['all', 'word', 'board', 'puzzle']
+const FILTERS: Filter[] = ['all', 'word', 'board', 'card', 'puzzle']
 
 const TICKER = [
   ['STONE', 800], ['HUNT', 400], ['CRANE', 800], ['KENTE', 800], ['SEVEN', 800], ['LASH', 400],
@@ -25,7 +25,7 @@ export function Home() {
   const { play } = useSound()
 
   const counts = useMemo(() => {
-    const c: Record<Filter, number> = { all: GAMES.length, word: 0, board: 0, puzzle: 0 }
+    const c: Record<Filter, number> = { all: GAMES.length, word: 0, board: 0, card: 0, puzzle: 0 }
     GAMES.forEach((g) => c[g.category]++)
     return c
   }, [])

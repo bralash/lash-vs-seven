@@ -6,6 +6,7 @@ import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
 import { Othello } from './games/othello/Othello'
 import { Hangman } from './games/hangman/Hangman'
 import { Oware } from './games/oware/Oware'
+import { Spar } from './games/spar/Spar'
 import { Checkers } from './games/checkers/Checkers'
 import { Sudoku } from './games/sudoku/Sudoku'
 import { TicTacToe } from './games/tictactoe/TicTacToe'
@@ -34,6 +35,7 @@ const routes: RouteObject[] = [
   { path: '/othello', element: <Othello /> },
   { path: '/oware', element: <Oware /> },
   { path: '/hangman', element: <Hangman /> },
+  { path: '/spar', element: <Spar /> },
   { path: '/sudoku', element: <Sudoku /> },
   { path: '/checkers', element: <Checkers /> },
   ...(BoardLab ? [{ path: '/dev/board', element: <Suspense><BoardLab /></Suspense> }] : []),
