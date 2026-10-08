@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { gameBySlug } from '../games/registry'
 import { useSound } from '../lib/sound'
 import { featById } from '../match/feats'
-import { lastGame, listRivals, type Rival, type Tally } from '../match/rivalry'
+import { groupLead, lastGame, listGroups, listRivals, standingLine, standings, type Group, type Rival, type Tally } from '../match/rivalry'
 
 /** rivals shown before "Show all" */
 const FIRST = 4
@@ -37,28 +37,47 @@ function leadLine({ w, l }: Tally, me: string, them: string) {
   return w > l ? `${me} ${you ? 'lead' : 'leads'}` : `${them} leads`
 }
 
-/** "Your rivals" on the homepage: everyone you've finished a match against, with a one-tap rematch. */
+type Entry = { kind: 'rival'; r: Rival & { key: string } } | { kind: 'group'; g: Group & { key: string } }
+const updated = (e: Entry) => (e.kind === 'rival' ? e.r.updatedAt : e.g.updatedAt)
+
+/** "You, Seven & Esi" — you first, then the others */
+function groupName(g: Group) {
+  const names = Object.entries(g.members)
+    .sort(([a], [b]) => (a === g.you ? -1 : b === g.you ? 1 : 0))
+    .map(([k, n]) => (k === g.you ? 'You' : n))
+  return `${names.slice(0, -1).join(', ')} & ${names.at(-1)}`
+}
+
+/**
+ * "Your rivals" on the homepage: everyone you've finished a match against, with a one-tap rematch.
+ * People you play in a three or four are one card for the group, not a card each.
+ */
 export function Rivals() {
-  const [rivals] = useState(listRivals)
+  const [entries] = useState<Entry[]>(() =>
+    [...listRivals().map((r): Entry => ({ kind: 'rival', r })), ...listGroups().map((g): Entry => ({ kind: 'group', g }))].sort((a, b) => updated(b) - updated(a)),
+  )
   const [open, setOpen] = useState<string | null>(null)
   const [all, setAll] = useState(false)
   const navigate = useNavigate()
   const { play } = useSound()
 
-  if (!rivals.length) return null
-  const shown = all ? rivals : rivals.slice(0, FIRST)
+  if (!entries.length) return null
+  const shown = all ? entries : entries.slice(0, FIRST)
 
-  const challenge = (slug: string, r: Rival & { key: string }, local: boolean) => {
+  // online: the lobby opens a room straight away and names who it's for; pass & play: just the game
+  const go = (slug: string, who: string | null) => {
     play('tap')
-    // online: the lobby opens a room straight away and names who it's for; pass & play: just the game
-    navigate(`/${slug}`, local ? undefined : { state: { challenge: r.name } })
+    navigate(`/${slug}`, who ? { state: { challenge: who } } : undefined)
   }
+  const challenge = (slug: string, r: Rival & { key: string }, local: boolean) => go(slug, local ? null : r.name)
 
   return (
     <section className="rivals" aria-labelledby="rivals-title">
       <h2 id="rivals-title" className="rivals__title">Your rivals</h2>
       <ul className="rivals__list">
-        {shown.map((r) => {
+        {shown.map((e, i) => {
+          if (e.kind === 'group') return <GroupCard key={e.g.key} g={e.g} first={i === 0} open={open === e.g.key} onToggle={() => setOpen(open === e.g.key ? null : e.g.key)} onGo={go} />
+          const r = e.r
           const { local, me, them } = sides(r)
           const { w, l, d } = r.total
           const last = lastGame(r)
@@ -96,7 +115,7 @@ export function Rivals() {
                 </span>
               </button>
               {playable(last) && (
-                <button type="button" className={`btn rival__go${r === rivals[0] ? ' btn--primary' : ''}`} onClick={() => challenge(last!, r, local)}>
+                <button type="button" className={`btn rival__go${i === 0 ? ' btn--primary' : ''}`} onClick={() => challenge(last!, r, local)}>
                   {local ? 'Play' : 'Challenge'}
                 </button>
               )}
@@ -140,11 +159,66 @@ export function Rivals() {
           )
         })}
       </ul>
-      {rivals.length > FIRST && (
+      {entries.length > FIRST && (
         <button type="button" className="link-btn rivals__more" onClick={() => setAll((a) => !a)}>
-          {all ? 'Show fewer' : `Show all ${rivals.length}`}
+          {all ? 'Show fewer' : `Show all ${entries.length}`}
         </button>
       )}
     </section>
   )
 }
+
+/** A group of three or four: matches won by each, most first, and the record in each game when opened. */
+function GroupCard({ g, first, open, onToggle, onGo }: { g: Group & { key: string }; first: boolean; open: boolean; onToggle: () => void; onGo: (slug: string, who: string | null) => void }) {
+  const local = g.key.startsWith('localgroup:')
+  const table = standings(g.wins, g.members, g.you)
+  const last = lastGroupGame(g)
+  const s = g.streak && g.streak.n >= 2 ? g.streak : null
+  const streaker = s && (s.who === g.you ? 'You' : g.members[s.who])
+  const others = Object.entries(g.members).filter(([k]) => k !== g.you).map(([, n]) => n)
+  const who = local ? null : `${others.slice(0, -1).join(', ')} & ${others.at(-1)}`
+  const games = Object.entries(g.byGame).sort((x, y) => y[1].played - x[1].played)
+  return (
+    <li className={`rival rival--group${open ? ' rival--open' : ''}`}>
+      <button type="button" className="rival__main" aria-expanded={open} onClick={onToggle}>
+        <span className="rival__name">{groupName(g)}</span>
+        <span className="rival__score" aria-label={`Wins: ${standingLine(table)}`}>
+          {table.map(([k, , w], j) => (
+            <span key={k}>
+              {j > 0 && <i>–</i>}
+              {w}
+            </span>
+          ))}
+        </span>
+        <span className="rival__meta">
+          <b>{groupLead(table)}</b>
+          <span>{standingLine(table)}</span>
+          {s && <span>{streaker} won {s.n} in a row</span>}
+          {last && <span>{gameName(last)} · {ago(g.updatedAt)}</span>}
+          <span>{local ? 'Pass & play · ' : ''}{Object.keys(g.members).length} players</span>
+        </span>
+      </button>
+      {playable(last) && (
+        <button type="button" className={`btn rival__go${first ? ' btn--primary' : ''}`} onClick={() => onGo(last!, who)}>
+          {local ? 'Play' : 'Challenge'}
+        </button>
+      )}
+      {open && (
+        <ul className="rival__games" aria-label="The group's record, by game">
+          {games.map(([slug, t]) => (
+            <li key={slug}>
+              <button type="button" className="rival__game" disabled={!playable(slug)} onClick={() => onGo(slug, who)}>
+                <span>
+                  {gameName(slug)} · {t.played} played
+                </span>
+                <b>{standingLine(standings(t.wins, g.members, g.you))}</b>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
+
+const lastGroupGame = (g: Group) => g.last ?? Object.entries(g.byGame).sort((a, b) => b[1].played - a[1].played)[0]?.[0]

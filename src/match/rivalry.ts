@@ -27,8 +27,27 @@ export interface FeatTally {
   me: number
   them: number
 }
+/**
+ * The record of a group of three or four who play together: how many matches each has won. Kept
+ * as one record for the whole group rather than a head-to-head with each of them.
+ */
+export interface Group {
+  /** everyone in it (uid online, the name in lower case in pass & play) → their latest name */
+  members: Record<string, string>
+  /** online: which member is you (your uid), so lists can say "You" */
+  you?: string
+  played: number
+  /** matches won, by member; a match level at the top is played but won by nobody */
+  wins: Record<string, number>
+  byGame: Record<string, { played: number; wins: Record<string, number> }>
+  /** current run of wins by one member */
+  streak: { who: string; n: number } | null
+  updatedAt: number
+  last?: string
+}
 interface Store {
   rivals: Record<string, Rival>
+  groups: Record<string, Group>
   /** finished matches already counted, newest last */
   seen: string[]
 }
@@ -40,9 +59,9 @@ function read(): Store {
   try {
     const raw = localStorage.getItem(KEY)
     const s = raw ? (JSON.parse(raw) as Partial<Store>) : {}
-    return { rivals: s.rivals ?? {}, seen: s.seen ?? [] }
+    return { rivals: s.rivals ?? {}, groups: s.groups ?? {}, seen: s.seen ?? [] }
   } catch {
-    return { rivals: {}, seen: [] }
+    return { rivals: {}, groups: {}, seen: [] }
   }
 }
 
@@ -154,4 +173,59 @@ export function lastGame(r: Rival): string | undefined {
   if (r.last) return r.last
   const played = (t: Tally) => t.w + t.l + t.d
   return Object.entries(r.byGame).sort((a, b) => played(b[1]) - played(a[1]))[0]?.[0]
+}
+
+/* ── Groups of three or four ─────────────────────────────────────────── */
+
+/** A group's key: its members, sorted, so the same people always land on the same record. */
+export const groupKey = (members: string[], local: boolean) => `${local ? 'localgroup' : 'group'}:${[...members].sort().join('|')}`
+
+/** Count one finished match for a group. `winner` is the winning member's key, or null when level at the top. */
+export function recordGroup(r: { game: string; key: string; members: Record<string, string>; you?: string; winner: string | null; matchId: string }): Group {
+  const s = read()
+  const prev = s.groups[r.key]
+  if (s.seen.includes(r.matchId) && prev) return prev
+  const base: Group = prev ?? { members: r.members, played: 0, wins: {}, byGame: {}, streak: null, updatedAt: 0 }
+  const add = (w: Record<string, number>) => (r.winner ? { ...w, [r.winner]: (w[r.winner] ?? 0) + 1 } : w)
+  const g = base.byGame[r.game] ?? { played: 0, wins: {} }
+  const next: Group = {
+    members: { ...base.members, ...r.members },
+    ...(r.you ? { you: r.you } : {}),
+    played: base.played + 1,
+    wins: add(base.wins),
+    byGame: { ...base.byGame, [r.game]: { played: g.played + 1, wins: add(g.wins) } },
+    streak: r.winner ? { who: r.winner, n: base.streak?.who === r.winner ? base.streak.n + 1 : 1 } : null,
+    updatedAt: Date.now(),
+    last: r.game,
+  }
+  s.groups[r.key] = next
+  s.seen = [...s.seen, r.matchId].slice(-SEEN_MAX)
+  write(s)
+  return next
+}
+
+/** Members by wins, most first: [key, name, wins]. `you` (online: your uid) is named "You". */
+export function standings(wins: Record<string, number>, members: Record<string, string>, you?: string): [string, string, number][] {
+  return Object.entries(members)
+    .map(([k, n]) => [k, k === you ? 'You' : n, wins[k] ?? 0] as [string, string, number])
+    .sort((a, b) => b[2] - a[2] || a[1].localeCompare(b[1]))
+}
+
+/** "Seven leads the group" · "Seven and You share the lead" · "All square" */
+export function groupLead(table: [string, string, number][]): string {
+  const top = table[0]?.[2] ?? 0
+  const leaders = table.filter((t) => t[2] === top).map((t) => t[1])
+  if (!top || leaders.length === table.length) return 'All square'
+  if (leaders.length === 1) return `${leaders[0]} ${leaders[0] === 'You' ? 'lead' : 'leads'} the group`
+  return `${leaders.slice(0, -1).join(', ')} and ${leaders.at(-1)} share the lead`
+}
+
+/** "Seven 3 · You 2 · Esi 1" */
+export const standingLine = (table: [string, string, number][]) => table.map(([, n, w]) => `${n} ${w}`).join(' · ')
+
+/** Every group you've finished a match with, most recent first, with their storage key. */
+export function listGroups(): (Group & { key: string })[] {
+  return Object.entries(read().groups)
+    .map(([key, g]) => ({ ...g, key }))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
 }

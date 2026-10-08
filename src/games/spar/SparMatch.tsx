@@ -545,7 +545,7 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
     winner: cardPlayers.findIndex((p) => p.seat === winner),
     scoreLine,
     link: shareLink(GAME),
-    rivalry: rivalry.length === 1 && rivalry[0].card ? rivalry[0].card : undefined,
+    rivalry: rivalry?.card,
     players: cardPlayers,
     detail: { kind: 'rounds', rows: past.slice(-8).map((p) => ({ word: pastCards(p), seat: p.winner as SeatN, note: `+${p.points} ${finishLabel(p)}` })) },
   }
@@ -597,9 +597,7 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
           </li>
         ))}
       </ol>
-      {rivalry.map((v, i) => (
-        <RivalryLine key={i} r={v} />
-      ))}
+      <RivalryLine r={rivalry} />
       <ResultActions
         card={card}
         message={message}
