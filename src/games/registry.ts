@@ -21,6 +21,8 @@ export interface GameMeta {
   length: string
   modes: 'online' | 'online + local' | 'local'
   status: 'live' | 'soon'
+  /** has a computer opponent (Ops) in the lobby — shown on the homepage card */
+  ops?: boolean
   /** offer a fullscreen button during the match (big boards that benefit on iPad / desktop) */
   fullscreen?: boolean
   /** short tagline shown under the title in the game's lobby */
@@ -71,6 +73,7 @@ export const GAMES: GameMeta[] = [
     length: '~5 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Hide a word · crack theirs · six guesses each',
     rules: [
       { title: 'Hide a word', body: 'You each pick a secret 5-letter word: type it on the keys or tap Random. It has to be an everyday word, so nobody hides something obscure.' },
@@ -88,6 +91,7 @@ export const GAMES: GameMeta[] = [
     length: '2 rounds',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Hide a word · guess theirs · six wrong and you swing',
     rules: [
       { title: 'Set a word', body: 'Each round one player picks a secret word — tap a suggestion or type your own (letters only, 3–20). Only its length is shown.' },
@@ -105,6 +109,7 @@ export const GAMES: GameMeta[] = [
     length: '~10 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Five cards · follow suit · only the last trick counts',
     rules: [
       { title: 'Five cards each', body: 'A 36-card deck — 6 up to Ace in every suit. Online, both phones shuffle it together, so neither can see the other’s hand.' },
@@ -140,6 +145,7 @@ export const GAMES: GameMeta[] = [
     length: '~10 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Hide your fleet · hunt theirs · one shot a turn',
     rules: [
       { title: 'Place your fleet', body: 'Five ships on a 10×10 sea: Carrier (5), Battleship (4), Cruiser (3), Submarine (3) and Destroyer (2). They start shuffled — tap a ship to pick it up, tap it again to turn it, tap a square to move it. Ships may touch. Tap Ready when you’re happy.' },
@@ -158,6 +164,7 @@ export const GAMES: GameMeta[] = [
     length: '~3 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Three in a row · best of 3, 5 or 7',
     rules: [
       { title: 'Take turns', body: 'Tap an empty square to place your mark. X is player 1, O is player 2.' },
@@ -176,6 +183,7 @@ export const GAMES: GameMeta[] = [
     length: '~5 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Four in a row · single game or best of 3 / 5',
     rules: [
       { title: 'Drop a disc', body: 'On your turn, tap any column — your disc falls to the lowest empty space. Orange is player 1, blue is player 2.' },
@@ -194,6 +202,7 @@ export const GAMES: GameMeta[] = [
     length: '~15 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Jump, chain, crown · take every piece',
     rules: [
       { title: 'Move diagonally', body: 'Tap one of your pieces, then a dark square. Pieces step one square diagonally forward. Orange starts at the bottom.' },
@@ -211,6 +220,7 @@ export const GAMES: GameMeta[] = [
     length: '~10 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Outflank and flip · most discs wins',
     rules: [
       { title: 'Place to capture', body: 'On your turn, place a disc so it traps a straight line of your opponent’s discs between it and one of yours — across, down or diagonal.' },
@@ -229,6 +239,7 @@ export const GAMES: GameMeta[] = [
     length: '~15 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Sow, count, capture · first to 25 seeds',
     rules: [
       { title: 'Sow', body: 'Pick one of the six pits on your side. Its seeds go one by one into the next pits, counter-clockwise — along your row, then round into your opponent’s.' },
@@ -247,6 +258,7 @@ export const GAMES: GameMeta[] = [
     length: '~20 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Roll, race, kick · bring every token home',
     rules: [
       { title: 'Roll a six to start', body: 'Tap the die on your turn. A 6 brings a token out of your yard onto your start square. Every 6 earns another roll — but a roll with no possible move ends your turn, even a 6.' },
@@ -266,6 +278,7 @@ export const GAMES: GameMeta[] = [
     length: '~10 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Race across · 10 walls each · never seal the path',
     rules: [
       { title: 'Race across', body: 'Orange starts in the middle of the bottom row, blue in the middle of the top. First pawn to reach any square of the far row wins. Online, your pawn always starts at the bottom.' },
@@ -285,6 +298,7 @@ export const GAMES: GameMeta[] = [
     length: '~5 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Close a box, go again · 4×4, 5×5 or 6×6',
     rules: [
       { title: 'Draw a line', body: 'On your turn, press near any gap between two dots — the nearest line lights up. Slide to change it, lift to draw it.' },
@@ -319,6 +333,7 @@ export const GAMES: GameMeta[] = [
     length: '~5 min',
     modes: 'online + local',
     status: 'live',
+    ops: true,
     tagline: 'Flip two · find a pair · go again',
     rules: [
       { title: 'Flip two', body: 'On your turn, tap two face-down cards to turn them over. Both players see them.' },

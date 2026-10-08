@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../components/Logo'
+import { OpsFace } from '../components/OpsFace'
 import { TopBar } from '../components/TopBar'
 import { CATEGORY_LABEL, GAMES, type Category, type GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
@@ -108,6 +109,12 @@ function GameCard({ game, index }: { game: GameMeta; index: number }) {
       <div className="card__top">
         <span className="card__num">{num}</span>
         <span className="card__cat">{CATEGORY_LABEL[game.category]}</span>
+        {game.ops && (
+          <span className="card__ops" title="Play the computer, Ops">
+            <span aria-hidden="true" style={{ display: 'flex' }}><OpsFace mood="idle" size={18} /></span>
+            vs Ops
+          </span>
+        )}
         {game.status === 'live' ? (
           <span className="stamp stamp--live">Live</span>
         ) : (
