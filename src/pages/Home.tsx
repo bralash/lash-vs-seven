@@ -6,6 +6,7 @@ import { TopBar } from '../components/TopBar'
 import { CATEGORY_LABEL, GAMES, type Category, type GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
 import { Rivals } from './Rivals'
+import { Stakes } from './Stakes'
 import '../styles/home.css'
 
 type Filter = 'all' | Category
@@ -51,6 +52,7 @@ export function Home() {
           </ul>
         </section>
 
+        <Stakes />
         <Rivals />
 
         <Link to="/ops" className="ops-door" onClick={() => play('tap')}>

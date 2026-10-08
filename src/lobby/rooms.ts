@@ -11,6 +11,7 @@ import {
 } from 'firebase/database'
 import { db, playerId } from '../lib/firebase'
 import { load, save } from '../lib/storage'
+import type { Stake } from '../match/stakes'
 
 // Rooms live at matches/{game}/{code}. Each game gets its own namespace, so codes only
 // have to be unique per game. (The old site still uses rooms/, wh-rooms/ etc. — left untouched.)
@@ -50,6 +51,14 @@ export interface Room {
   /** server time the match (or latest rematch) was started */
   startedAt?: number
   players: Record<string, Player>
+  /** what the room plays for, if the host turned stakes on */
+  stake?: Stake
+  /** who has agreed to the stake, by id: the stake text they agreed to */
+  stakeOk?: Record<string, string>
+  /** players who pressed Leave in a staked match, by id: the startedAt of the match they left */
+  stakeLeft?: Record<string, number>
+  /** the startedAt of the latest match whose stake was settled (it reached its result) */
+  stakeDone?: number
   /** game-specific state lives under here */
   state?: Record<string, unknown>
   /** set when status is `abandoned` */
@@ -236,6 +245,20 @@ export async function startMatch(game: string, code: string, state: Record<strin
   await update(roomRef(game, code), { status: 'playing', startedAt: serverTimestamp(), state })
 }
 
+/** The host sets (or, with null, clears) the stake. Everyone has to agree again. */
+export async function setStake(game: string, code: string, stake: Stake | null) {
+  await update(roomRef(game, code), { stake, stakeOk: null })
+}
+
+/** Agree to the room's stake as it reads now. */
+export async function acceptStake(game: string, code: string, text: string) {
+  await set(at(game, code, `stakeOk/${playerId()}`), text)
+}
+
+/** Everyone seated has agreed to the stake as it reads now (or there's no stake). */
+export const stakeAgreed = (room: Room) =>
+  !room.stake || seatedPlayers(room).every((p) => !p || p.id === room.hostId || room.stakeOk?.[p.id] === room.stake!.text)
+
 /**
  * Leaving a room:
  * - waiting room: the host closes it; a guest just gives up their seat
@@ -267,9 +290,12 @@ export async function leaveRoom(game: string, room: Room) {
 export async function dropPlayer(game: string, code: string, who: string, reason: EndReason) {
   const room = (await get(roomRef(game, code))).val() as Room | null
   if (!room || room.status !== 'playing' || room.out?.[who]) return
-  if (stillIn(room).filter((p) => p.id !== who).length < 2) return abandonRoom(game, code, who, reason)
   const me = playerId()
+  // pressing Leave in a staked match counts as last; a dropped connection doesn't
+  const staked = reason === 'left' && who === me && room.stake && room.startedAt && room.stakeDone !== room.startedAt ? { [`stakeLeft/${me}`]: room.startedAt } : {}
+  if (stillIn(room).filter((p) => p.id !== who).length < 2) return abandonRoom(game, code, who, reason, staked)
   await update(roomRef(game, code), {
+    ...staked,
     [`out/${who}`]: reason === 'left' ? 'left' : 'dropped',
     ...(who === me ? { [`players/${me}/online`]: false } : {}),
   })
@@ -281,9 +307,10 @@ export async function takeOverHost(game: string, code: string) {
 }
 
 /** Ends a live match for both players. The rules make `abandoned` final, so a second exit can't undo it. */
-export async function abandonRoom(game: string, code: string, who: string, reason: EndReason) {
+export async function abandonRoom(game: string, code: string, who: string, reason: EndReason, extra: Record<string, unknown> = {}) {
   const me = playerId()
   await update(roomRef(game, code), {
+    ...extra,
     status: 'abandoned',
     leftBy: who,
     endReason: reason,

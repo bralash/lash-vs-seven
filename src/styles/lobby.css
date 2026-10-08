@@ -209,3 +209,48 @@
   .seats--many .seat { padding: 0 12px 12px; }
   .seats--many .seat__tag { margin: 0 -12px 4px; padding: 5px 12px; }
 }
+
+/* copy invite link: the button itself confirms */
+.btn.btn--done { background: var(--good); color: var(--paper); }
+
+/* stakes in the waiting room */
+.btn.stake__toggle { border-style: dashed; box-shadow: none; }
+.stake {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+}
+.stake__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stake__head .link-btn { margin: 0; }
+.stake__field { display: flex; gap: 10px; }
+.stake__field input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0 6px;
+  border: 0;
+  border-bottom: var(--edge) solid var(--ink);
+  background: transparent;
+  font-family: var(--display);
+  font-size: clamp(22px, 5vw, 30px);
+  text-transform: uppercase;
+  outline: none;
+}
+.stake__field input::placeholder { color: color-mix(in srgb, var(--ink) 50%, var(--hit)); font-size: .75em; }
+.stake__ideas { display: flex; flex-wrap: wrap; gap: 8px; }
+.stake__idea {
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.stake__idea[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.stake .seg { width: 100%; }
+.stake .seg__btn { flex: 1; justify-content: center; font-size: 13px; }
+.stake .hint { margin: 0; letter-spacing: .08em; }
+.stake__text { margin: 0; font-family: var(--display); font-size: clamp(26px, 6vw, 38px); line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }

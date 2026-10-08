@@ -26,6 +26,36 @@
               ".validate": "newData.val() === 'left' || newData.val() === 'dropped'"
             }
           },
+          "stake": {
+            ".write": "auth != null && data.parent().child('hostId').val() === auth.uid && data.parent().child('status').val() === 'waiting'",
+            ".validate": "newData.hasChildren(['text', 'format'])",
+            "text": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32"
+            },
+            "format": {
+              ".validate": "newData.val() === 'winner' || newData.val() === 'last'"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "stakeOk": {
+            ".write": "auth != null && !newData.exists() && data.parent().child('hostId').val() === auth.uid && data.parent().child('status').val() === 'waiting'",
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code).child('status').val() === 'waiting' && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)",
+              ".validate": "newData.isString() && newData.val().length <= 32"
+            }
+          },
+          "stakeDone": {
+            ".write": "auth != null && data.parent().child('status').val() === 'playing' && data.parent().child('players').hasChild(auth.uid)",
+            ".validate": "newData.isNumber() && newData.val() === data.parent().child('startedAt').val()"
+          },
+          "stakeLeft": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('matches/' + $game + '/' + $code).child('status').val() === 'playing' && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)",
+              ".validate": "newData.isNumber() && newData.val() === root.child('matches/' + $game + '/' + $code).child('startedAt').val()"
+            }
+          },
           "createdAt": {
             ".validate": "newData.isNumber()"
           },
@@ -135,6 +165,38 @@
           "$other": {
             ".validate": false
           }
+        }
+      }
+    },
+    "debts": {
+      "$id": {
+        ".read": "auth != null && (data.child('from').val() === auth.uid || data.child('to').val() === auth.uid)",
+        ".write": "auth != null && !data.exists() && $id.length <= 200 && newData.child('from').val() !== newData.child('to').val() && (newData.child('from').val() === auth.uid || newData.child('to').val() === auth.uid) && $id.beginsWith(newData.child('game').val() + '_' + newData.child('code').val() + '_') && $id.endsWith('_' + newData.child('from').val() + '_' + newData.child('to').val()) && root.child('matches/' + newData.child('game').val() + '/' + newData.child('code').val()).child('players').hasChild(newData.child('from').val()) && root.child('matches/' + newData.child('game').val() + '/' + newData.child('code').val()).child('players').hasChild(newData.child('to').val()) && root.child('matches/' + newData.child('game').val() + '/' + newData.child('code').val()).child('stake/text').val() === newData.child('stake').val()",
+        ".validate": "newData.hasChildren(['from', 'to', 'fromName', 'toName', 'stake', 'game', 'code', 'at'])",
+        "from": { ".validate": "newData.isString()" },
+        "to": { ".validate": "newData.isString()" },
+        "fromName": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
+        "toName": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
+        "stake": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
+        "part": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 4" },
+        "game": { ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9]{2,20}$/)" },
+        "code": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{4}$/)" },
+        "at": { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "paid": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && (data.parent().parent().child('from').val() === $uid || data.parent().parent().child('to').val() === $uid)",
+            ".validate": "newData.val() === true"
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "owes": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$id": {
+          ".write": "auth != null && ((auth.uid === $uid && !newData.exists()) || (!data.exists() && (root.child('debts/' + $id + '/from').val() === auth.uid || root.child('debts/' + $id + '/to').val() === auth.uid) && (root.child('debts/' + $id + '/from').val() === $uid || root.child('debts/' + $id + '/to').val() === $uid)))",
+          ".validate": "newData.val() === true"
         }
       }
     }

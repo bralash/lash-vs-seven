@@ -390,3 +390,28 @@
 .ops-door__text { display: grid; gap: 4px; flex: 1; min-width: 0; }
 .ops-door__title { font-family: var(--display); font-size: clamp(20px, 3vw, 26px); text-transform: uppercase; line-height: 1; }
 .ops-door__go { font-family: var(--display); font-size: 22px; }
+
+/* Stakes: who owes whom, until both tick it */
+.stakes { display: grid; gap: 12px; margin-bottom: clamp(36px, 6vw, 64px); }
+.stakes .hint { margin: -6px 0 0; }
+.stakes__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: 12px; }
+.debt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: var(--edge) solid var(--ink);
+  border-left-width: 8px;
+  border-left-color: var(--good);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.debt--owe { border-left-color: var(--strike); }
+.debt__main { display: grid; gap: 2px; min-width: 0; }
+.debt__who { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.debt__what { font-family: var(--display); font-size: 24px; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+.debt__what small { font-family: var(--mono); font-size: 12px; text-transform: none; color: var(--ink-soft); }
+.debt__meta { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
+.debt__meta b { font-weight: 500; color: var(--ink); }
+.debt__btn { white-space: nowrap; }

@@ -20,6 +20,7 @@ import {
   peekRoom,
   seatedPlayers,
   startMatch,
+  stakeAgreed,
   stillIn,
   takeOverHost,
   trackPresence,
@@ -34,6 +35,7 @@ import { Reactions } from '../match/Reactions'
 import { SelfOffline } from '../match/SelfOffline'
 import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
+import { StakePanel } from './StakePanel'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -127,6 +129,8 @@ interface LeaveGuard {
   other: string | null
   /** two or more others are still in, so the match goes on without you */
   carryOn?: boolean
+  /** the stake, while a staked match is being played */
+  stake?: string
   /** everyone else in the room by id, so a reaction says whose it is */
   names?: Record<string, string>
   /** identifies the match, so the back-buffer below is pushed once per match */
@@ -419,7 +423,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
       />
       {screen}
       {showRules && game.rules && <HowToPlay rules={game.rules} demo={rulesDemo} onClose={() => setShowRules(false)} />}
-      {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} carryOn={guard.carryOn} onStay={stay} onLeave={confirmLeave} />}
+      {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} carryOn={guard.carryOn} stake={guard.stake} onStay={stay} onLeave={confirmLeave} />}
     </div>
   )
 }
@@ -685,6 +689,7 @@ function WaitingRoom({
 }) {
   const live = useRoom(game.slug, code)
   const [toast, setToast] = useState('')
+  const [copied, setCopied] = useState(false)
   const [starting, setStarting] = useState(false)
   const options = optionList(option)
   const [choices, setChoices] = useState(() => options.map((o) => o.initial))
@@ -698,6 +703,12 @@ function WaitingRoom({
     const t = setTimeout(() => setToast(''), 1800)
     return () => clearTimeout(t)
   }, [toast])
+
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 2000)
+    return () => clearTimeout(t)
+  }, [copied])
 
   // chime whenever someone arrives
   const count = live.status === 'ready' ? Object.keys(live.room.players ?? {}).length : 0
@@ -721,7 +732,7 @@ function WaitingRoom({
       markLeft(game.slug, snapshot.code)
     }
     if (snapshot.status === 'abandoned') onGuard(null) // match already over — nothing to protect
-    else if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, carryOn: inWith.length >= 2, names, key: snapshot.code, leave })
+    else if (snapshot.status !== 'waiting') onGuard({ kind: 'match', other, carryOn: inWith.length >= 2, stake: snapshot.status === 'playing' && snapshot.stakeDone !== snapshot.startedAt ? snapshot.stake?.text : undefined, names, key: snapshot.code, leave })
     else if (snapshot.hostId === pid && other) onGuard({ kind: 'close', other, key: snapshot.code, leave })
     else onGuard(null)
   }, [snapshot, pid, onGuard, game.slug])
@@ -800,12 +811,13 @@ function WaitingRoom({
   const fewest = game.players?.[0] ?? 2
   const many = seats.length > 2
   const ready = seated >= fewest
+  const agreed = stakeAgreed(room)
   const url = inviteUrl(game.slug, code)
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url)
-      setToast('Invite link copied')
+      setCopied(true)
     } catch {
       setToast(`Code: ${code}`)
     }
@@ -842,8 +854,16 @@ function WaitingRoom({
       </div>
 
       <div className="invite-actions">
-        <button type="button" className="btn btn--primary" onClick={copy}>
-          <Copy /> Copy invite link
+        <button type="button" className={`btn btn--primary${copied ? ' btn--done' : ''}`} onClick={copy} aria-live="polite">
+          {copied ? (
+            <>
+              <span aria-hidden="true">✓</span> Link copied
+            </>
+          ) : (
+            <>
+              <Copy /> Copy invite link
+            </>
+          )}
         </button>
         {'share' in navigator && (
           <button type="button" className="btn" onClick={share}>Share</button>
@@ -861,6 +881,7 @@ function WaitingRoom({
                   <span className={`dot${p.online ? ' dot--on' : ''}`} aria-hidden="true" />
                   {p.online ? 'Online' : 'Away'}
                   {p.id === room.hostId && <span className="stamp">Host</span>}
+                  {room.stake && p.id !== room.hostId && room.stakeOk?.[p.id] === room.stake.text && <span className="stamp stamp--live">In</span>}
                   {p.id === pid && <span className="seat__you">You</span>}
                 </span>
               </>
@@ -877,9 +898,10 @@ function WaitingRoom({
 
       <div className="lobby__stack" aria-live="polite">
         {isHost && <OptionPicker options={options} choices={choices} onChange={setChoices} />}
+        <StakePanel room={room} />
         {isHost ? (
-          <button type="button" className="btn btn--primary btn--lg btn--block" disabled={!ready || starting} onClick={start}>
-            {starting ? 'Starting…' : ready ? (many ? `Start with ${seated} players` : 'Start match') : 'Waiting for opponent'} <span className="keycap">↵</span>
+          <button type="button" className="btn btn--primary btn--lg btn--block" disabled={!ready || !agreed || starting} onClick={start}>
+            {starting ? 'Starting…' : !ready ? 'Waiting for opponent' : !agreed ? 'Waiting for everyone to agree' : many ? `Start with ${seated} players` : 'Start match'} <span className="keycap">↵</span>
           </button>
         ) : (
           <p className="hint lobby__center">Waiting for {seats[0]?.name ?? 'the host'} to start…</p>

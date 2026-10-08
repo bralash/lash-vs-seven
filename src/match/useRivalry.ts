@@ -5,6 +5,7 @@ import type { Room, Seat } from '../lobby/rooms'
 import { featById, ordinal } from './feats'
 import { describe, flip, groupKey, groupLead, localKey, recordGroup, recordResult, standingLine, standings, type Outcome, type Rival } from './rivalry'
 import { useSession } from './session'
+import { stakeResult } from './stakes'
 import type { Seated } from './types'
 
 export interface RivalryView {
@@ -18,6 +19,8 @@ export interface RivalryView {
   card: string
   /** feats earned this match, with how many times each has now been earned against this rival */
   feats: FeatEarned[]
+  /** who owes whom, in a match played for stakes */
+  stakes?: string[] | null
 }
 export interface FeatEarned {
   id: string
@@ -67,10 +70,11 @@ export function useRivalry(
     if (!opp) return null
     const outcome: Outcome = winner === -1 ? 'draw' : winner === me.seat ? 'win' : 'loss'
     const mine = feats && { me: feats[me.seat], them: feats[me.seat === 0 ? 1 : 0] }
+    const stakes = stakeResult(room, seats.flatMap((p, s) => (p ? [{ id: p.id, score: winner === s ? 1 : 0 }] : [])), me.id)
     const r = recordResult({ game, key: opp.id, name: opp.name, outcome, matchId, feats: mine })
     const bySeat: [number, number] = me.seat === 0 ? [r.total.w, r.total.l] : [r.total.l, r.total.w]
     const ordered = mine && ([mine.me, mine.them] as [string[], string[]])
-    return { ...describe(r, 'You', opp.name, name), card: cardLine(names, bySeat), feats: earned(r, ordered, 'You', opp.name, true) }
+    return { ...describe(r, 'You', opp.name, name), card: cardLine(names, bySeat), feats: earned(r, ordered, 'You', opp.name, true), stakes }
   })
   return view
 }
@@ -114,6 +118,7 @@ export function useRivalryMulti(
   const { local, bot } = useSession(game, room.code)
   const [view] = useState<RivalryView | null>(() => {
     if (bot) return null
+    const stakes = local ? null : stakeResult(room, finished.flatMap((s) => (players[s] ? [{ id: players[s]!.id, score: scores[s] }] : [])), me.id)
     const matchId = `${game}:${room.code}:${room.createdAt}:${matchNo}`
     const gameName = (slug: string) => gameBySlug(slug)?.name ?? slug
     const nameOf = (s: number) => players[s]?.name ?? `Player ${s + 1}`
@@ -134,7 +139,7 @@ export function useRivalryMulti(
       if (!opp) return null
       const r = recordResult({ game, key: opp.id, name: opp.name, outcome: outcome(me.seatN, a === me.seatN ? b : a), matchId })
       const bySeat = me.seatN === a ? r : flip(r)
-      return { ...describe(r, 'You', opp.name, gameName), card: cardLine(pair, [bySeat.total.w, bySeat.total.l]), feats: [] }
+      return { ...describe(r, 'You', opp.name, gameName), card: cardLine(pair, [bySeat.total.w, bySeat.total.l]), feats: [], stakes }
     }
 
     // three or four: the group's record. Online members are uids; in pass & play, names in lower case.
@@ -158,6 +163,7 @@ export function useRivalryMulti(
       split: standingLine(table),
       card: `${standingLine(standings(g.wins, g.members))} · all-time`.toUpperCase(),
       feats: [],
+      stakes,
     }
   })
   return view

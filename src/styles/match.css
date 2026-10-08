@@ -305,3 +305,6 @@ html.scroll-locked .mt-banner.mt-banner--self {
   50% { transform: translateX(5px); }
   75% { transform: translateX(-2px); }
 }
+/* who owes whom, in a match played for stakes */
+.mt-stakes { display: grid; justify-items: center; gap: 4px; margin: 0 0 6px; padding: 0; list-style: none; }
+.mt-stakes li { padding: 3px 10px; background: var(--hit); color: var(--ink); font-family: var(--mono); font-weight: 500; font-size: 13px; letter-spacing: .04em; }

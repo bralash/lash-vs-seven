@@ -11,6 +11,8 @@ interface Props {
   other: string | null
   /** a match with two or more others still in: it goes on without you */
   carryOn?: boolean
+  /** the stake, when leaving now counts as a loss */
+  stake?: string
   onStay: () => void
   onLeave: () => void
 }
@@ -18,7 +20,7 @@ interface Props {
 /** How long the destructive button stays inert, so a double-tap on "Leave" can't confirm by accident. */
 const ARM_MS = 400
 
-export function ConfirmLeave({ kind, other, carryOn, onStay, onLeave }: Props) {
+export function ConfirmLeave({ kind, other, carryOn, stake, onStay, onLeave }: Props) {
   const [armed, setArmed] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setArmed(true), ARM_MS)
@@ -37,7 +39,9 @@ export function ConfirmLeave({ kind, other, carryOn, onStay, onLeave }: Props) {
       : kind === 'match'
       ? {
           title: 'Leave the match?',
-          body: carryOn ? `${them} will play on without you, and you can’t come back into this match.` : `This ends the match for ${them} too.`,
+          body:
+            (carryOn ? `${them} will play on without you, and you can’t come back into this match.` : `This ends the match for ${them} too.`) +
+            (stake ? ` It counts as a loss, so you’ll owe ${stake}.` : ''),
           stay: 'Keep playing',
           leave: 'Leave match',
         }

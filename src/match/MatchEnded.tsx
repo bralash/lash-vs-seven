@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { VsBlock } from '../components/VsBlock'
 import type { MatchExit, Me } from '../lobby/Lobby'
-import type { Room } from '../lobby/rooms'
+import { stillIn, type Room } from '../lobby/rooms'
+import { stakeResult } from './stakes'
 import type { Seated } from './types'
 
 interface Props {
@@ -20,6 +21,8 @@ export function MatchEnded({ room, me, seats, exit, scoreboard }: Props) {
   const leaver = seats.find((p) => p?.id === room.leftBy) ?? null
   const iLeft = room.leftBy === me.id
   const dropped = room.endReason === 'disconnected'
+  // in a staked match, whoever pressed Leave owes whoever's left (a dropped connection voids it)
+  const [stakes] = useState(() => stakeResult(room, stillIn(room).filter((p) => p.id !== room.leftBy).map((p) => ({ id: p.id, score: 0 })), me.id, 'A lost connection doesn’t count, so the stake is off'))
   const title = iLeft
     ? dropped ? 'You lost connection' : 'You left'
     : `${leaver?.name ?? 'Your opponent'} ${dropped ? 'dropped out' : 'left'}`
@@ -38,6 +41,13 @@ export function MatchEnded({ room, me, seats, exit, scoreboard }: Props) {
         <p>{sub}</p>
       </div>
       <div className="mt-hud mt-ended__scores">{scoreboard}</div>
+      {stakes && (
+        <ul className="mt-stakes" aria-label="Stakes">
+          {stakes.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
       <div className="mt-actions">
         <button type="button" className="btn btn--primary btn--lg" onClick={exit.now}>
           New room <span className="keycap">↵</span>

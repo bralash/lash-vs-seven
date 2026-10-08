@@ -84,10 +84,59 @@ try {
   await expect('stranger deletes a waiting room', false, call(stranger, 'DELETE', ROOM))
   await expect('guest closes the host\'s waiting room', false, call(guest, 'DELETE', ROOM))
 
+  // ── stakes in the waiting room ───────────────────────────────────────
+  await expect('guest sets the stake (host only)', false, call(guest, 'PUT', `${ROOM}/stake`, { text: '₵10', format: 'winner' }))
+  await expect('host sets a stake', true, call(host, 'PUT', `${ROOM}/stake`, { text: '₵10', format: 'winner' }))
+  await expect('host sets a 60-character stake', false, call(host, 'PUT', `${ROOM}/stake`, { text: 'x'.repeat(60), format: 'winner' }))
+  await expect('host sets an unknown format', false, call(host, 'PUT', `${ROOM}/stake`, { text: '₵10', format: 'all' }))
+  await expect('guest agrees to the stake', true, call(guest, 'PUT', `${ROOM}/stakeOk/${G}`, '₵10'))
+  await expect('host agrees for the guest', false, call(host, 'PUT', `${ROOM}/stakeOk/${G}`, '₵20'))
+  await expect('stranger agrees in the room', false, call(stranger, 'PUT', `${ROOM}/stakeOk/${stranger.uid}`, '₵10'))
+  await expect('guest wipes everyone\'s agreement', false, call(guest, 'DELETE', `${ROOM}/stakeOk`))
+  await expect('host changes the stake and clears agreement', true,
+    call(host, 'PATCH', ROOM, { stake: { text: '₵20', format: 'winner' }, stakeOk: null }))
+  await expect('guest agrees again', true, call(guest, 'PUT', `${ROOM}/stakeOk/${G}`, '₵20'))
+
   // ── match ────────────────────────────────────────────────────────────
   await expect('guest starts the match (host only)', false, call(guest, 'PATCH', ROOM, { status: 'playing' }))
   await expect('host starts the match', true,
     call(host, 'PATCH', ROOM, { status: 'playing', startedAt: SERVER_TS, state: { grid: ['A'], round: 1 } }))
+  {
+    const started = await (await fetch(`${DB}/${ROOM}/startedAt.json?auth=${host.token}`)).json()
+    await expect('host changes the stake mid-match', false, call(host, 'PUT', `${ROOM}/stake`, { text: '₵1', format: 'winner' }))
+    await expect('guest agrees mid-match', false, call(guest, 'PUT', `${ROOM}/stakeOk/${G}`, '₵1'))
+    await expect('host marks the guest as having left', false, call(host, 'PUT', `${ROOM}/stakeLeft/${G}`, started))
+    await expect('guest marks a wrong match as left', false, call(guest, 'PUT', `${ROOM}/stakeLeft/${G}`, 12345))
+    await expect('stranger marks the stake settled', false, call(stranger, 'PUT', `${ROOM}/stakeDone`, started))
+    await expect('host marks a wrong match settled', false, call(host, 'PUT', `${ROOM}/stakeDone`, 12345))
+    await expect('host marks the stake settled', true, call(host, 'PUT', `${ROOM}/stakeDone`, started))
+
+    // ── the debts ledger ─────────────────────────────────────────────────
+    const DEBT = `debts/${GAME}_${CODE}_${started}_${G}_${H}`
+    const debt = { from: G, to: H, fromName: 'Seven', toName: 'Lash', stake: '₵20', game: GAME, code: CODE, at: SERVER_TS }
+    await expect('stranger writes a debt between two others', false, call(stranger, 'PUT', DEBT, debt))
+    await expect('stranger writes a debt owed to themselves', false, call(stranger, 'PUT', `debts/x_${G}`, { ...debt, to: stranger.uid }))
+    await expect('host writes a debt with a junk field', false, call(host, 'PUT', DEBT, { ...debt, junk: 1 }))
+    await expect('host writes the debt', true, call(host, 'PUT', DEBT, debt))
+    await expect('guest overwrites the debt', false, call(guest, 'PUT', DEBT, { ...debt, stake: '₵0' }))
+    await expect('guest reads the debt', true, call(guest, 'GET', DEBT))
+    await expect('stranger reads the debt', false, call(stranger, 'GET', DEBT))
+    const id = DEBT.slice('debts/'.length)
+    await expect('host indexes the debt for the guest', true, call(host, 'PUT', `owes/${G}/${id}`, true))
+    await expect('host indexes it for themselves', true, call(host, 'PUT', `owes/${H}/${id}`, true))
+    await expect('stranger indexes it for themselves', false, call(stranger, 'PUT', `owes/${stranger.uid}/${id}`, true))
+    await expect('host reads the guest\'s list', false, call(host, 'GET', `owes/${G}`))
+    await expect('guest reads their own list', true, call(guest, 'GET', `owes/${G}`))
+    await expect('host ticks paid for the guest', false, call(host, 'PUT', `${DEBT}/paid/${G}`, true))
+    await expect('stranger ticks paid', false, call(stranger, 'PUT', `${DEBT}/paid/${stranger.uid}`, true))
+    await expect('guest ticks they paid', true, call(guest, 'PUT', `${DEBT}/paid/${G}`, true))
+    await expect('host ticks they got it', true, call(host, 'PUT', `${DEBT}/paid/${H}`, true))
+    await expect('host removes the guest\'s index entry', false, call(host, 'DELETE', `owes/${G}/${id}`))
+    await expect('guest tidies a settled debt from their list', true, call(guest, 'DELETE', `owes/${G}/${id}`))
+    await call(host, 'DELETE', `owes/${H}/${id}`)
+    // nobody can delete a debt through the rules; clean up with the CLI if needed
+    globalThis.leftoverDebt = DEBT
+  }
   await expect('guest records their own words', true, call(guest, 'PUT', `${ROOM}/state/found/${G}`, ['TEA']))
   await expect('guest edits the host\'s words', false, call(guest, 'PUT', `${ROOM}/state/found/${H}`, []))
   await expect('host edits the guest\'s words', false, call(host, 'PUT', `${ROOM}/state/found/${G}`, ['ZZZ']))

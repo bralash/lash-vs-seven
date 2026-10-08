@@ -8,6 +8,13 @@ export function RivalryLine({ r }: { r: RivalryView | null }) {
   const shown = r.feats.find((f) => `${f.id}:${f.who}` === open)
   return (
     <div className="mt-rivalry">
+      {r.stakes && (
+        <ul className="mt-stakes" aria-label="Stakes">
+          {r.stakes.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
       <p className="mt-rivalry__line">{r.line}</p>
       {(r.streak || r.split) && <p className="mt-rivalry__meta">{[r.streak, r.split].filter(Boolean).join(' · ')}</p>}
       {r.feats.length > 0 && (
