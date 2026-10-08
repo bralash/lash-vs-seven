@@ -222,10 +222,11 @@
 .share__note { min-height: 1.5em; text-align: center; }
 
 /* ── Results: one row — share (icon) + rematch ─────────── */
-.mt-result-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 14px; width: min(100%, 460px); margin-inline: auto; }
-.mt-result-actions__note { flex-basis: 100%; text-align: center; }
-.mt-result-actions .btn--primary { flex: 1; padding-inline: 18px; font-size: clamp(22px, 6vw, 34px); white-space: nowrap; }
-.mt-result-actions .share-btn { flex: none; aspect-ratio: 1; padding: 0 18px; background: var(--slot); }
+/* share icon + one button, always side by side (a long label like "Back to lobby" must never push the button onto its own line) */
+.mt-result-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: stretch; gap: 14px; width: min(100%, 520px); margin-inline: auto; }
+.mt-result-actions__note { grid-column: 1 / -1; text-align: center; }
+.mt-result-actions .btn--primary { min-width: 0; padding-inline: 18px; font-size: clamp(20px, 5.4vw, 32px); white-space: nowrap; }
+.mt-result-actions .share-btn { aspect-ratio: 1; padding: 0 18px; background: var(--slot); }
 .mt-result-actions .share-btn svg { width: 28px; height: 28px; }
 
 /* ── Rivalry: the all-time record against this opponent — information, so it stays quiet ── */
