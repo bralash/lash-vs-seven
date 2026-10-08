@@ -133,7 +133,7 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     const moment = sense.moment?.(was.state, state)
     const swing = standing - was.standing
     maybe(
-      (moment && MOMENT[moment]) ||
+      (moment && (typeof moment === 'string' ? MOMENT[moment] : { face: MOMENT[moment.moment].face, said: moment.said })) ||
         (youMoved && swing >= SWING ? { face: 'pity', said: 'Oof' } : null) ||
         (youMoved && swing <= -SWING ? { face: 'wow', said: 'No way' } : null) ||
         bandSay(band(was.standing), band(standing)),

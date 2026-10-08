@@ -29,6 +29,8 @@ export const squash = (v: number, scale: number) => Math.tanh(v / scale)
 
 /** Something the last move did that Ops might react to. */
 export type Moment = 'took' | 'lost' | 'lucky' | 'unlucky'
+/** A moment with its own words, for when the usual one ("Yes!", "Rigged") would be too vague. */
+export type Said = { moment: Moment; said: string }
 
 /**
  * How Ops reads a match, so she can react to it (src/match/OpsReactions.tsx). A game opts in by
@@ -45,5 +47,5 @@ export interface OpsSense {
   /** the game that just finished, if one did: who won it, and whether that settles the match */
   ended: (state: Record<string, unknown>) => { winner: 0 | 1 | -1; final: boolean } | null
   /** a capture, a lucky roll… that the move from `prev` to `next` made; games without them leave it out */
-  moment?: (prev: Record<string, unknown>, next: Record<string, unknown>) => Moment | null
+  moment?: (prev: Record<string, unknown>, next: Record<string, unknown>) => Moment | Said | null
 }

@@ -1,6 +1,6 @@
-import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type Moment, type OpsSense, type Said } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
-import { HOME, backKick, colorsOf, move, movable, other, roll, type Color, type Live } from './engine'
+import { HOME, backKick, colorsOf, homeCount, move, movable, other, roll, type Color, type Live } from './engine'
 import type { LudoState } from './LudoMatch'
 
 /** How often Ops just moves any token; whether she looks at what you could hit next. */
@@ -103,10 +103,55 @@ export const ludoSense: OpsSense = {
     if (b.caps[BOT_SEAT] > a.caps[BOT_SEAT]) return 'took'
     if (b.caps[0] > a.caps[0]) return 'lost'
     const die = b.die
-    if (die && die.s === BOT_SEAT && die.n !== a.die?.n) {
-      if (die.v === 6) return 'lucky'
-      if (die.none) return 'unlucky'
-    }
-    return null
+    if (!die || die.n === a.die?.n) return null
+    return rollMoment(a, die.s, die.v, !!die.none, die.n)
   },
+}
+
+/** What `seat`'s best move with a roll of `v` would do from `before` (a position waiting for their roll). */
+function rollOutcome(before: Live, seat: Seat, v: number): { value: number; hit: boolean; home: boolean } {
+  const rolled: Live = { ...before, turn: seat, rolled: true, die: { v, s: seat, n: 0 } }
+  let best = { value: standing(before, seat), hit: false, home: false }
+  let first = true
+  for (const o of options(rolled)) {
+    const after = move(rolled, seat, o.c, o.i, o.dir)
+    if (!after) continue
+    const value = standing(after, seat)
+    if (first || value > best.value)
+      best = { value, hit: after.caps[seat] > before.caps[seat], home: homeCount(after, seat) > homeCount(before, seat) }
+    first = false
+  }
+  return best
+}
+
+/** how far a roll must beat (or fall short of) an average roll, in race squares, to be worth a word */
+const LUCK = 30
+/** rolls so far (both players') when still being stuck in the yard at the start starts to sting: she says so once, around then */
+const STUCK_ROLLS = [12, 17]
+
+/**
+ * Whether a roll is worth a word. A roll is lucky or unlucky against the average of all six: what the
+ * best move with it does to the race, next to what the other numbers would have done. Small
+ * differences are just Ludo; a roll that's a hit or a token home when most numbers aren't (or the
+ * other way round) gets a reaction. Your lucky rolls get one too: "Rigged".
+ */
+function rollMoment(before: Live, seat: Seat, v: number, none: boolean, n: number): Moment | Said | null {
+  const all = [1, 2, 3, 4, 5, 6].map((w) => rollOutcome(before, seat, w))
+  const mean = all.reduce((t, o) => t + o.value, 0) / 6
+  const got = all[v - 1]
+  const luck = got.value - mean
+  if (seat !== BOT_SEAT) return luck >= LUCK ? 'unlucky' : null
+
+  const yard = colorsOf(before, BOT_SEAT).every((c) => (before.tokens[c] ?? []).every((p) => p === 0))
+  if (yard) {
+    if (v === 6 && !none) return { moment: 'lucky', said: 'Finally!' }
+    return none && n >= STUCK_ROLLS[0] && n <= STUCK_ROLLS[1] ? { moment: 'unlucky', said: 'Six, please' } : null
+  }
+  if (luck >= LUCK) return { moment: 'lucky', said: got.hit ? `Ooh, a ${v}` : got.home ? 'Home time' : 'Yes!' }
+  if (luck <= -LUCK) {
+    // the number that would have done best, when it would have landed a hit
+    const top = all.reduce((b, o, i) => (o.value > all[b].value ? i : b), 0)
+    return { moment: 'unlucky', said: all[top].hit ? `Needed a ${top + 1}` : 'Rigged' }
+  }
+  return null
 }
