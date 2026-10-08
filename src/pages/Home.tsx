@@ -138,7 +138,7 @@ function GameCard({ game, index }: { game: GameMeta; index: number }) {
       <h3 className="card__name">{game.name}</h3>
       <p className="card__blurb">{game.blurb}</p>
       <p className="card__meta">
-        2 players · {game.length} · {game.modes}
+        {game.players ? `${game.players[0]}–${game.players[1]}` : 2} players · {game.length} · {game.modes}
       </p>
       {game.status === 'live' && (
         <span className="card__cta" aria-hidden="true">
