@@ -371,3 +371,22 @@
   .rival__score { font-size: 26px; }
   .rival > .rival__go { margin-right: 10px; padding: 9px 10px; font-size: 14px; }
 }
+
+/* ── The way in to /ops ──────────────────────────────────── */
+.ops-door {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: clamp(36px, 6vw, 64px);
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  transition: transform .14s var(--ease-out), box-shadow .14s var(--ease-out), background .14s;
+}
+.ops-door:hover, .ops-door:focus-visible { transform: translate(-2px, -2px); box-shadow: var(--shadow); background: #fff6d6; }
+.ops-door:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.ops-door__text { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.ops-door__title { font-family: var(--display); font-size: clamp(20px, 3vw, 26px); text-transform: uppercase; line-height: 1; }
+.ops-door__go { font-family: var(--display); font-size: 22px; }

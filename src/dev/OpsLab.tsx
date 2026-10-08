@@ -29,6 +29,9 @@ const REACTS: { id: OpsMood; label: string; where: string }[] = [
   { id: 'unlucky', label: 'Rigged', where: 'Bad roll or deal' },
   { id: 'gg', label: 'GG', where: 'Match ends' },
   { id: 'salty', label: 'Again?', where: 'She loses on Hard' },
+  { id: 'love', label: 'Aww', where: 'You hold her (lobby / results)' },
+  { id: 'giggle', label: 'Hehe', where: 'You poke her once or twice' },
+  { id: 'angry', label: 'STOP.', where: 'You keep poking her' },
 ]
 
 export default function OpsLab() {

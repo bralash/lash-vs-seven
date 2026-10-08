@@ -1,0 +1,61 @@
+/* ── Ops' room (/ops) ─────────────────────────────────── */
+.opsroom { gap: 34px; }
+.opsroom__star { padding-top: 40px; } /* room for her sticker when she's poked */
+.opsroom__section { display: grid; gap: 14px; width: 100%; }
+.opsroom__h { font-size: clamp(24px, 4vw, 32px); text-align: left; }
+
+/* the five faces */
+.opsroom__looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
+.opsroom__look {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 18px 12px 16px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform .12s var(--ease-out), box-shadow .12s var(--ease-out), background .12s;
+}
+.opsroom__look:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow); }
+.opsroom__look:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.opsroom__look[aria-checked="true"] { background: var(--hit); box-shadow: var(--shadow); }
+.opsroom__look:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.opsroom__picked { position: absolute; top: -12px; right: -8px; rotate: 6deg; }
+.opsroom__name { font-family: var(--display); font-size: 22px; line-height: 1; text-transform: uppercase; }
+.opsroom__blurb { font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
+
+/* the picked face in each base mood */
+.opsroom__moods {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 18px;
+  padding: 18px 12px 14px;
+  margin: 0;
+  list-style: none;
+  border: var(--edge) solid var(--ink);
+  background: var(--board);
+}
+.opsroom__moods li { display: grid; justify-items: center; gap: 6px; }
+.opsroom__moods span { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--paper-2); }
+.opsroom__note { text-align: left; text-transform: none; letter-spacing: .02em; font-size: 13px; }
+
+/* the wardrobe teaser: hatched like a game that isn't out yet */
+.opsroom__soon { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.opsroom__soon-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 18px 14px 16px;
+  border: var(--edge) solid var(--ink);
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in srgb, var(--ink) 6%, transparent) 9px 10px);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+}
+.opsroom__soon-card .stamp { justify-self: start; }
+.opsroom__soon-card .opsroom__name { color: color-mix(in srgb, var(--ink) 62%, var(--paper)); }

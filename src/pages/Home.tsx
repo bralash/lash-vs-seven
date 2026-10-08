@@ -53,6 +53,15 @@ export function Home() {
 
         <Rivals />
 
+        <Link to="/ops" className="ops-door" onClick={() => play('tap')}>
+          <OpsFace mood="hello" size={52} />
+          <span className="ops-door__text">
+            <span className="ops-door__title">Pick your Ops</span>
+            <span className="hint">Choose her face · outfits coming soon</span>
+          </span>
+          <span className="ops-door__go" aria-hidden="true">→</span>
+        </Link>
+
         <section aria-labelledby="games-title">
           <div className="games-head">
             <h2 id="games-title">Pick a game</h2>

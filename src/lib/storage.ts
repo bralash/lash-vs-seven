@@ -24,6 +24,8 @@ export const KEYS = {
   /** last level picked for Ops */
   botLevel: 'lvs_bot_level',
   sound: 'lvs_sound',
+  /** the face this player picked for Ops (/ops) */
+  opsLook: 'lvs_ops_look',
 } as const
 
 

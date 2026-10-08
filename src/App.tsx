@@ -19,6 +19,7 @@ import { TicTacToe } from './games/tictactoe/TicTacToe'
 import { WordHunt } from './games/wordhunt/WordHunt'
 import { SoundProvider } from './lib/sound'
 import { Home } from './pages/Home'
+import { OpsRoom } from './pages/OpsRoom'
 
 // Dev-only sandbox; the DEV guard lets the bundler drop it from production builds.
 const BoardLab = import.meta.env.DEV ? lazy(() => import('./dev/BoardLab')) : null
@@ -34,6 +35,7 @@ const OpsLab = import.meta.env.DEV ? lazy(() => import('./dev/OpsLab')) : null
 // A data router (rather than <BrowserRouter>) so games can block navigation mid-match with useBlocker.
 const routes: RouteObject[] = [
   { path: '/', element: <Home /> },
+  { path: '/ops', element: <OpsRoom /> },
   { path: '/wordhunt', element: <WordHunt /> },
   { path: '/anagram', element: <Anagram /> },
   { path: '/tictactoe', element: <TicTacToe /> },

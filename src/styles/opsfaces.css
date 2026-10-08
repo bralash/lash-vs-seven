@@ -97,6 +97,18 @@
 .opsf-steam circle { transform-box: fill-box; transform-origin: center; animation: opsf-puff .9s ease-out infinite; }
 .opsf-steam circle + circle { animation-delay: .45s; }
 @keyframes opsf-puff { from { translate: 0 6px; opacity: 1; scale: .6; } to { translate: 0 -6px; opacity: 0; scale: 1.2; } }
+/* poked and petted (PokeOps) */
+.opsf--love .opsf__body { animation: opsf-stamp .35s var(--ease-snap) both, opsf-breathe 1.2s .4s ease-in-out infinite; }
+.opsf-beat { transform-box: fill-box; transform-origin: center; animation: opsf-beat .6s ease-in-out infinite; }
+@keyframes opsf-beat { 30% { scale: 1.25; } 60% { scale: .95; } }
+.opsf-hearts path { transform-box: fill-box; transform-origin: center; animation: opsf-float 1.4s ease-out infinite; }
+.opsf-hearts path + path { animation-delay: .7s; }
+.opsf--giggle .opsf__body { animation: opsf-giggle .16s ease-in-out 6 alternate; }
+@keyframes opsf-giggle { from { transform: rotate(-4deg) translateY(0); } to { transform: rotate(4deg) translateY(-3%); } }
+.opsf--angry .opsf__body { animation: opsf-puffup .3s var(--ease-snap) both, opsf-shake .1s .3s steps(2) infinite; }
+@keyframes opsf-puffup { from { transform: scale(.85); } 60% { transform: scale(1.12); } }
+.opsf-vein { transform-box: fill-box; transform-origin: center; animation: opsf-beat .45s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .opsf *, .opsf__body { animation: none !important; }
 }

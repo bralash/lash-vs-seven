@@ -1,18 +1,22 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { KEYS, load, save } from '../lib/storage'
 import '../styles/opsfaces.css'
 
-// Faces for Ops, the computer opponent. OPS_LOOK is the one in use; the rest are kept so it can be
-// swapped later (compare them all at /dev/ops).
+// Faces for Ops, the computer opponent. Players pick which one she wears at /ops (saved on the
+// device); OPS_LOOK is the default. Every look has the five base moods; the reaction faces are
+// drawn for Screen only, and the other looks borrow the nearest base mood.
 
 export type BaseMood = 'idle' | 'think' | 'win' | 'lose' | 'draw'
 /** Faces she pulls when she sends a reaction mid-match (drawn for the Screen look; the others fall back). */
 export type ReactMood =
   | 'hello' | 'wait' | 'sleep' | 'smug' | 'sorry' | 'nervous' | 'panic' | 'ouch'
   | 'gotcha' | 'wow' | 'pity' | 'lucky' | 'unlucky' | 'gg' | 'salty'
+  /** when you poke or pet her (PokeOps) */
+  | 'love' | 'giggle' | 'angry'
 export type OpsMood = BaseMood | ReactMood
 export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'visor'
 
-/** The face Ops wears on the site. */
+/** The face Ops wears until a player picks another. */
 export const OPS_LOOK: OpsStyle = 'screen'
 
 export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string }[] = [
@@ -22,6 +26,30 @@ export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string }[] = [
   { id: 'die', name: 'Die', blurb: 'A die whose pips are her eyes. Thinking rolls through the faces.' },
   { id: 'visor', name: 'Visor', blurb: 'Dark head with a yellow visor; a light sweeps across while she thinks.' },
 ]
+
+/* ── The player's pick ── */
+
+const lookListeners = new Set<() => void>()
+function readLook(): OpsStyle {
+  const v = load(KEYS.opsLook)
+  return OPS_STYLES.some((s) => s.id === v) ? (v as OpsStyle) : OPS_LOOK
+}
+function subscribeLook(fn: () => void) {
+  lookListeners.add(fn)
+  window.addEventListener('storage', fn)
+  return () => {
+    lookListeners.delete(fn)
+    window.removeEventListener('storage', fn)
+  }
+}
+/** The look this player picked for Ops (updates live when it changes, in this tab or another). */
+export function useOpsLook(): OpsStyle {
+  return useSyncExternalStore(subscribeLook, readLook, () => OPS_LOOK)
+}
+export function setOpsLook(look: OpsStyle) {
+  save(KEYS.opsLook, look)
+  lookListeners.forEach((fn) => fn())
+}
 
 const INK = 'var(--ink)'
 
@@ -233,6 +261,16 @@ const SMILE = 'M34 51q13 10 26 0'
 const GRIN = 'M32 49h30q-3 11-15 11t-15-11z'
 /** A sweat drop on the top-right corner of her head. */
 const DROP = <path className="opsf-drop" d="M84 4q-6 8-6 12a6 6 0 0 0 12 0q0-4-6-12z" fill="#8ec5ff" stroke={INK} strokeWidth="2.5" />
+/** A heart centred on (cx, cy), r across from the middle to each lobe's edge. */
+const heart = (cx: number, cy: number, r: number) =>
+  `M${cx} ${cy + r}L${cx - r} ${cy - r * 0.1}A${r / 2} ${r / 2} 0 0 1 ${cx} ${cy - r * 0.55}A${r / 2} ${r / 2} 0 0 1 ${cx + r} ${cy - r * 0.1}Z`
+/** Pink cheeks. */
+const BLUSH = (
+  <>
+    <rect x="20" y="44" width="8" height="4" fill="#ff7aa8" opacity=".9" />
+    <rect x="66" y="44" width="8" height="4" fill="#ff7aa8" opacity=".9" />
+  </>
+)
 /** A four-point star centred on (cx, cy). */
 const star = (cx: number, cy: number, r: number) => {
   const k = r * 0.3
@@ -386,18 +424,57 @@ const REACT_FACES: Record<ReactMood, (px: string) => ReactNode> = {
       </g>
     </>
   ),
+  love: () => (
+    <>
+      {SCREEN}
+      <path className="opsf-beat" d={heart(34, 36, 7)} fill="#ff5c8a" />
+      <path className="opsf-beat" d={heart(60, 36, 7)} fill="#ff5c8a" />
+      <path d={SMILE} stroke="var(--hit)" strokeWidth="4" fill="none" />
+      {BLUSH}
+      <g className="opsf-hearts" fill="#ff5c8a" stroke={INK} strokeWidth="2.5">
+        <path d={heart(88, 12, 7)} />
+        <path d={heart(8, 20, 5)} />
+      </g>
+    </>
+  ),
+  giggle: (px) => (
+    <>
+      {SCREEN}
+      <path d="M28 35l10 4-10 4M66 35l-10 4 10 4" stroke={px} strokeWidth="4" fill="none" />
+      <path d={GRIN} fill={px} />
+      {BLUSH}
+    </>
+  ),
+  angry: (px) => (
+    <>
+      {SCREEN}
+      <rect x="15" y="16" width="64" height="50" fill="var(--strike)" opacity=".5" />
+      <path d="M27 26l13 8M67 26l-13 8" stroke={px} strokeWidth="4.5" />
+      <rect x="30" y="35" width="9" height="6" fill={px} />
+      <rect x="55" y="35" width="9" height="6" fill={px} />
+      <path d="M35 59q12-9 24 0" stroke={px} strokeWidth="4" fill="none" />
+      <path className="opsf-vein" d="M84 6v5h-5M90 6v5h5M84 20v-5h-5M90 20v-5h5" stroke="var(--strike)" strokeWidth="3" fill="none" />
+      <g className="opsf-steam" fill="var(--slot)" stroke={INK} strokeWidth="2.5">
+        <circle cx="6" cy="10" r="6" />
+        <circle cx="14" cy="2" r="4" />
+      </g>
+    </>
+  ),
 }
 
 /** The other looks only know the five base moods, so reactions borrow the nearest one. */
 const BASE: Record<ReactMood, BaseMood> = {
   hello: 'win', wait: 'idle', sleep: 'idle', smug: 'win', sorry: 'win', nervous: 'lose', panic: 'lose', ouch: 'lose',
   gotcha: 'win', wow: 'draw', pity: 'draw', lucky: 'win', unlucky: 'lose', gg: 'win', salty: 'lose',
+  love: 'win', giggle: 'win', angry: 'lose',
 }
 
 const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, visor: Visor }
 
 /** Ops' face. Moods animate in CSS; remount (change `key`) to replay a one-shot mood. */
-export function OpsFace({ look = OPS_LOOK, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {
+export function OpsFace({ look: forced, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {
+  const picked = useOpsLook()
+  const look = forced ?? picked
   const Face = DRAW[look]
   if (look !== 'screen' && mood in BASE) mood = BASE[mood as ReactMood]
   return (
