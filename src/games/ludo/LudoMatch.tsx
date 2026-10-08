@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
@@ -17,7 +17,7 @@ import { useSession } from '../../match/session'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
-import { COLOR_HEX, COLOR_NAME, DieFace, LudoBoard, spot, type Dest, type TokenView } from './Board'
+import { COLOR_HEX, COLOR_NAME, Die3D, LudoBoard, spot, type Dest, type TokenView } from './Board'
 import {
   COLORS,
   HOME,
@@ -39,8 +39,8 @@ import '../../styles/ludo.css'
 const GAME = 'ludo'
 /** The winning move stays up this long before the results. */
 const RESULT_MS = 2200
-/** the die shakes this long before it shows the number */
-const SHAKE_MS = 480
+/** the die tumbles this long before it shows the number */
+const SHAKE_MS = 650
 /** a token takes this long per square */
 const STEP_MS = 110
 /** when there's only one move, it's made on its own after this long */
@@ -83,24 +83,18 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   /* ── the die: everyone sees it shake, then land ── */
   const dieN = live.die?.n ?? 0
   const [shaking, setShaking] = useState(false)
-  const [face, setFace] = useState(live.die?.v ?? 6)
+  const face = live.die?.v ?? 6
   const seenDie = useRef(dieN)
   useEffect(() => {
     if (dieN === seenDie.current) return
     seenDie.current = dieN
     setShaking(true)
     sound('tick')
-    const spin = setInterval(() => setFace(1 + Math.floor(Math.random() * 6)), 60)
     const t = setTimeout(() => {
-      clearInterval(spin)
-      setFace(live.die?.v ?? 6)
       setShaking(false)
       if (live.die?.none) sound('error')
     }, SHAKE_MS)
-    return () => {
-      clearInterval(spin)
-      clearTimeout(t)
-    }
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dieN])
 
@@ -284,12 +278,12 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         <button
           type="button"
           className={`ld-die${shaking ? ' ld-die--shake' : ''}${canRoll ? ' ld-die--go' : ''}`}
-          style={{ borderColor: COLOR_HEX[colorsOf(live, who)[0]] }}
+          style={{ '--die-tint': COLOR_HEX[colorsOf(live, who)[0]] } as CSSProperties}
           onClick={doRoll}
           disabled={!canRoll}
-          aria-label={canRoll ? 'Roll the die' : `Die showing ${face}`}
+          aria-label={canRoll ? 'Roll the die' : shaking ? 'Rolling' : `Die showing ${face}`}
         >
-          <DieFace v={live.die || shaking ? face : 6} />
+          <Die3D v={live.die ? face : 6} n={dieN} />
         </button>
       </div>
 

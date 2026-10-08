@@ -13,39 +13,80 @@
 .ld-controls { display: flex; align-items: stretch; gap: 12px; }
 .ld-controls .ld-status { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; }
 
-/* ── The die ───────────────────────────────────────────── */
+/* ── The die: a real cube seen from straight above — at rest it's just the top face and a hard
+   shadow; the sides only show while it tumbles ── */
 .ld-die {
+  --s: clamp(46px, 12.5vw, 58px);        /* cube edge */
+  --die-tint: var(--slot);             /* whose roll it is */
+  --die-face: color-mix(in srgb, var(--die-tint) 22%, var(--slot));
+  position: relative;
   display: grid;
   place-items: center;
   align-self: center;
   flex: none;
-  width: clamp(56px, 15vw, 72px);
+  width: clamp(60px, 16vw, 76px);
   aspect-ratio: 1;
   padding: 0;
-  border: 4px solid var(--ink);
-  background: var(--slot);
-  box-shadow: var(--shadow-sm);
+  border: 0;
+  background: none;
   cursor: default;
-  transition: transform .12s var(--ease-out), box-shadow .12s var(--ease-out);
+  perspective: 300px;
+  transition: transform .12s var(--ease-out);
+}
+/* the hard shadow, offset like every card on the site */
+.ld-die::before {
+  content: '';
+  position: absolute;
+  width: var(--s);
+  height: var(--s);
+  translate: 5px 5px;
+  background: var(--ink);
+  transition: translate .12s var(--ease-out);
 }
 .ld-die:disabled { opacity: 1; }
-.ld-die--go { cursor: pointer; background: var(--hit); animation: ld-nudge 1.4s ease-in-out infinite; }
-.ld-die--go:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
-.ld-die--shake { animation: ld-shake .48s linear; }
+.ld-die--go { cursor: pointer; --die-face: var(--hit); animation: ld-nudge 1.4s ease-in-out infinite; }
+.ld-die--go:active::before { translate: 1px 1px; }
+.ld-die--go:active .ld-die__scene { translate: 4px 4px; }
 @keyframes ld-nudge { 0%, 70%, 100% { transform: none; } 80% { transform: rotate(-7deg); } 90% { transform: rotate(6deg); } }
-@keyframes ld-shake {
-  20% { transform: translate(-3px, 2px) rotate(-14deg); }
-  40% { transform: translate(3px, -2px) rotate(12deg); }
-  60% { transform: translate(-2px, -1px) rotate(-8deg); }
-  80% { transform: translate(2px, 1px) rotate(5deg); }
+
+/* sunk by half a cube so the top face sits exactly on the shadow's level */
+.ld-die__scene {
+  position: relative;
+  width: var(--s);
+  height: var(--s);
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--s) / -2));
+  transition: translate .12s var(--ease-out);
+}
+/* the throw: it lifts toward you while it tumbles, and its shadow drops further away */
+.ld-die--shake .ld-die__scene { animation: ld-hop .65s cubic-bezier(.3, 0, .4, 1); }
+.ld-die--shake::before { animation: ld-hop-shadow .65s cubic-bezier(.3, 0, .4, 1); }
+@keyframes ld-hop { 40% { translate: -3px -3px 70px; } 78% { translate: 0 0 0; } 88% { translate: 0 0 10px; } }
+@keyframes ld-hop-shadow { 40% { translate: 14px 14px; scale: .85; } 78% { translate: 5px 5px; scale: 1; } 88% { translate: 7px 7px; } }
+
+.ld-die__cube {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform .65s cubic-bezier(.2, .7, .25, 1.04);
 }
 .ld-die__face {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-template: repeat(3, 1fr) / repeat(3, 1fr);
-  width: 70%;
-  aspect-ratio: 1;
+  padding: 10%;
+  border: 3px solid var(--ink);
+  background: var(--die-face);
+  backface-visibility: hidden;
 }
-.ld-die__face i { display: block; width: 62%; aspect-ratio: 1; margin: auto; border-radius: 50%; }
+.ld-die__face--1 { transform: translateZ(calc(var(--s) / 2)); }
+.ld-die__face--6 { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+.ld-die__face--2 { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
+.ld-die__face--5 { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
+.ld-die__face--3 { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
+.ld-die__face--4 { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+.ld-die__face i { display: block; width: 68%; aspect-ratio: 1; margin: auto; border-radius: 50%; }
 .ld-die__face i.on { background: var(--ink); }
 
 .ld-swatches { display: inline-flex; gap: 4px; }
@@ -148,5 +189,6 @@ html.is-fullscreen .ld-board { width: min(100% - 10px, max(260px, calc(100dvh - 
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ld-die--go, .ld-die--shake, .ld-yard__pulse, .ld-tok__ring, .ld-dest circle { animation: none !important; }
+  .ld-die--go, .ld-die--shake .ld-die__scene, .ld-die--shake::before, .ld-yard__pulse, .ld-tok__ring, .ld-dest circle { animation: none !important; }
+  .ld-die__cube { transition-duration: .15s; }
 }

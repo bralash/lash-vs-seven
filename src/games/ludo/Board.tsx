@@ -222,12 +222,32 @@ export function LudoBoard({ colors, bottom, tokens, pickable, selected, dests, p
 
 const PIPS: Record<number, number[]> = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
 
-export function DieFace({ v }: { v: number }) {
+function DieFace({ v }: { v: number }) {
   return (
-    <span className="ld-die__face" aria-hidden="true">
+    <span className={`ld-die__face ld-die__face--${v}`}>
       {Array.from({ length: 9 }, (_, k) => (
         <i key={k} className={(PIPS[v] ?? []).includes(k) ? 'on' : undefined} />
       ))}
+    </span>
+  )
+}
+
+/** the turn that brings each number to the front (opposite faces add up to 7) */
+const FRONT: Record<number, [number, number]> = { 1: [0, 0], 6: [0, 180], 2: [0, -90], 5: [0, 90], 3: [-90, 0], 4: [90, 0] }
+
+/**
+ * A real cube: all six faces, turned so `v` faces you. Every roll (`n`) adds whole turns on top, so the
+ * transition tumbles it over and lands on the number; the angles only grow, so it never spins back.
+ */
+export function Die3D({ v, n }: { v: number; n: number }) {
+  const [x, y] = FRONT[v] ?? FRONT[6]
+  return (
+    <span className="ld-die__scene" aria-hidden="true">
+      <span className="ld-die__cube" style={{ transform: `rotateX(${n * 720 + x}deg) rotateY(${n * 360 + y}deg)` }}>
+        {[1, 2, 3, 4, 5, 6].map((f) => (
+          <DieFace key={f} v={f} />
+        ))}
+      </span>
     </span>
   )
 }
