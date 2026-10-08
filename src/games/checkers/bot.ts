@@ -1,6 +1,6 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
-import { N, isKing, legalSteps, ownerOf, play, type Live, type Step } from './engine'
+import { N, count, isKing, legalSteps, ownerOf, play, type Live, type Step } from './engine'
 import type { CheckersState } from './CheckersMatch'
 
 /** Steps Ops looks ahead (a chain of jumps doesn't use any up), and how long Hard may think. */
@@ -90,4 +90,28 @@ export const checkersBrain: Brain = (state, level) => {
   if (!steps.length) return null
   const s = Math.random() < SLIP[level] ? pick(steps) : pick(bestSteps(live, BOT_SEAT, level))
   return (cur: Live) => play(cur, BOT_SEAT, s.from, s.to)
+}
+
+/** How the game looks to Ops, for her reactions: pieces on the board, and pieces taken. */
+export const checkersSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as CheckersState).live
+    return !live || live.result ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as CheckersState).live
+    return !live || live.result ? null : squash(judge(live.board, BOT_SEAT), 220)
+  },
+  ended: (state) => {
+    const r = (state as unknown as CheckersState).live?.result
+    return r ? { winner: r.winner, final: true } : null
+  },
+  moment: (prev, next) => {
+    const a = (prev as unknown as CheckersState).live?.board
+    const b = (next as unknown as CheckersState).live?.board
+    if (!a || !b) return null
+    if (count(b, 0) < count(a, 0)) return 'took'
+    if (count(b, BOT_SEAT) < count(a, BOT_SEAT)) return 'lost'
+    return null
+  },
 }

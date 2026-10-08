@@ -1,4 +1,4 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
 import { N, count, flips, legalMoves, play, type Live } from './engine'
 import type { OthelloState } from './OthelloMatch'
@@ -92,4 +92,30 @@ export const othelloBrain: Brain = (state, level) => {
   if (!moves.length) return null
   const i = Math.random() < SLIP[level] ? pick(moves) : pick(bestSquares(live.board, BOT_SEAT, level))
   return (cur: Live) => play(cur, BOT_SEAT, i)
+}
+
+const CORNERS = [0, 7, 56, 63]
+
+/** How the game looks to Ops, for her reactions: a two-move look at the board, and corners changing hands. */
+export const othelloSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as OthelloState).live
+    return !live || live.result ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as OthelloState).live
+    if (!live || live.result) return null
+    const v = search(live.board, live.turn, BOT_SEAT, 2, false, -Infinity, Infinity)
+    return Math.abs(v) >= 1000 ? Math.sign(v) : squash(v, 150)
+  },
+  ended: (state) => {
+    const r = (state as unknown as OthelloState).live?.result
+    return r ? { winner: r.winner, final: true } : null
+  },
+  moment: (prev, next) => {
+    const a = (prev as unknown as OthelloState).live
+    const b = (next as unknown as OthelloState).live
+    if (!a || !b || b.last === a.last || !CORNERS.includes(b.last)) return null
+    return b.board[b.last] === String(BOT_SEAT) ? 'took' : 'lost'
+  },
 }

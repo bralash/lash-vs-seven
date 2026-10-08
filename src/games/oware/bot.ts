@@ -1,4 +1,4 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
 import { legalMoves, play, sideOf, type Live } from './engine'
 import type { OwareState } from './OwareMatch'
@@ -69,4 +69,29 @@ export const owareBrain: Brain = (state, level) => {
   if (!moves.length) return null
   const pit = Math.random() < SLIP[level] ? pick(moves) : pick(bestPits(live, BOT_SEAT, level))
   return (cur: Live) => play(cur, BOT_SEAT, pit)
+}
+
+/** How the game looks to Ops, for her reactions: seeds captured and seeds in play, and big captures. */
+export const owareSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as OwareState).live
+    return !live || live.result ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as OwareState).live
+    return !live || live.result ? null : squash(judge(live, BOT_SEAT), 80)
+  },
+  ended: (state) => {
+    const r = (state as unknown as OwareState).live?.result
+    return r ? { winner: r.winner, final: true } : null
+  },
+  moment: (prev, next) => {
+    const a = (prev as unknown as OwareState).live?.captured
+    const b = (next as unknown as OwareState).live?.captured
+    if (!a || !b) return null
+    // a seed or two is everyday; three or more is worth a word
+    if (b[BOT_SEAT] - a[BOT_SEAT] >= 3) return 'took'
+    if (b[0] - a[0] >= 3) return 'lost'
+    return null
+  },
 }

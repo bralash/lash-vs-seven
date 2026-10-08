@@ -113,7 +113,7 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
   }, [level])
 
   // each move: a finished game, a capture, a blunder or a great move, or a swing in who's ahead
-  const key = sense.key(state)
+  const key = sense.key?.(state) ?? `${state.match}:${JSON.stringify(state.live)}`
   useEffect(() => {
     const was = prev.current
     const standing = sense.standing(state)

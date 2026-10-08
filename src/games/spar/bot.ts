@@ -1,6 +1,6 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
-import { TRICKS, other, play, playable, playsOf, remaining, scoreRound, suitOf, trickWinner, type Live, type Play } from './engine'
+import { TRICKS, matchOver, other, play, playable, playsOf, remaining, scoreRound, suitOf, trickWinner, type Live, type Play } from './engine'
 import type { SparState } from './SparMatch'
 
 /**
@@ -103,4 +103,25 @@ export const sparBrain: Brain = (state, level) => {
   if (!options.length) return null
   const c = Math.random() < SLIP[level] ? pick(options) : pick(bestCards(dealt, plays, BOT_SEAT, level))
   return (cur: Live) => play(cur, BOT_SEAT, c, dealt)
+}
+
+/**
+ * How the match looks to Ops, for her reactions. She never reads your hand, so mid-round she goes by
+ * the points table only; a round won or lost is what she reacts to.
+ */
+export const sparSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as SparState).live
+    return !live || live.phase !== 'play' ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as SparState).live
+    if (!live || live.phase === 'done') return null
+    return squash((2 * (live.scores[BOT_SEAT] - live.scores[0])) / live.target, 1)
+  },
+  ended: (state) => {
+    const live = (state as unknown as SparState).live
+    if (!live || live.phase !== 'done' || live.cur.winner === undefined) return null
+    return { winner: live.cur.winner, final: matchOver(live) }
+  },
 }

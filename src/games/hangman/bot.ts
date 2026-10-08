@@ -1,7 +1,7 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, type Brain, type Level, type OpsSense } from '../../match/bot'
 import { wordsOfLength } from '../../lib/dictionary'
 import { TARGETS } from '../anagram/words'
-import { current, guess, type Live, type Round } from './engine'
+import { MAX_WRONG, current, guess, matchOver, roundWinner, wins, type Live, type Round } from './engine'
 import type { HangmanState } from './HangmanMatch'
 
 /**
@@ -92,4 +92,44 @@ export function opsWord(level: Level): string {
   if (level === 'hard') return pick(HARD)
   const pool = TARGETS.filter((w) => (level === 'medium' ? RARE.test(w) : !RARE.test(w)))
   return pick(pool.length ? pool : [...TARGETS])
+}
+
+/** How the guesser is doing in a round, −1…1: squares found against chances used. */
+function outlook(r: Round): number {
+  const found = [...r.masked].filter((c) => c !== '_').length / r.length
+  return found - r.wrong / MAX_WRONG
+}
+
+/** How the match looks to Ops, for her reactions: rounds won, then how the round in play is going. */
+export const hangmanSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as HangmanState).live
+    return !live || live.phase === 'done' ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as HangmanState).live
+    if (!live || live.phase === 'done') return null
+    const [you, her] = wins(live)
+    const r = current(live)
+    const now = r && live.phase === 'guessing' ? (r.setter === BOT_SEAT ? -outlook(r) : outlook(r)) : 0
+    return Math.max(-1, Math.min(1, 0.5 * (her - you) + 0.7 * now))
+  },
+  ended: (state) => {
+    const live = (state as unknown as HangmanState).live
+    const r = live && current(live)
+    const w = r ? roundWinner(r) : null
+    if (!live || live.phase !== 'done' || w === null) return null
+    return { winner: w, final: matchOver(live) }
+  },
+  moment: (prev, next) => {
+    const pl = (prev as unknown as HangmanState).live
+    const nl = (next as unknown as HangmanState).live
+    const a = pl && current(pl)
+    const b = nl && current(nl)
+    if (!a || !b || pl.round !== nl.round || b.outcome) return null
+    // one letter that opened two or more squares
+    const opened = [...b.masked].filter((c, i) => c !== '_' && a.masked[i] === '_').length
+    if (opened < 2) return null
+    return b.setter === BOT_SEAT ? 'lost' : 'took'
+  },
 }

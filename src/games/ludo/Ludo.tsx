@@ -1,6 +1,6 @@
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
-import { ludoBrain } from './bot'
+import { ludoBrain, ludoSense } from './bot'
 import { COLORS, type Color } from './engine'
 import { COLOR_NAME } from './Board'
 import { LudoMatch, initialLudoState } from './LudoMatch'
@@ -28,6 +28,7 @@ export function Ludo() {
         },
       ]}
       bot={ludoBrain}
+      sense={ludoSense}
       initialState={(_, all) => ({ ...initialLudoState(all?.[0] === 'full' ? 'full' : 'quick', (all?.[1] as Color) ?? 'yellow') })}
       renderGame={(room, me, exit) => <LudoMatch room={room} me={me} exit={exit} />}
     />

@@ -1,5 +1,5 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
-import { CELLS, FLEET, SIZE, fire, norm, type Live, type Waters } from './engine'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
+import { CELLS, FLEET, SIZE, fire, matchOver, norm, type Live, type Waters } from './engine'
 import type { BattleshipState } from './BattleshipMatch'
 
 /**
@@ -106,4 +106,37 @@ export const battleshipBrain: Brain = (state, level) => {
   const cell = aim(target, level)
   if (cell === undefined) return null
   return (cur: Live) => fire(cur, BOT_SEAT, cell)
+}
+
+/** squares a whole fleet covers */
+const FLEET_CELLS = FLEET.reduce((n, s) => n + s.len, 0)
+const sunkOn = (live: Live, s: 0 | 1) => (norm(live).waters[s].sunk ?? []).length
+
+/** How the game looks to Ops, for her reactions: who has hit more of the other's fleet, and ships going down. */
+export const battleshipSense: OpsSense = {
+  turn: (state) => {
+    const raw = (state as unknown as BattleshipState).live
+    return !raw || raw.phase !== 'firing' ? null : raw.turn
+  },
+  standing: (state) => {
+    const raw = (state as unknown as BattleshipState).live
+    if (!raw || raw.phase !== 'firing') return null
+    const live = norm(raw)
+    const hit = (s: 0 | 1) => (live.waters[s].hits ?? []).length / FLEET_CELLS
+    // her hits on your waters against yours on hers
+    return squash(3 * (hit(0) - hit(BOT_SEAT)), 1)
+  },
+  ended: (state) => {
+    const raw = (state as unknown as BattleshipState).live
+    if (!raw || raw.phase !== 'done' || raw.winner === undefined) return null
+    return { winner: raw.winner, final: matchOver(norm(raw)) }
+  },
+  moment: (prev, next) => {
+    const a = (prev as unknown as BattleshipState).live
+    const b = (next as unknown as BattleshipState).live
+    if (!a || !b || b.game !== a.game) return null
+    if (sunkOn(b, 0) > sunkOn(a, 0)) return 'took'
+    if (sunkOn(b, BOT_SEAT) > sunkOn(a, BOT_SEAT)) return 'lost'
+    return null
+  },
 }

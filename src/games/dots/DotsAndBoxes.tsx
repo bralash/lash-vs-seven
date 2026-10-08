@@ -1,6 +1,6 @@
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
-import { dotsBrain } from './bot'
+import { dotsBrain, dotsSense } from './bot'
 import { DotsMatch, initialDotsState, sizeLabel } from './DotsMatch'
 import { SIZES } from './engine'
 
@@ -18,6 +18,7 @@ export function DotsAndBoxes() {
       }}
       initialState={(choice) => ({ ...initialDotsState(Number(choice ?? 5)) })}
       bot={dotsBrain}
+      sense={dotsSense}
       renderGame={(room, me, exit) => <DotsMatch room={room} me={me} exit={exit} />}
     />
   )

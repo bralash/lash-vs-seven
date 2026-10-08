@@ -1,6 +1,6 @@
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
-import { checkersBrain } from './bot'
+import { checkersBrain, checkersSense } from './bot'
 import { CheckersMatch, initialCheckersState } from './CheckersMatch'
 
 const game = gameBySlug('checkers')!
@@ -10,6 +10,7 @@ export function Checkers() {
     <Lobby
       game={game}
       bot={checkersBrain}
+      sense={checkersSense}
       initialState={() => ({ ...initialCheckersState() })}
       renderGame={(room, me, exit) => <CheckersMatch room={room} me={me} exit={exit} />}
     />

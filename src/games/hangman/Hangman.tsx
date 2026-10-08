@@ -1,6 +1,6 @@
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
-import { hangmanBrain } from './bot'
+import { hangmanBrain, hangmanSense } from './bot'
 import { HangmanMatch, initialHangmanState } from './HangmanMatch'
 
 const game = gameBySlug('hangman')!
@@ -18,6 +18,7 @@ export function Hangman() {
         ],
       }}
       bot={hangmanBrain}
+      sense={hangmanSense}
       initialState={(choice) => ({ ...initialHangmanState(choice === 'on') })}
       renderGame={(room, me, exit) => <HangmanMatch room={room} me={me} exit={exit} />}
     />

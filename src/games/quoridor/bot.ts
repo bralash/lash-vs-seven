@@ -1,4 +1,4 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
 import { N, blocked, blocksOf, distances, legalMoves, move, other, overlaps, pawnMoves, placeWall, steps, type Live } from './engine'
 import type { QuoridorState } from './QuoridorMatch'
@@ -159,3 +159,19 @@ export const quoridorBrain: Brain = (state, level) => {
   return (cur: Live) => apply(cur, a)
 }
 
+
+/** How the race looks to Ops, for her reactions: the same steps-to-go count she plays by. */
+export const quoridorSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as QuoridorState).live
+    return !live || live.result ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as QuoridorState).live
+    return !live || live.result ? null : squash(judge(live, BOT_SEAT), 40)
+  },
+  ended: (state) => {
+    const r = (state as unknown as QuoridorState).live?.result
+    return r ? { winner: r.winner, final: true } : null
+  },
+}

@@ -1,5 +1,5 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
-import { boxesOf, lineCount, play, sides, type Live } from './engine'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
+import { boxesOf, count, lineCount, play, sides, type Live } from './engine'
 import type { DotsState } from './DotsMatch'
 
 /**
@@ -109,4 +109,28 @@ export const dotsBrain: Brain = (state, level) => {
   if (!live || live.result || live.turn !== BOT_SEAT || live.lines.length !== lineCount(live.size)) return null
   const i = chooseLine(live.size, live.lines, level)
   return (cur: Live) => play(cur, BOT_SEAT, i)
+}
+
+/** How the game looks to Ops, for her reactions: boxes each side holds, against the boxes on the board. */
+export const dotsSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as DotsState).live
+    return !live || live.result ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as DotsState).live
+    if (!live || live.result) return null
+    return squash((3 * (count(live.boxes, BOT_SEAT) - count(live.boxes, 0))) / live.boxes.length, 0.8)
+  },
+  ended: (state) => {
+    const r = (state as unknown as DotsState).live?.result
+    return r ? { winner: r.winner, final: true } : null
+  },
+  moment: (prev, next) => {
+    const a = (prev as unknown as DotsState).live
+    const b = (next as unknown as DotsState).live
+    // two or more boxes with one line
+    if (!a || !b || !b.closed || b.closed.length < 2) return null
+    return a.turn === BOT_SEAT ? 'took' : 'lost'
+  },
 }

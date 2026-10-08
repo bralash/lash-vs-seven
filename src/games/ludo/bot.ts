@@ -1,4 +1,4 @@
-import { BOT_SEAT, pick, type Brain, type Level } from '../../match/bot'
+import { BOT_SEAT, pick, squash, type Brain, type Level, type OpsSense } from '../../match/bot'
 import type { Seat } from '../../lobby/rooms'
 import { HOME, backKick, colorsOf, move, movable, other, roll, type Color, type Live } from './engine'
 import type { LudoState } from './LudoMatch'
@@ -80,4 +80,33 @@ export const ludoBrain: Brain = (state, level) => {
   if (!opts.length) return null
   const o = Math.random() < SLIP[level] ? pick(opts) : pick(bestMoves(live, BOT_SEAT, level))
   return (cur: Live) => move(cur, BOT_SEAT, o.c, o.i, o.dir)
+}
+
+/** How the race looks to Ops, for her reactions: the race standing she plays by, knocks home, and her rolls. */
+export const ludoSense: OpsSense = {
+  turn: (state) => {
+    const live = (state as unknown as LudoState).live
+    return !live || live.winner !== undefined ? null : live.turn
+  },
+  standing: (state) => {
+    const live = (state as unknown as LudoState).live
+    return !live || live.winner !== undefined ? null : squash(standing(live, BOT_SEAT), 60)
+  },
+  ended: (state) => {
+    const w = (state as unknown as LudoState).live?.winner
+    return w === undefined ? null : { winner: w, final: true }
+  },
+  moment: (prev, next) => {
+    const a = (prev as unknown as LudoState).live
+    const b = (next as unknown as LudoState).live
+    if (!a || !b) return null
+    if (b.caps[BOT_SEAT] > a.caps[BOT_SEAT]) return 'took'
+    if (b.caps[0] > a.caps[0]) return 'lost'
+    const die = b.die
+    if (die && die.s === BOT_SEAT && die.n !== a.die?.n) {
+      if (die.v === 6) return 'lucky'
+      if (die.none) return 'unlucky'
+    }
+    return null
+  },
 }

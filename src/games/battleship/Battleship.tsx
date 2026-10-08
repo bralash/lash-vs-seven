@@ -1,6 +1,6 @@
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
-import { battleshipBrain } from './bot'
+import { battleshipBrain, battleshipSense } from './bot'
 import { BattleshipMatch, initialBattleshipState } from './BattleshipMatch'
 
 const game = gameBySlug('battleship')!
@@ -18,6 +18,7 @@ export function Battleship() {
         ],
       }}
       bot={battleshipBrain}
+      sense={battleshipSense}
       initialState={(choice) => ({ ...initialBattleshipState(choice === '3' ? 3 : 1) })}
       renderGame={(room, me, exit) => <BattleshipMatch room={room} me={me} exit={exit} />}
     />
