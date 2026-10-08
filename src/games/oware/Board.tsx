@@ -89,13 +89,15 @@ interface Props {
   /** the seat allowed to sow now, or null */
   active: Seat | null
   onSow: (pit: number) => void
+  /** a pit to point at (How to play's walk-through) */
+  hint?: number | null
 }
 
 /**
  * Two rows of six pits. Sowing runs counter-clockwise: along the bottom row left to right, then
  * back along the top row right to left. Pits show their seeds (or a number once there are lots).
  */
-export function OwareBoard({ live, view, bottom, active, onSow }: Props) {
+export function OwareBoard({ live, view, bottom, active, onSow, hint }: Props) {
   const top = (1 - bottom) as Seat
   const legal = new Set(active !== null && !view.busy ? legalMoves(live.pits, active) : [])
   const rows: [Seat, number[]][] = [
@@ -119,6 +121,7 @@ export function OwareBoard({ live, view, bottom, active, onSow }: Props) {
                 className={[
                   'ow-pit',
                   can && 'ow-pit--legal',
+                  hint === i && 'ow-pit--hint',
                   view.from === i && 'ow-pit--from',
                   view.lit === i && 'ow-pit--lit',
                   taking.has(i) && `ow-pit--take ow-pit--take-${live.last?.seat ?? 0}`,

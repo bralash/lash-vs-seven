@@ -298,3 +298,9 @@
 @media (prefers-reduced-motion: reduce) {
   .react__tray, .react__pop { animation: react-out .3s linear 2.1s both; }
 }
+/* the rule a walk-through is showing */
+.steps li { transition: opacity .25s; }
+.steps:has(.steps__on) li:not(.steps__on) { opacity: .45; }
+.steps__on .num { background: var(--hit); }
+/* the walk-through stays pinned at the top while the rules scroll under it */
+.rules-demo { position: sticky; top: -4px; z-index: 1; margin: -4px 0 0; padding: 4px 0 18px; background: var(--paper); }

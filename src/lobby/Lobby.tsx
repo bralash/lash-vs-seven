@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useBlocker, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { VsBlock } from '../components/VsBlock'
-import { HowToPlay } from '../components/HowToPlay'
+import { HowToPlay, type RulesDemo } from '../components/HowToPlay'
 import { ArrowLeft, Copy, Exit, Maximize, Minimize } from '../components/Icons'
 import { TopBar } from '../components/TopBar'
 import type { GameMeta } from '../games/registry'
@@ -89,6 +89,8 @@ interface Props {
   option?: MatchOption | MatchOption[]
   /** lets you play Ops, the computer, on this device */
   bot?: Brain
+  /** a walk-through shown above the rules in How to play */
+  rulesDemo?: RulesDemo
 }
 
 const FAILURE_COPY: Record<JoinFailure, string> = {
@@ -118,7 +120,7 @@ interface LeaveGuard {
   leave: () => void
 }
 
-export function Lobby({ game, renderGame, initialState, option, bot }: Props) {
+export function Lobby({ game, renderGame, initialState, option, bot, rulesDemo }: Props) {
   const [params, setParams] = useSearchParams()
   const urlCode = normalizeCode(params.get('room') ?? '')
   const [inRoom, setInRoom] = useState<string | null>(null)
@@ -392,7 +394,7 @@ export function Lobby({ game, renderGame, initialState, option, bot }: Props) {
         }
       />
       {screen}
-      {showRules && game.rules && <HowToPlay rules={game.rules} onClose={() => setShowRules(false)} />}
+      {showRules && game.rules && <HowToPlay rules={game.rules} demo={rulesDemo} onClose={() => setShowRules(false)} />}
       {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} onStay={stay} onLeave={confirmLeave} />}
     </div>
   )
