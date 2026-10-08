@@ -7,7 +7,7 @@ import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
-import { VsBlock } from '../../components/VsBlock'
+import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
 import type { CardInput } from '../../match/shareCard'
@@ -232,7 +232,7 @@ function Results({
     <main className="ckm ckm-results screen-in">
       {iWon && <Confetti />}
       <div className="ckm-results__head">
-        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
+        <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Checkers</p>
         <h1 className={`ckm-results__title${iWon ? ' ckm-results__title--win' : ''}`}>
           {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
