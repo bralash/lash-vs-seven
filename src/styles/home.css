@@ -247,3 +247,113 @@
   .games-head .seg__btn { flex: 1; min-width: 0; justify-content: center; gap: 5px; padding: 8px 4px; font-size: 13px; }
   .hero__seven { text-shadow: 3px 3px 0 var(--ink); }
 }
+
+/* ── Your rivals (only once you've finished a match) ───── */
+.rivals { display: grid; gap: 18px; margin-bottom: clamp(36px, 6vw, 64px); }
+.rivals__title { font-size: clamp(34px, 5vw, 52px); }
+.rivals__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr));
+  gap: 16px;
+}
+.rival {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.rival__main {
+  display: grid;
+  grid-template: "name score" auto "meta score" auto / minmax(0, 1fr) auto;
+  column-gap: 14px;
+  row-gap: 4px;
+  align-items: center;
+  min-height: 76px;
+  padding: 12px 14px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.rival__name {
+  grid-area: name;
+  overflow: hidden;
+  font-family: var(--display);
+  font-size: 24px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.rival__vs { color: var(--lash); font-size: .7em; }
+.rival__score {
+  grid-area: score;
+  font-family: var(--display);
+  font-size: 32px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.rival__score i { margin: 0 3px; font-style: normal; color: var(--dim); }
+.rival__meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.rival__meta b { font-weight: 500; color: var(--ink); }
+.rival > .rival__go { min-height: 44px; margin-right: 12px; padding: 10px 14px; font-size: 16px; box-shadow: var(--shadow-sm); }
+.rival__games {
+  grid-column: 1 / -1;
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rival__game {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.rival__game b { font-family: var(--display); font-size: 16px; font-weight: 400; }
+.rival__game small { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.rival__game:hover:not(:disabled) { background: var(--hit); }
+.rival__game:disabled { cursor: default; opacity: .55; }
+.rivals__more {
+  justify-self: start;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-decoration: underline;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+@media (width <= 480px) {
+  .rival__main { column-gap: 10px; min-height: 68px; padding: 10px 10px 10px 12px; }
+  .rival__name { font-size: 20px; }
+  .rival__score { font-size: 26px; }
+  .rival > .rival__go { margin-right: 10px; padding: 9px 10px; font-size: 14px; }
+}

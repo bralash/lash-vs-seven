@@ -18,6 +18,8 @@ export interface Rival {
   /** current run of wins; draws end it */
   streak: { who: 'me' | 'them'; n: number } | null
   updatedAt: number
+  /** the game you last played together (missing on records from before it was kept) */
+  last?: string
 }
 interface Store {
   rivals: Record<string, Rival>
@@ -73,6 +75,7 @@ export function recordResult(r: { game: string; key: string; name: string; outco
     byGame: { ...base.byGame, [r.game]: bump(base.byGame[r.game] ?? empty(), r.outcome) },
     streak: who ? { who, n: base.streak?.who === who ? base.streak.n + 1 : 1 } : null,
     updatedAt: Date.now(),
+    last: r.game,
   }
   s.rivals[r.key] = next
   s.seen = [...s.seen, r.matchId].slice(-SEEN_MAX)
@@ -115,4 +118,18 @@ export function describe(r: Rival, me: string, them: string, gameName: (slug: st
   const split = games.length > 1 ? games.map(([g, t]) => `${gameName(g)} ${t.w}–${t.l}`).join(' · ') : null
 
   return { line, streak, split }
+}
+
+/** Everyone you've played, most recent first, with their storage key. */
+export function listRivals(): (Rival & { key: string })[] {
+  return Object.entries(read().rivals)
+    .map(([key, r]) => ({ ...r, key }))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+/** The game to offer a rematch in: the last one played, else the most played. */
+export function lastGame(r: Rival): string | undefined {
+  if (r.last) return r.last
+  const played = (t: Tally) => t.w + t.l + t.d
+  return Object.entries(r.byGame).sort((a, b) => played(b[1]) - played(a[1]))[0]?.[0]
 }

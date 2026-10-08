@@ -127,7 +127,9 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
 
   // Pass-and-play: games that support it can also be played by two people on this device.
   const canLocal = game.modes !== 'online'
-  const [local, setLocal] = useState<LocalMatch | null>(() => (canLocal ? loadLocal(game.slug) : null))
+  // a rival's Challenge opens a room even if a pass & play match is saved here (it stays saved for next time)
+  const challenging = !!(useLocation().state as { challenge?: string } | null)?.challenge
+  const [local, setLocal] = useState<LocalMatch | null>(() => (canLocal && !challenging ? loadLocal(game.slug) : null))
   const [setup, setSetup] = useState(false)
   const endLocal = useCallback(() => {
     saveLocal(game.slug, null)
@@ -213,8 +215,32 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
   const exitRoom = () => {
     setInRoom(null)
     setInvite(null)
+    setChallengeFor(null)
     setParams({}, { replace: true })
   }
+
+  // "Challenge" from the homepage's rivals: open a room right away (with the saved name) and say who
+  // it's for. Without a saved name, the start screen asks as usual.
+  const challenge = (location.state as { challenge?: string } | null)?.challenge ?? null
+  const [challengeFor, setChallengeFor] = useState<string | null>(null)
+  const [opening, setOpening] = useState(false)
+  const challenged = useRef(false)
+  useEffect(() => {
+    if (!challenge || challenged.current || auth !== 'ready' || inRoom || urlCode || local) return
+    const name = load(KEYS.name)?.trim()
+    if (!name) return
+    challenged.current = true
+    setOpening(true)
+    createRoom(game.slug, name).then(
+      (code) => {
+        setOpening(false)
+        setChallengeFor(challenge)
+        enterRoom(code)
+      },
+      () => setOpening(false),
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [challenge, auth, inRoom, urlCode, local, game.slug])
 
   const confirming = asking || blocker.state === 'blocked'
   const stay = () => {
@@ -287,6 +313,12 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
           <p className="hint">Connecting…</p>
         </main>
       )
+  } else if (opening && !inRoom) {
+    screen = (
+      <main className="lobby__main" aria-busy="true">
+        <p className="hint">Opening a room for {challenge}…</p>
+      </main>
+    )
   } else if (inRoom) {
     screen = (
       <WaitingRoom
@@ -298,6 +330,7 @@ export function Lobby({ game, renderGame, initialState, option }: Props) {
         renderGame={renderGame}
         initialState={initialState}
         option={option}
+        challengeFor={challengeFor}
       />
     )
   } else if (urlCode && invite) {
@@ -590,6 +623,7 @@ function WaitingRoom({
   renderGame,
   initialState,
   option,
+  challengeFor,
 }: {
   game: GameMeta
   code: string
@@ -599,6 +633,8 @@ function WaitingRoom({
   renderGame: Props['renderGame']
   initialState?: Props['initialState']
   option?: Props['option']
+  /** the rival this room was opened for from the homepage */
+  challengeFor?: string | null
 }) {
   const live = useRoom(game.slug, code)
   const [toast, setToast] = useState('')
@@ -736,7 +772,7 @@ function WaitingRoom({
               <>
                 <span className="seat__tag">Player {i + 1}</span>
                 <span className="seat__name">Waiting<span className="dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></span>
-                <span className="seat__meta">Send the link to a friend</span>
+                <span className="seat__meta">Send the link to {challengeFor ?? 'a friend'}</span>
               </>
             )}
           </li>

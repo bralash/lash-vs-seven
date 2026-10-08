@@ -4,6 +4,7 @@ import { Logo } from '../components/Logo'
 import { TopBar } from '../components/TopBar'
 import { CATEGORY_LABEL, GAMES, type Category, type GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
+import { Rivals } from './Rivals'
 import '../styles/home.css'
 
 type Filter = 'all' | Category
@@ -48,6 +49,8 @@ export function Home() {
             ))}
           </ul>
         </section>
+
+        <Rivals />
 
         <section aria-labelledby="games-title">
           <div className="games-head">
