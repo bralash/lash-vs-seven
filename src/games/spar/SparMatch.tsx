@@ -111,7 +111,8 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const vsOps = useVsOps()
   const open = local || vsOps
   const players = seatedPlayers(room)
-  const many = players.length > 2
+  // by who sat down, not seats: a room opened for four can start with two
+  const many = players.filter(Boolean).length > 2
   const name = (s: number) => players[s]?.name ?? `Player ${s + 1}`
   const mine = (s: number) => !local && s === me.seatN
   // whose cards are on screen: online that's you; on one device it's whoever holds the phone
@@ -520,7 +521,8 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
   const live = st.live
   const s = live.scores
   const seats = seatsOf(live)
-  const many = players.length > 2
+  // by who sat down, not seats: a room opened for four can start with two
+  const many = players.filter(Boolean).length > 2
   const winner = leaderOf(s, seats)
   const iWon = session.local ? winner !== -1 : winner === me.seatN
   const past = live.past ?? []
