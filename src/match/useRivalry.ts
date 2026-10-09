@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { gameBySlug } from '../games/registry'
 import type { Me } from '../lobby/Lobby'
-import type { Room, Seat } from '../lobby/rooms'
+import { seatCountOf, type Room, type Seat } from '../lobby/rooms'
 import { featById, ordinal } from './feats'
 import { describe, flip, groupKey, groupLead, localKey, recordGroup, recordResult, standingLine, standings, type Outcome, type Rival } from './rivalry'
+import { payOut } from './chips'
 import { useSession } from './session'
 import { stakeResult } from './stakes'
 import { clearVoice } from './Voice'
@@ -47,13 +48,17 @@ export function useRivalry(
   matchNo: number,
   feats?: [string[], string[]],
 ): RivalryView | null {
-  const { local, bot, watching } = useSession(game, room.code)
+  const { local, bot, level, watching } = useSession(game, room.code)
   // recording is idempotent per match id, so doing it while rendering is safe (and avoids a flicker)
   const [view] = useState(() => {
-    // the record is about people: games against Ops aren't kept, and a watcher has no record here
-    if (bot || watching) return null
-    const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
+    if (watching) return null
     const matchId = `${game}:${room.code}:${room.createdAt}:${matchNo}`
+    // the record is about people: games against Ops aren't kept, though beating her pays a few chips
+    if (bot) {
+      payOut({ key: matchId, outcome: winner === -1 ? 'draw' : winner === me.seat ? 'win' : 'loss', ops: level ?? 'easy', startedAt: room.startedAt ?? room.createdAt })
+      return null
+    }
+    const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
     const name = (slug: string) => gameBySlug(slug)?.name ?? slug
 
     if (local) {
@@ -74,6 +79,7 @@ export function useRivalry(
     const stakes = stakeResult(room, seats.flatMap((p, s) => (p ? [{ id: p.id, score: winner === s ? 1 : 0 }] : [])), me.id)
     clearVoice(room, me.id)
     const r = recordResult({ game, key: opp.id, name: opp.name, outcome, matchId, feats: mine })
+    payOut({ key: matchId, outcome, rival: opp.id, streak: r.streak?.who === 'me' ? r.streak.n : 0, feats: mine?.me.length, startedAt: room.startedAt })
     const bySeat: [number, number] = me.seat === 0 ? [r.total.w, r.total.l] : [r.total.l, r.total.w]
     const ordered = mine && ([mine.me, mine.them] as [string[], string[]])
     return { ...describe(r, 'You', opp.name, name), card: cardLine(names, bySeat), feats: earned(r, ordered, 'You', opp.name, true), stakes }
@@ -117,9 +123,16 @@ export function useRivalryMulti(
   finished: number[],
   matchNo: number,
 ): RivalryView | null {
-  const { local, bot } = useSession(game, room.code)
+  const { local, bot, level, watching } = useSession(game, room.code)
   const [view] = useState<RivalryView | null>(() => {
-    if (bot) return null
+    if (watching) return null
+    if (bot) {
+      const top = Math.max(...finished.map((s) => scores[s]))
+      const atTop = finished.filter((s) => scores[s] === top)
+      const outcome = !atTop.includes(me.seatN) ? 'loss' : atTop.length > 1 ? 'draw' : 'win'
+      payOut({ key: `${game}:${room.code}:${room.createdAt}:${matchNo}`, outcome, ops: level ?? 'easy', startedAt: room.startedAt ?? room.createdAt })
+      return null
+    }
     const stakes = local ? null : stakeResult(room, finished.flatMap((s) => (players[s] ? [{ id: players[s]!.id, score: scores[s] }] : [])), me.id)
     if (!local) clearVoice(room, me.id) // the match is over: its voice notes go
     const matchId = `${game}:${room.code}:${room.createdAt}:${matchNo}`
@@ -140,7 +153,9 @@ export function useRivalryMulti(
       }
       const opp = players[a === me.seatN ? b : a]
       if (!opp) return null
-      const r = recordResult({ game, key: opp.id, name: opp.name, outcome: outcome(me.seatN, a === me.seatN ? b : a), matchId })
+      const result = outcome(me.seatN, a === me.seatN ? b : a)
+      const r = recordResult({ game, key: opp.id, name: opp.name, outcome: result, matchId })
+      payOut({ key: matchId, outcome: result, rival: opp.id, streak: r.streak?.who === 'me' ? r.streak.n : 0, stayed: seatCountOf(room) > 2, startedAt: room.startedAt })
       const bySeat = me.seatN === a ? r : flip(r)
       return { ...describe(r, 'You', opp.name, gameName), card: cardLine(pair, [bySeat.total.w, bySeat.total.l]), feats: [], stakes }
     }
@@ -157,6 +172,10 @@ export function useRivalryMulti(
       matchId,
     })
     const you = local ? undefined : me.id
+    if (!local) {
+      const mine = atTop.includes(me.seatN) ? (atTop.length === 1 ? 'win' : 'draw') : 'loss'
+      payOut({ key: matchId, outcome: mine, rival: groupKey(Object.keys(members), false), streak: g.streak?.who === me.id ? g.streak.n : 0, stayed: true, startedAt: room.startedAt })
+    }
     const table = standings(g.wins, g.members, you)
     const s = g.streak && g.streak.n >= 2 ? g.streak : null
     const streaker = s && (s.who === you ? 'You' : g.members[s.who])

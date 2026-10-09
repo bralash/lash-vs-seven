@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { Payout } from './Payout'
 import type { RivalryView } from './useRivalry'
 
-/** The all-time head-to-head under a match's result, and any feats earned in it. */
+/** The all-time head-to-head under a match's result, any feats earned in it, and the chips it paid. */
 export function RivalryLine({ r }: { r: RivalryView | null }) {
   const [open, setOpen] = useState<string | null>(null)
-  if (!r) return null
+  // against Ops there's no record, but a win still pays
+  if (!r) return <Payout />
   const shown = r.feats.find((f) => `${f.id}:${f.who}` === open)
   return (
     <div className="mt-rivalry">
@@ -17,6 +19,7 @@ export function RivalryLine({ r }: { r: RivalryView | null }) {
       )}
       <p className="mt-rivalry__line">{r.line}</p>
       {(r.streak || r.split) && <p className="mt-rivalry__meta">{[r.streak, r.split].filter(Boolean).join(' · ')}</p>}
+      <Payout />
       {r.feats.length > 0 && (
         <>
           <ul className="mt-feats" aria-label="Feats this match">

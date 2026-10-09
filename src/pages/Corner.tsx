@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft } from '../components/Icons'
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
+import { ChipStack } from '../components/Chip'
+import { useChips } from '../match/chips'
 import { useDebts } from '../match/stakes'
 import { Rivals, rivalsSummary } from './Rivals'
 import { Stakes, stakesSummary } from './Stakes'
@@ -55,10 +57,20 @@ export function CornerTiles() {
   const [rivals] = useState(rivalsSummary)
   const { me, debts } = useDebts()
   const { play } = useSound()
+  const chips = useChips()
   const stakes = me && debts.length ? stakesSummary(me, debts) : null
-  if (!rivals && !stakes) return null
+  if (!rivals && !stakes && chips === null) return null
   return (
-    <nav className="corner" aria-label="Your rivals and stakes">
+    <nav className="corner" aria-label="Your chips, rivals and stakes">
+      {chips !== null && (
+        // the shop comes next; until then the tile just shows the pile
+        <div className="corner__tile corner__tile--chips">
+          <span className="corner__title">
+            <ChipStack size={26} /> <b>{chips.toLocaleString()}</b>
+          </span>
+          <span className="corner__line">{chips ? 'Chips · shop soon' : 'Win matches for chips'}</span>
+        </div>
+      )}
       {rivals && (
         <Link to="/rivals" className="corner__tile" onClick={() => play('tap')}>
           <span className="corner__title">

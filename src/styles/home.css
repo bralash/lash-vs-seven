@@ -423,3 +423,8 @@
 
   .corner__title { font-size: 17px; }
 }
+
+/* ── Chips: the balance tile (a link once the shop opens) ── */
+.corner__tile--chips { flex: 0 1 auto; background: var(--hit); }
+.corner__tile--chips:hover { transform: none; box-shadow: var(--shadow-sm); background: var(--hit); }
+.corner__tile--chips .corner__title b { color: var(--ink); font-variant-numeric: tabular-nums; }

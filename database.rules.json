@@ -234,6 +234,29 @@
         }
       }
     },
+    "wallets": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChild('chips') && newData.child('chips').isNumber() && newData.child('chips').val() >= 0 && newData.child('chips').val() <= (data.exists() ? data.child('chips').val() : 0) + 600",
+        "chips": {
+          ".validate": "newData.isNumber()"
+        },
+        "paid": {
+          "$match": {
+            ".validate": "newData.hasChildren(['d', 't']) && newData.child('d').isString() && newData.child('d').val().length <= 10 && newData.child('t').isNumber() && newData.child('t').val() >= 0 && newData.child('t').val() <= 600",
+            "r": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "w": { ".validate": "newData.val() === true" },
+            "d": { ".validate": true },
+            "t": { ".validate": true },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "debts": {
       "$id": {
         ".read": "auth != null && (data.child('from').val() === auth.uid || data.child('to').val() === auth.uid)",

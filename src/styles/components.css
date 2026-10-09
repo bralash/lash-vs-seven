@@ -464,3 +464,18 @@
 .home-feedback { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 18px; margin: 48px 0 8px; text-align: center; }
 .home-feedback p { font-family: var(--display); font-size: clamp(20px, 3vw, 28px); text-transform: uppercase; }
 .mt-result-actions__feedback { grid-column: 1 / -1; justify-self: center; }
+
+/* ── Chips: a short stack for a balance, and a match's payout under its result ── */
+/* .cchip: casino chip (.chip is the word chips in Word Hunt) */
+.cchip { display: block; flex: none; }
+.chip-stack { position: relative; display: inline-block; flex: none; }
+.chip-stack__chip { position: absolute; display: flex; filter: drop-shadow(1.5px 1.5px 0 var(--ink)); }
+.payout { display: grid; justify-items: center; gap: 4px; margin-top: 6px; text-align: center; }
+.payout__pile { display: flex; justify-content: center; min-height: 38px; }
+.payout__chip { display: flex; margin-left: -10px; filter: drop-shadow(2px 2px 0 var(--ink)); animation: chip-drop .42s cubic-bezier(.3,1.5,.5,1) both; }
+.payout__chip:first-child { margin-left: 0; }
+@keyframes chip-drop { from { translate: 0 -40px; opacity: 0; rotate: -25deg; } }
+.payout__total { margin: 0; font-family: var(--display); font-size: 22px; line-height: 1; text-transform: uppercase; }
+.payout__total span { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-soft); }
+.payout__lines { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) { .payout__chip { animation: none; } }
