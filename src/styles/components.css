@@ -69,6 +69,9 @@
 }
 .topbar__side { display: flex; align-items: center; gap: 12px; }
 .topbar__title { font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+/* phones: the mic and reactions need the room, and fullscreen is for big boards on tablets and desktops */
+/* …and with the mic there too, the game's name gives up its space (the board says what game it is) */
+@media (width <= 480px) { .topbar__fullscreen, .topbar:has(.voice__btn) .topbar__title { display: none; } }
 
 /* ── Logo ────────────────────────────────────────────────── */
 .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }

@@ -40,7 +40,7 @@ import { LooksProvider, looksFor } from '../match/looks'
 import { TauntLayer } from '../match/Taunts'
 import { ThrowLayer, throwsIn } from '../match/Throws'
 import { UltEarn, UltLayer } from '../match/Ultimates'
-import { VoiceNotes, voiceIn } from '../match/Voice'
+import { VoiceNotes } from '../match/Voice'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -410,7 +410,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         }
         right={
           <>
-            {guard?.kind === 'match' && inRoom && voiceIn(game.slug) && <VoiceNotes game={game.slug} code={inRoom} pid={playerId()} names={guard.names} />}
+            {guard?.kind === 'match' && inRoom && <VoiceNotes game={game.slug} code={inRoom} pid={playerId()} names={guard.names} />}
             {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
             {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
             {local && !local.bot && throwsIn(game.slug) && (
@@ -421,7 +421,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
               </>
             )}
             {inMatch && game.fullscreen && fullscreen.supported && (
-              <button type="button" className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
+              <button type="button" className="icon-btn topbar__fullscreen" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
                 {fullscreen.on ? <Minimize /> : <Maximize />}
               </button>
             )}

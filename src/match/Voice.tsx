@@ -9,12 +9,9 @@ import { roomPath, type Room } from '../lobby/rooms'
 /*
  * Voice notes in an online match: hold the mic, talk (10 seconds at most), let go and it plays on the
  * other phones. Each player keeps only their latest clip at matches/{game}/{code}/voice/{uid}; it's
- * deleted 30 seconds after it was sent, when the match's results show, and with the room. Spar only
- * for now.
+ * deleted 30 seconds after it was sent, when the match's results show, and with the room. Every game,
+ * online only (nobody to talk to against Ops or in pass & play).
  */
-
-const GAMES = new Set(['spar'])
-export const voiceIn = (game: string) => GAMES.has(game)
 
 const MAX_MS = 10_000
 /** shorter than this is a tap, not a note */
@@ -61,7 +58,6 @@ function play(c: Clip) {
 
 /** Who to wipe after a match: my own clip, and (from the host) the whole room's. */
 export function clearVoice(room: Room, me: string) {
-  if (!voiceIn(room.game)) return
   const path = `${roomPath(room.game, room.code)}/voice`
   remove(ref(db, room.hostId === me ? path : `${path}/${me}`)).catch(() => {})
 }
