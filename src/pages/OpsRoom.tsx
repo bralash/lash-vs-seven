@@ -88,8 +88,8 @@ export function OpsRoom() {
               </li>
             ))}
           </ul>
-          {look !== 'screen' && (
-            <p className="hint opsroom__note">Screen has all 18 of her reaction faces. {current.name} shows the nearest of these five for now.</p>
+          {look !== 'screen' && look !== 'warrior' && (
+            <p className="hint opsroom__note">Screen and Kratops have all 18 reaction faces. {current.name} shows the nearest of these five for now.</p>
           )}
         </section>
 

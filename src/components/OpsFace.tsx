@@ -3,8 +3,8 @@ import { KEYS, load, save } from '../lib/storage'
 import '../styles/opsfaces.css'
 
 // Faces for Ops, the computer opponent. Players pick which one she wears at /ops (saved on the
-// device); OPS_LOOK is the default. Every look has the five base moods; the reaction faces are
-// drawn for Screen only, and the other looks borrow the nearest base mood.
+// device); OPS_LOOK is the default. Every look has the five base moods; Screen and Kratops also
+// have a face for every reaction, and the other looks borrow the nearest base mood.
 
 export type BaseMood = 'idle' | 'think' | 'win' | 'lose' | 'draw'
 /** Faces she pulls when she sends a reaction mid-match (drawn for the Screen look; the others fall back). */
@@ -259,50 +259,6 @@ function Visor({ mood }: { mood: OpsMood }) {
   )
 }
 
-/** Kratops: ash-grey head, a red war-paint stripe over her left eye, a scar, a heavy brow and a dark beard. */
-function Warrior({ mood }: { mood: OpsMood }) {
-  const paint = '#c4262e'
-  const brow = mood === 'lose' ? 'M24 33l13-4M70 33l-13-4' : mood === 'draw' ? 'M24 31h13M57 31h13' : mood === 'think' ? 'M24 32l13 3M57 27l13 1' : 'M24 28l14 6M70 28l-14 6'
-  return (
-    <Head fill="#d7d3cb">
-      <clipPath id="opsf-warrior-clip">
-        <rect x="9" y="10" width="76" height="84" />
-      </clipPath>
-      <g clipPath="url(#opsf-warrior-clip)">
-        {/* the stripe: over the scalp, down through her left eye, into the beard */}
-        <path d="M26 6h13l-2 58h-9z" fill={paint} />
-        {/* the beard, with a gap for the mouth */}
-        <path d="M27 58q20-5 40 0l-1 18q-6 14-19 18q-13-4-19-18z" fill="#2b2420" />
-        <path d="M33 56q14-4 28 0" stroke="#2b2420" strokeWidth="5" fill="none" />
-      </g>
-      <path className="opsf-warrior__brow" d={brow} stroke={INK} strokeWidth="5" strokeLinecap="square" fill="none" />
-      {/* a scar across the right brow */}
-      <path d="M66 22l-6 18" stroke="#9c948a" strokeWidth="2.5" />
-      <g className="opsf-eyes">
-        {mood === 'lose' ? (
-          <path d="M27 42q5 3 10 0M57 42q5 3 10 0" stroke={INK} strokeWidth="3.5" fill="none" />
-        ) : mood === 'draw' ? (
-          <path d="M27 40h10M57 40h10" stroke={INK} strokeWidth="4" />
-        ) : (
-          <>
-            <rect className="opsf-warrior__eye" x="28" y="37" width="8" height="6" fill="#f2c94c" stroke={INK} strokeWidth="2" />
-            <rect className="opsf-warrior__eye" x="58" y="37" width="8" height="6" fill="#f2c94c" stroke={INK} strokeWidth="2" />
-          </>
-        )}
-      </g>
-      {/* the mouth, in the beard: a roar when she wins */}
-      {mood === 'win' ? (
-        <>
-          <path d="M36 62h22l-3 13H39z" fill="#5a1515" stroke={INK} strokeWidth="3" />
-          <path d="M38 62h18v4H38z" fill="#fff" />
-        </>
-      ) : (
-        <path d={mood === 'lose' ? 'M38 70q9-6 18 0' : 'M38 67h18'} stroke="#d7d3cb" strokeWidth="4" fill="none" />
-      )}
-    </Head>
-  )
-}
-
 /* ── Reaction faces (Screen look) ───────────────────────────────────────── */
 
 const SCREEN = <rect x="15" y="16" width="64" height="50" fill="#25222c" />
@@ -512,6 +468,239 @@ const REACT_FACES: Record<ReactMood, (px: string) => ReactNode> = {
   ),
 }
 
+/* ── Kratops: ash-grey head, a red war-paint stripe over the left eye, a scar, a heavy brow, a goatee ── */
+
+const ASH = '#d7d3cb'
+const BEARD = '#2b2420'
+const GOLD = '#f2c94c'
+
+type KBrow = 'angry' | 'furious' | 'flat' | 'raised' | 'sad' | 'one' | 'think'
+type KEyes = 'glare' | 'happy' | 'shut' | 'wide' | 'x' | 'side' | 'small' | 'line' | 'wink' | 'squint' | 'heart' | 'star'
+type KMouth = 'flat' | 'frown' | 'smile' | 'roar' | 'grin' | 'o' | 'zig' | 'smirk' | 'grit'
+
+const K_BROW: Record<KBrow, string> = {
+  angry: 'M24 28l14 6M70 28l-14 6',
+  furious: 'M23 25l15 9M71 25l-15 9',
+  flat: 'M24 31h13M57 31h13',
+  raised: 'M24 27l13-3M70 27l-13-3',
+  sad: 'M24 33l13-4M70 33l-13-4',
+  one: 'M24 31h13M57 25l13 4',
+  think: 'M24 32l13 3M57 27l13 1',
+}
+
+function kEyes(e: KEyes): ReactNode {
+  const pair = (f: (cx: number) => ReactNode) => (
+    <>
+      {f(32)}
+      {f(62)}
+    </>
+  )
+  switch (e) {
+    case 'glare':
+      return pair((cx) => <rect key={cx} className="opsf-warrior__eye" x={cx - 4} y="37" width="8" height="6" fill={GOLD} stroke={INK} strokeWidth="2" />)
+    case 'happy':
+      return <path d="M27 43l5-5 5 5M57 43l5-5 5 5" stroke={INK} strokeWidth="4" fill="none" />
+    case 'shut':
+      return <path d="M27 40q5 4 10 0M57 40q5 4 10 0" stroke={INK} strokeWidth="3.5" fill="none" />
+    case 'wide':
+      return pair((cx) => (
+        <g key={cx}>
+          <circle cx={cx} cy="40" r="6" fill="#fff" stroke={INK} strokeWidth="2.5" />
+          <circle cx={cx} cy="40" r="2.5" fill={INK} />
+        </g>
+      ))
+    case 'x':
+      return <path d="M28 36l8 8M36 36l-8 8M58 36l8 8M66 36l-8 8" stroke={INK} strokeWidth="3.5" />
+    case 'side':
+      return <g className="opsf-glance">{pair((cx) => <rect key={cx} x={cx - 3} y="37" width="7" height="6" fill={GOLD} stroke={INK} strokeWidth="2" />)}</g>
+    case 'small':
+      return pair((cx) => <rect key={cx} x={cx - 2} y="38" width="4" height="4" fill={INK} />)
+    case 'line':
+      return <path d="M27 40h10M57 40h10" stroke={INK} strokeWidth="4" />
+    case 'wink':
+      return (
+        <>
+          <rect x="28" y="37" width="8" height="6" fill={GOLD} stroke={INK} strokeWidth="2" />
+          <path d="M57 41q5-5 10 0" stroke={INK} strokeWidth="4" fill="none" />
+        </>
+      )
+    case 'squint':
+      return <path d="M27 36l9 4-9 4M67 36l-9 4 9 4" stroke={INK} strokeWidth="3.5" fill="none" />
+    case 'heart':
+      return pair((cx) => <path key={cx} className="opsf-beat" d={heart(cx, 41, 6)} fill="#ff5c8a" stroke={INK} strokeWidth="1.5" />)
+    case 'star':
+      return pair((cx) => <path key={cx} className="opsf-stars" d={star(cx, 40, 8)} fill={GOLD} stroke={INK} strokeWidth="1.5" />)
+  }
+}
+
+function kMouth(m: KMouth): ReactNode {
+  switch (m) {
+    case 'flat':
+      return <path d="M38 67h18" stroke={ASH} strokeWidth="4" />
+    case 'frown':
+      return <path d="M38 71q9-7 18 0" stroke={ASH} strokeWidth="4" fill="none" />
+    case 'smile':
+      return <path d="M38 65q9 7 18 0" stroke={ASH} strokeWidth="4" fill="none" />
+    case 'smirk':
+      return <path d="M39 68q9 2 16-5" stroke={ASH} strokeWidth="4" fill="none" />
+    case 'o':
+      return <ellipse cx="47" cy="68" rx="5" ry="5" fill="#5a1515" stroke={ASH} strokeWidth="2.5" />
+    case 'zig':
+      return <path d="M37 68l3-3 3 3 3-3 3 3 3-3 3 3" stroke={ASH} strokeWidth="3" fill="none" />
+    case 'grin':
+      return <path d="M37 63h20q-2 9-10 9t-10-9z" fill="#fff" stroke={INK} strokeWidth="2" />
+    case 'grit':
+      return (
+        <>
+          <rect x="37" y="63" width="20" height="8" fill="#fff" stroke={INK} strokeWidth="2" />
+          <path d="M42 63v8M47 63v8M52 63v8M37 67h20" stroke={INK} strokeWidth="1.5" />
+        </>
+      )
+    case 'roar':
+      return (
+        <>
+          <path d="M36 62h22l-3 13H39z" fill="#5a1515" stroke={INK} strokeWidth="3" />
+          <path d="M38 62h18v4H38z" fill="#fff" />
+        </>
+      )
+  }
+}
+
+interface KFace {
+  brow: KBrow
+  eyes: KEyes
+  mouth: KMouth
+  /** drawn on top: sweat, steam, hearts… (mostly the same props as Screen's) */
+  extra?: ReactNode
+  /** a wash over the face: red when cross, dark when asleep */
+  wash?: string
+}
+
+const K_BLUSH = (
+  <>
+    <rect x="18" y="47" width="9" height="4" fill="#ff7aa8" opacity=".9" />
+    <rect x="67" y="47" width="9" height="4" fill="#ff7aa8" opacity=".9" />
+  </>
+)
+const K_STEAM = (
+  <g className="opsf-steam" fill="var(--slot)" stroke={INK} strokeWidth="2.5">
+    <circle cx="6" cy="10" r="5" />
+    <circle cx="93" cy="6" r="5" />
+  </g>
+)
+
+const K_BASE: Record<BaseMood, KFace> = {
+  idle: { brow: 'angry', eyes: 'glare', mouth: 'flat' },
+  think: { brow: 'think', eyes: 'side', mouth: 'flat' },
+  win: { brow: 'angry', eyes: 'glare', mouth: 'roar' },
+  lose: { brow: 'sad', eyes: 'shut', mouth: 'frown' },
+  draw: { brow: 'flat', eyes: 'line', mouth: 'flat' },
+}
+
+/** One face for each sticker mood. */
+const K_REACT: Record<ReactMood, KFace> = {
+  hello: {
+    brow: 'flat',
+    eyes: 'glare',
+    mouth: 'smirk',
+    extra: (
+      <g className="opsf-wave">
+        <rect x="84" y="28" width="15" height="18" fill={ASH} stroke={INK} strokeWidth="3" />
+        <path d="M88 28v-6M94 28v-7" stroke={INK} strokeWidth="3" />
+      </g>
+    ),
+  },
+  wait: { brow: 'flat', eyes: 'side', mouth: 'flat' },
+  sleep: {
+    brow: 'flat',
+    eyes: 'shut',
+    mouth: 'o',
+    wash: '#000',
+    extra: (
+      <g className="opsf-zz" fill={INK} fontFamily="var(--mono)" fontWeight="700">
+        <text x="80" y="10" fontSize="13">z</text>
+        <text x="90" y="0" fontSize="18">Z</text>
+      </g>
+    ),
+  },
+  smug: { brow: 'one', eyes: 'wink', mouth: 'smirk' },
+  sorry: { brow: 'sad', eyes: 'happy', mouth: 'grin', extra: DROP },
+  nervous: { brow: 'sad', eyes: 'small', mouth: 'zig', extra: DROP },
+  panic: { brow: 'raised', eyes: 'wide', mouth: 'o', extra: DROP },
+  ouch: { brow: 'sad', eyes: 'x', mouth: 'o' },
+  gotcha: { brow: 'angry', eyes: 'wink', mouth: 'smile', extra: <path className="opsf-sparkle" d={star(91, 10, 9)} fill="var(--hit)" stroke={INK} strokeWidth="2.5" /> },
+  wow: { brow: 'raised', eyes: 'wide', mouth: 'o' },
+  pity: { brow: 'sad', eyes: 'line', mouth: 'frown' },
+  lucky: { brow: 'raised', eyes: 'star', mouth: 'grin' },
+  unlucky: {
+    brow: 'sad',
+    eyes: 'small',
+    mouth: 'frown',
+    extra: (
+      <>
+        <path className="opsf-rain" d="M32 18v6M44 20v6M56 18v6" stroke="#8ec5ff" strokeWidth="2.5" />
+        <path d="M26 15a7 7 0 0 1 4-12 9 9 0 0 1 17-1 7 7 0 0 1 11 6 6 6 0 0 1 0 7z" fill="var(--dim)" stroke={INK} strokeWidth="2.5" />
+      </>
+    ),
+  },
+  gg: { brow: 'flat', eyes: 'happy', mouth: 'smile' },
+  salty: { brow: 'furious', eyes: 'glare', mouth: 'grit', wash: 'var(--strike)', extra: K_STEAM },
+  love: {
+    brow: 'raised',
+    eyes: 'heart',
+    mouth: 'smile',
+    extra: (
+      <>
+        {K_BLUSH}
+        <g className="opsf-hearts" fill="#ff5c8a" stroke={INK} strokeWidth="2.5">
+          <path d={heart(88, 12, 7)} />
+          <path d={heart(8, 20, 5)} />
+        </g>
+      </>
+    ),
+  },
+  giggle: { brow: 'raised', eyes: 'squint', mouth: 'grin', extra: K_BLUSH },
+  angry: {
+    brow: 'furious',
+    eyes: 'glare',
+    mouth: 'roar',
+    wash: 'var(--strike)',
+    extra: (
+      <>
+        <path className="opsf-vein" d="M84 6v5h-5M90 6v5h5M84 20v-5h-5M90 20v-5h5" stroke="var(--strike)" strokeWidth="3" fill="none" />
+        {K_STEAM}
+      </>
+    ),
+  },
+}
+
+function Warrior({ mood }: { mood: OpsMood }) {
+  const f = mood in K_REACT ? K_REACT[mood as ReactMood] : K_BASE[mood as BaseMood]
+  return (
+    <Head fill={ASH}>
+      <clipPath id="opsf-warrior-clip">
+        <rect x="9" y="10" width="76" height="84" />
+      </clipPath>
+      <g clipPath="url(#opsf-warrior-clip)">
+        {/* the stripe: over the scalp, down through the left eye, into the beard */}
+        <path d="M26 6h13l-2 58h-9z" fill="#c4262e" />
+        {f.wash && <rect x="9" y="10" width="76" height="84" fill={f.wash} opacity={f.wash === '#000' ? 0.3 : 0.22} />}
+        <path d="M27 58q20-5 40 0l-1 18q-6 14-19 18q-13-4-19-18z" fill={BEARD} />
+        <path d="M33 56q14-4 28 0" stroke={BEARD} strokeWidth="5" fill="none" />
+      </g>
+      <path className="opsf-warrior__brow" d={K_BROW[f.brow]} stroke={INK} strokeWidth={f.brow === 'furious' ? 6 : 5} strokeLinecap="square" fill="none" />
+      {/* a scar across the right brow */}
+      <path d="M66 22l-6 18" stroke="#9c948a" strokeWidth="2.5" />
+      <g className="opsf-eyes">{kEyes(f.eyes)}</g>
+      {kMouth(f.mouth)}
+      {f.extra}
+    </Head>
+  )
+}
+
+/** Looks with their own face for every reaction (the rest borrow a base mood). */
+const OWN_REACTIONS = new Set<OpsStyle>(['screen', 'warrior'])
+
 /** The other looks only know the five base moods, so reactions borrow the nearest one. */
 const BASE: Record<ReactMood, BaseMood> = {
   hello: 'win', wait: 'idle', sleep: 'idle', smug: 'win', sorry: 'win', nervous: 'lose', panic: 'lose', ouch: 'lose',
@@ -526,7 +715,7 @@ export function OpsFace({ look: forced, mood = 'idle', size = 96 }: { look?: Ops
   const picked = useOpsLook()
   const look = forced ?? picked
   const Face = DRAW[look]
-  if (look !== 'screen' && mood in BASE) mood = BASE[mood as ReactMood]
+  if (!OWN_REACTIONS.has(look) && mood in BASE) mood = BASE[mood as ReactMood]
   return (
     <svg className={`opsf opsf--${look} opsf--${mood}`} viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={`Ops, ${mood}`}>
       <g className="opsf__body">
