@@ -17,7 +17,7 @@ import { useSession, useVsOps } from '../../match/session'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useAwayPlayers } from '../../match/useOpponentAway'
-import { Backs, Card, Hand, TrickPips } from './Cards'
+import { Backs, Card, Hand, PlayedStack, TrickPips } from './Cards'
 import { HAND, lockDeck, newKey, readHand, relockDeck, stripLocks, verifyDeal } from './deal'
 import {
   TRICKS,
@@ -251,6 +251,10 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
   /* ── playing a card: tap to lift, tap again to play ── */
   const [picked, setPicked] = useState<number | null>(null)
+  /** going through the stack (the tricks played so far) */
+  const [stackOpen, setStackOpen] = useState(false)
+  // a new deal starts a new stack
+  useEffect(() => setStackOpen(false), [deals])
   useEffect(() => setPicked(null), [plays.length, deals])
   const canPlay = toPlay(live)
   const myTurn = canPlay.includes(view) && !!myCards
@@ -378,7 +382,15 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
               ))}
             </div>
           )}
-          <TrickPips winners={winners} current={live.phase === 'play' ? trickNo : -1} />
+          <div className="sp-table__right">
+            {/* go through the stack: every finished trick this round */}
+            {live.phase !== 'deal' && trickNo > 0 && (
+              <button type="button" className="sp-stackbtn" onClick={() => (sound('tap'), setStackOpen(true))} aria-label={`See the ${trickNo} trick${trickNo === 1 ? '' : 's'} played so far`}>
+                Played · {trickNo}
+              </button>
+            )}
+            <TrickPips winners={winners} current={live.phase === 'play' ? trickNo : -1} />
+          </div>
         </div>
 
         {live.phase === 'deal' && !open ? (
@@ -457,6 +469,8 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           </>
         )}
       </div>
+
+      {stackOpen && live.phase !== 'deal' && <PlayedStack plays={plays} n={n} name={name} onClose={() => setStackOpen(false)} />}
 
       {away.map((a) => (
         <p key={a.id} className="mt-banner" role="status">
