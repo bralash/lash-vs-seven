@@ -113,7 +113,19 @@
   .opsf *, .opsf__body { animation: none !important; }
 }
 
-/* Warrior: the brow lowers while she thinks, her eyes glare on a win */
-.opsf--warrior.opsf--think .opsf-warrior__brow { animation: opsf-glower 1.6s ease-in-out infinite; }
+/* the characters: the brow lowers while they think; Kratops' eyes flare on a win */
+.opsf--think .opsf-char__brow { animation: opsf-glower 1.6s ease-in-out infinite; }
 @keyframes opsf-glower { 50% { translate: 0 2px; } }
-.opsf--warrior.opsf--win .opsf-warrior__eye { fill: #fff3b0; }
+.opsf--warrior.opsf--win .opsf-char__eye { fill: #fff3b0; }
+
+/* Thanops' gauntlet: stones dim at rest, light one by one while he thinks, blaze when he's ahead, fall out when he loses */
+.opsf-stone--dim { opacity: .5; }
+.opsf-stone--lit { animation: opsf-stone-glow 1.2s ease-in-out infinite alternate; }
+@keyframes opsf-stone-glow { from { filter: brightness(1); } to { filter: brightness(1.6) drop-shadow(0 0 2px #fff); } }
+.opsf-stone--cycle { opacity: .45; animation: opsf-stone-turn 2.4s steps(1) infinite; animation-delay: calc(var(--i) * .4s); }
+@keyframes opsf-stone-turn { 0%, 16% { opacity: 1; filter: brightness(1.6); } 17%, 100% { opacity: .45; filter: none; } }
+.opsf-stone-fall { animation: opsf-stone-drop 1.6s ease-in infinite; animation-delay: calc(var(--i) * .25s); }
+@keyframes opsf-stone-drop { 0% { translate: 0 -8px; opacity: 0; } 15% { opacity: 1; } 100% { translate: 0 22px; opacity: 0; } }
+.opsf-snap { animation: opsf-snap .5s ease-out infinite; transform-box: fill-box; transform-origin: bottom center; }
+@keyframes opsf-snap { 0% { opacity: 0; scale: .4; } 30% { opacity: 1; scale: 1.1; } 100% { opacity: 0; scale: 1.3; } }
+.opsf-gauntlet__glow { animation: opsf-beat .6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }

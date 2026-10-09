@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from '../components/Icons'
-import { OPS_STYLES, OpsFace, setOpsLook, useOpsLook, type BaseMood } from '../components/OpsFace'
+import { OPS_STYLES, OpsFace, hasOwnReactions, setOpsLook, useOpsLook, type BaseMood } from '../components/OpsFace'
 import { PokeOps } from '../components/PokeOps'
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
@@ -89,8 +89,8 @@ export function OpsRoom() {
               </li>
             ))}
           </ul>
-          {look !== 'screen' && look !== 'warrior' && (
-            <p className="hint opsroom__note">Screen and Kratops have all 18 reaction faces. {current.name} shows the nearest of these five for now.</p>
+          {!hasOwnReactions(look) && (
+            <p className="hint opsroom__note">{OPS_STYLES.filter((s) => hasOwnReactions(s.id)).map((s) => s.name).join(', ').replace(/, ([^,]*)$/, ' and $1')} have all 18 reaction faces. {current.name} shows the nearest of these five for now.</p>
           )}
         </section>
 
