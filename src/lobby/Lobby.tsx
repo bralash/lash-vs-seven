@@ -37,7 +37,9 @@ import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
 import { StakePanel } from './StakePanel'
 import { LooksProvider, looksFor } from '../match/looks'
+import { TauntLayer } from '../match/Taunts'
 import { ThrowLayer, throwsIn } from '../match/Throws'
+import { UltEarn, UltLayer } from '../match/Ultimates'
 import { VoiceNotes, voiceIn } from '../match/Voice'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
@@ -319,6 +321,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         exit={{ request: () => setAsking(true), now: endLocal }}
         renderGame={renderGame}
         brain={local.bot ? bot : undefined}
+        sense={sense}
       />
     )
   } else if (setup) {
@@ -367,6 +370,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         onGuard={setGuard}
         onRequestLeave={() => setAsking(true)}
         renderGame={renderGame}
+        sense={sense}
         initialState={initialState}
         option={option}
         challengeFor={challengeFor}
@@ -409,7 +413,13 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
             {guard?.kind === 'match' && inRoom && voiceIn(game.slug) && <VoiceNotes game={game.slug} code={inRoom} pid={playerId()} names={guard.names} />}
             {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
             {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
-            {local && !local.bot && throwsIn(game.slug) && <ThrowLayer me={null} />}
+            {local && !local.bot && throwsIn(game.slug) && (
+              <>
+                <ThrowLayer me={null} />
+                <TauntLayer me={null} />
+                <UltLayer me={null} />
+              </>
+            )}
             {inMatch && game.fullscreen && fullscreen.supported && (
               <button type="button" className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
                 {fullscreen.on ? <Minimize /> : <Maximize />}
@@ -677,6 +687,7 @@ function WaitingRoom({
   onGuard,
   onRequestLeave,
   renderGame,
+  sense,
   initialState,
   option,
   challengeFor,
@@ -687,6 +698,8 @@ function WaitingRoom({
   onGuard: (g: LeaveGuard | null) => void
   onRequestLeave: () => void
   renderGame: Props['renderGame']
+  /** how a game's end reads, so its winner charges an ultimate */
+  sense?: OpsSense
   initialState?: Props['initialState']
   option?: Props['option']
   /** the rival this room was opened for from the homepage */
@@ -805,6 +818,7 @@ function WaitingRoom({
   if (room.status !== 'waiting') {
     return (
       <>
+        <UltEarn room={room} sense={sense} />
         <LooksProvider value={looksFor(room)}>
           {renderGame(room, { id: pid, seat: (me.seat < 2 ? me.seat : 0) as 0 | 1, seatN: me.seat, isHost }, { request: onRequestLeave, now: leave })}
         </LooksProvider>

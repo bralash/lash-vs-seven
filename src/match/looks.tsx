@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useSyncExternalStore } from 'react'
-import { OPS_STYLES, type OpsMood, type OpsStyle } from '../components/OpsFace'
+import { asLook, OPS_STYLES, type OpsMood, type OpsStyle } from '../components/OpsFace'
 import type { Room } from '../lobby/rooms'
 
 /**
@@ -9,7 +9,6 @@ import type { Room } from '../lobby/rooms'
  */
 export type Looks = Record<string, OpsStyle>
 
-const isLook = (v: unknown): v is OpsStyle => OPS_STYLES.some((s) => s.id === v)
 
 function seeded(seed: string) {
   let h = 2166136261
@@ -24,7 +23,10 @@ function seeded(seed: string) {
 export function looksFor(room: Room, fixed: Looks = {}): Looks {
   const players = Object.entries(room.players ?? {}).sort(([, a], [, b]) => a.seat - b.seat)
   const out: Looks = { ...fixed }
-  for (const [id, p] of players) if (!out[id] && isLook(p.look)) out[id] = p.look
+  for (const [id, p] of players) {
+    const look = asLook(p.look)
+    if (!out[id] && look) out[id] = look
+  }
   const rand = seeded(`${room.game}:${room.code}:${room.createdAt}`)
   const free = OPS_STYLES.map((s) => s.id).filter((l) => !Object.values(out).includes(l))
   for (let i = free.length - 1; i > 0; i--) {

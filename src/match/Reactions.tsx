@@ -6,7 +6,9 @@ import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { useSound } from '../lib/sound'
 import { roomPath } from '../lobby/rooms'
+import { TauntLayer, visit } from './Taunts'
 import { isItem, launch, ThrowLayer, throwsIn } from './Throws'
+import { UltLayer, unleash } from './Ultimates'
 
 /** Tap-only reactions, sent during an online match. Keys are what goes over the wire. */
 export const REACTIONS = [
@@ -158,6 +160,14 @@ export function Reactions({ game, code, pid, other, names }: { game: string; cod
         if (!before) return // what was already there when we arrived isn't news
         for (const [u, r] of Object.entries(all)) {
           if (u === pid || r.n === before[u]) continue
+          if (r.k === 'taunt' && r.at) {
+            if (throwsIn(game)) visit(u, r.at, r.n) // someone's Ops off to taunt a card
+            continue
+          }
+          if (r.k === 'ult') {
+            if (throwsIn(game)) unleash(u, false) // someone fired their ultimate
+            continue
+          }
           if (isItem(r.k) && r.at) {
             if (throwsIn(game)) launch(u, r.at, r.k) // something thrown at someone's Ops
             continue
@@ -182,10 +192,14 @@ export function Reactions({ game, code, pid, other, names }: { game: string; cod
       <ReactionButton onPick={send} />
       <Pops pops={pops} other={other} />
       {throwsIn(game) && (
-        <ThrowLayer
-          me={pid}
-          deliver={(at, k) => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now(), at }).catch(() => {})}
-        />
+        <>
+          <ThrowLayer
+            me={pid}
+            deliver={(at, k) => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now(), at }).catch(() => {})}
+          />
+          <TauntLayer me={pid} deliver={(at, n) => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k: 'taunt', n, at }).catch(() => {})} />
+          <UltLayer me={pid} deliver={() => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k: 'ult', n: Date.now() }).catch(() => {})} />
+        </>
       )}
     </div>
   )

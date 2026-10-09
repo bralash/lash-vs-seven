@@ -28,7 +28,7 @@ const STONES = [
 
 type Pose = 'rest' | 'raise' | 'wave' | 'snap' | 'clench'
 type Stones = 'dim' | 'lit' | 'cycle' | 'gone' | 'falling'
-type Gauntlet = { pose: Pose; stones: Stones }
+type Gauntlet = { pose: Pose; stones: Stones; /** drawn big for his ultimate: the stones light up one by one, then the snap */ ult?: boolean }
 
 const AT: Record<Pose, string> = {
   rest: 'translate(68 66)',
@@ -39,10 +39,10 @@ const AT: Record<Pose, string> = {
   clench: 'translate(76 30) scale(.85)',
 }
 
-function Gauntlet({ pose, stones }: Gauntlet) {
+function Gauntlet({ pose, stones, ult }: Gauntlet) {
   const empty = stones === 'gone' || stones === 'falling'
   return (
-    <g className={`opsf-gauntlet opsf-gauntlet--${pose}`} transform={AT[pose]}>
+    <g className={`opsf-gauntlet opsf-gauntlet--${pose}`} transform={ult ? undefined : AT[pose]}>
       <g className={pose === 'wave' ? 'opsf-wave' : undefined}>
         {pose === 'clench' && <circle className="opsf-gauntlet__glow" cx="14" cy="14" r="18" fill="var(--strike)" opacity=".35" />}
         {/* cuff, back of the hand, knuckles, thumb */}
@@ -55,7 +55,7 @@ function Gauntlet({ pose, stones }: Gauntlet) {
         {STONES.map((s, i) => (
           <circle
             key={i}
-            className={`opsf-stone opsf-stone--${stones}`}
+            className={ult ? 'ult__stone' : `opsf-stone opsf-stone--${stones}`}
             style={{ '--i': i } as CSSProperties}
             cx={s.cx}
             cy={s.cy + (pose === 'clench' && i < 4 ? 3 : 0)}
@@ -66,6 +66,7 @@ function Gauntlet({ pose, stones }: Gauntlet) {
           />
         ))}
         {/* the snap: a burst off the fingertips */}
+        {ult && <path className="ult__snapburst" d="M8 -4l-2-6M14 -5v-7M20 -4l2-6M26 0l6-3" stroke={INK} strokeWidth="2.5" strokeLinecap="round" />}
         {pose === 'snap' && <path className="opsf-snap" d="M8 -4l-2-6M14 -5v-7M20 -4l2-6M26 0l6-3" stroke={INK} strokeWidth="2.5" strokeLinecap="round" />}
       </g>
       {/* stones that fell out, tumbling down past the cuff */}
@@ -74,6 +75,15 @@ function Gauntlet({ pose, stones }: Gauntlet) {
           <circle key={i} className="opsf-stone-fall" style={{ '--i': i } as CSSProperties} cx={s.cx - 4} cy={30} r="2.6" fill={s.fill} stroke={INK} strokeWidth="1.2" />
         ))}
     </g>
+  )
+}
+
+/** The gauntlet on its own, big, for The Snap (match/Ultimates.tsx). */
+export function GauntletArt({ size }: { size: number }) {
+  return (
+    <svg viewBox="-8 -14 42 48" width={size} height={size * (48 / 42)}>
+      <Gauntlet pose="wave" stones="lit" ult />
+    </svg>
   )
 }
 
@@ -152,6 +162,9 @@ export function Thanops({ mood }: { mood: OpsMood }) {
 
 /** What Thanops says: calm, patient, everything is about balance. */
 export const THANOPS_LINES: Lines = {
+  taunt: ['I am inevitable', 'Dread it. Run from it', 'Balanced. For me'],
+  taunted: ['You dare enter my space?', 'Begone, little one'],
+  ulted: ['A small price', 'Bold. Foolish'],
   hello_easy: ['Hello, little one', 'Shall we?'],
   hello_medium: ['Let us find balance', 'Shall we begin?'],
   hello_hard: ['I am inevitable', 'You should have gone home'],

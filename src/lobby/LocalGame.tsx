@@ -2,10 +2,11 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type React
 import type { GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
 import { KEYS, load, save } from '../lib/storage'
-import { BOT_NAME, LEVELS, type Brain, type Level } from '../match/bot'
+import { BOT_NAME, LEVELS, type Brain, type Level, type OpsSense } from '../match/bot'
 import { PokeOps } from '../components/PokeOps'
 import { LocalSessionProvider, type Session } from '../match/session'
 import { LooksProvider, looksFor } from '../match/looks'
+import { UltEarn } from '../match/Ultimates'
 import { useOpsLook } from '../components/OpsFace'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
 import type { AnySeat, Room, Seat } from './rooms'
@@ -157,6 +158,7 @@ export function LocalGame({
   exit,
   renderGame,
   brain,
+  sense,
 }: {
   game: GameMeta
   match: LocalMatch
@@ -165,6 +167,8 @@ export function LocalGame({
   renderGame: (room: Room, me: Me, exit: MatchExit) => ReactNode
   /** how Ops picks its moves, when this is a game against Ops */
   brain?: Brain
+  /** how a game's end reads, so its winner charges an ultimate */
+  sense?: OpsSense
 }) {
   const level = brain ? match.bot : undefined
   const opsLook = useOpsLook()
@@ -227,6 +231,7 @@ export function LocalGame({
 
   return (
     <LocalSessionProvider value={session}>
+      <UltEarn room={room} sense={sense} />
       <LooksProvider value={looks}>{renderGame(room, me, exit)}</LooksProvider>
     </LocalSessionProvider>
   )

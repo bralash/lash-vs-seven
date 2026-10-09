@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } from 'react'
+import { WebArt, webPath } from '../components/faces/spidops'
 import { Portal } from '../components/Portal'
 import { useSound } from '../lib/sound'
 
@@ -8,11 +9,12 @@ import { useSound } from '../lib/sound'
  * over the reactions channel so every phone sees it fly from the thrower's card; against Ops she
  * takes it personally. Race games leave it out (no pelting someone mid-sprint). Whoever wears the
  * Kratops look throws his axe instead, and it spins back to their card; Thanops snaps and throws
- * a stone from his gauntlet, and whoever it hits turns to dust for a moment.
+ * a stone from his gauntlet, and whoever it hits turns to dust for a moment; Spidops shoots a ball
+ * of web that wraps whoever it hits; Opstimus throws a glowing Energon cube that zaps the face pink.
  */
 
-export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone'] as const
-/** what anyone but Kratops picks from */
+export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube'] as const
+/** what anyone but the characters picks from */
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
 export const isItem = (k: unknown): k is Item => ITEMS.includes(k as Item)
@@ -93,11 +95,13 @@ function land(f: Flight) {
   landers.forEach((l) => l(f))
 }
 
-/** What this card throws: Kratops his axe, Thanops a stone, anyone else whatever comes to hand. */
+/** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, anyone else whatever comes to hand. */
 export function itemFrom(id: string | null): Item {
   const el = faceEl(id)
   if (el instanceof HTMLElement && el.dataset.opsLook === 'warrior') return 'axe'
   if (el instanceof HTMLElement && el.dataset.opsLook === 'titan') return 'stone'
+  if (el instanceof HTMLElement && el.dataset.opsLook === 'spider') return 'web'
+  if (el instanceof HTMLElement && el.dataset.opsLook === 'prime') return 'cube'
   return JUNK[Math.floor(Math.random() * JUNK.length)]
 }
 
@@ -192,7 +196,7 @@ function Flying({ f }: { f: Flight }) {
     // a lob: up over the straight line, higher the further it goes
     // …but never off the top of the screen (the cards sit near it)
     const lift = Math.min(160, 50 + Math.hypot(x1 - x0, y1 - y0) * 0.35, Math.max(16, Math.min(y0, y1) - 20))
-    const spin = (f.item === 'axe' ? 1080 : f.item === 'stone' ? 720 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
+    const spin = (f.item === 'axe' ? 1080 : f.item === 'stone' ? 720 : f.item === 'web' ? 160 : f.item === 'cube' ? 450 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
     const frames = Array.from({ length: 11 }, (_, i) => {
       const t = i / 10
       const x = x0 + (x1 - x0) * t
@@ -246,6 +250,22 @@ export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id
           <path d="M15 15l5-4 4 3" stroke="#fff" strokeWidth="2" fill="none" opacity=".8" />
         </>
       )}
+      {item === 'web' && (
+        <>
+          <circle cx="20" cy="20" r="13" fill="#f4f1ea" stroke={INK} strokeWidth="2.5" />
+          <path d={webPath(13, 6, 2)} transform="translate(20 20)" stroke={INK} strokeWidth=".9" fill="none" />
+        </>
+      )}
+      {item === 'cube' && (
+        <>
+          <circle className="throw__glow" cx="20" cy="21" r="15" fill="#ff5fc8" opacity=".35" />
+          {/* an Energon cube: top, left and right faces, glowing pink */}
+          <path d="M20 7l12 6-12 6-12-6z" fill="#ffb3e6" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M8 13l12 6v14L8 27z" fill="#ff5fc8" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M32 13l-12 6v14l12-6z" fill="#e0249f" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M11 17l6 3M23 20l6-3" stroke="#fff" strokeWidth="1.5" opacity=".8" />
+        </>
+      )}
       {item === 'axe' && (
         <>
           <path d="M9 33L29 13" stroke="#7a4a26" strokeWidth="4.5" strokeLinecap="round" />
@@ -264,8 +284,14 @@ export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id
   )
 }
 
-/** What's left on a face for a moment: a red splat, a bonk star or paper bits. */
+/** What's left on a face for a moment: a red splat, a bonk star, paper bits, dust, a web or a pink zap. */
 export function Splat({ hit }: { hit: Hit }) {
+  if (hit.item === 'web')
+    return (
+      <span className="throw__splat throw__splat--web" aria-hidden="true">
+        <WebArt size="100%" />
+      </span>
+    )
   return (
     <span className={`throw__splat throw__splat--${hit.item}`} aria-hidden="true">
       <svg viewBox="0 0 40 40">
@@ -291,6 +317,12 @@ export function Splat({ hit }: { hit: Hit }) {
           <g stroke={INK} strokeWidth="2.5" strokeLinecap="round" fill="none">
             <path d="M8 8l24 24" stroke="#c4262e" strokeWidth="4" />
             <path d="M20 4l2 6M34 16l-6 2M6 22l6-2M18 34l2-6" />
+          </g>
+        )}
+        {hit.item === 'cube' && (
+          <g fill="none" stroke="#ff5fc8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 2l-3 8 5 2-3 8M38 18l-8 1 1 5-8 1M4 24l8-2 0 5 7-1M24 38l-2-8-5 1-1-7" />
+            <circle cx="20" cy="20" r="6" fill="#ffb3e6" stroke={INK} strokeWidth="2" />
           </g>
         )}
         {hit.item === 'paper' && (

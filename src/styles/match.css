@@ -335,6 +335,14 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .throw__splat--stone { animation: none; inset: -8px; }
 .throw__dust rect { animation: dust-drift 1.3s ease-out both; animation-delay: calc(var(--i) * 50ms); }
 @keyframes dust-drift { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; translate: 14px -12px; } }
+/* Spidops' web: the face is wrapped up for a moment and wriggles */
+.mt-score__ops--web svg { animation: ops-webbed 1.4s ease-in-out; }
+@keyframes ops-webbed { 10%, 80% { scale: .9 1.05; filter: saturate(.5); } 30% { rotate: -5deg; } 50% { rotate: 5deg; } 70% { rotate: -3deg; } }
+.throw__splat--web { inset: -8px; animation: web-stick 1.4s ease-out forwards; }
+@keyframes web-stick { 0% { scale: .3; opacity: 1; } 15% { scale: 1.1; } 25% { scale: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+/* Opstimus' cube: the face is zapped pink and fizzes */
+.mt-score__ops--cube svg { animation: ops-zap 1.2s steps(6); }
+@keyframes ops-zap { 0%, 60% { filter: drop-shadow(0 0 4px #ff5fc8) hue-rotate(-60deg) brightness(1.3); translate: 1px 0; } 30% { translate: -1px 1px; } 100% { filter: none; } }
 .throw__glow { animation: opsf-beat .4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes splat {
   0% { transform: scale(.3); opacity: 1; }
@@ -345,4 +353,116 @@ html.scroll-locked .mt-banner.mt-banner--self {
 }
 @media (width <= 480px) {
   .mt-score__ops svg { width: 30px; height: 30px; }
+}
+
+/* ── Ultimates (match/Ultimates.tsx): the meter under the face, and the shows ── */
+.mt-score__ult { position: absolute; left: 4px; right: 4px; bottom: -6px; height: 5px; border: 1.5px solid var(--ink); background: var(--slot); }
+.mt-score__ult > span { display: block; width: 0; height: 100%; background: var(--hit); transition: width .7s var(--ease-snap, ease-out); }
+.mt-score__ops--charged .mt-score__ult > span { width: 100%; animation: ult-meter .9s ease-in-out infinite alternate; }
+@keyframes ult-meter { to { background: #fff2a8; box-shadow: 0 0 6px 1px var(--hit); } }
+.mt-score__ops--charged svg { animation: ult-ready 1.1s ease-in-out infinite; }
+@keyframes ult-ready { 50% { filter: drop-shadow(0 0 5px var(--hit)) drop-shadow(0 0 2px var(--hit-deep)); scale: 1.06; } }
+.mt-score__fire { cursor: pointer; }
+/* the firing card: Kratops' stripe flares, Thanops snaps, the robots fizz */
+.mt-score__ops--ult-rage svg { animation: ult-rage-face .18s steps(2) infinite; }
+@keyframes ult-rage-face { 50% { translate: 1px -1px; } }
+.mt-score__ops--ult-rage .opsf-stripe { fill: #ff1f1f; filter: drop-shadow(0 0 3px #ff3b2f); animation: ult-stripe .25s ease-in-out infinite alternate; }
+@keyframes ult-stripe { to { fill: #ffb199; } }
+.mt-score__ops--ult-snap svg { filter: drop-shadow(0 0 5px #b98cff); }
+.mt-score__ops--ult-thwip svg { filter: drop-shadow(0 0 5px #ff4d57); }
+.mt-score__ops--ult-rollout svg { filter: drop-shadow(0 0 5px #5fd4ff); }
+.mt-score__ops--ult-static svg { animation: ult-fizz .12s steps(2) infinite; }
+@keyframes ult-fizz { 50% { translate: -1px 1px; filter: hue-rotate(90deg) saturate(2); } }
+
+.ult { position: fixed; inset: 0; z-index: 65; pointer-events: none; overflow: hidden; animation: ult-out .3s ease-in calc(var(--ms) - 300ms) both; }
+@keyframes ult-out { to { opacity: 0; } }
+.ult__flash { position: absolute; inset: 0; background: radial-gradient(circle at var(--x) var(--y), transparent 20%, rgb(232 41 28 / .55) 100%); opacity: 0; animation: ult-flash .9s ease-out .42s both; }
+@keyframes ult-flash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: .35; } }
+.ult__flash--white { background: #fff; animation: ult-white .6s ease-out 1.4s both; }
+@keyframes ult-white { 0% { opacity: 0; } 10% { opacity: .9; } 100% { opacity: 0; } }
+.ult__crack { position: absolute; inset: 0; overflow: visible; }
+.ult__crack path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: ult-crack .32s ease-out both; animation-delay: calc(.42s + var(--i) * 18ms); }
+@keyframes ult-crack { to { stroke-dashoffset: 0; } }
+.ult__axe { position: absolute; top: 0; left: 0; display: flex; will-change: transform; filter: drop-shadow(4px 4px 0 var(--ink)); }
+.ult__said { position: absolute; left: 50%; top: clamp(90px, calc(var(--y) + 90px), calc(100% - 90px)); display: grid; justify-items: center; gap: 6px; translate: -50% 0; width: max-content; max-width: calc(100vw - 32px); animation: ult-said .35s var(--ease-snap, ease-out) both; }
+.ult--rage .ult__said { animation-delay: .8s; }
+.ult--snap .ult__said { animation-delay: 1.65s; }
+.ult--thwip .ult__said { animation-delay: .75s; }
+.ult--thwip .ult__said strong { background: #ff8a8f; }
+.ult--rollout .ult__said { animation-delay: 1.15s; }
+.ult--rollout .ult__said strong { background: #8fb4ff; font-size: clamp(22px, 7vw, 38px); }
+.ult--static .ult__said { animation-delay: .5s; }
+.ult__said strong { padding: 6px 16px 4px; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: 6px 6px 0 var(--ink); font: 400 clamp(28px, 9vw, 48px)/1.1 var(--display); text-align: center; rotate: -3deg; }
+.ult--snap .ult__said strong { background: #d9c2ff; font-size: clamp(20px, 6.5vw, 34px); }
+.ult__by { padding: 2px 8px; background: var(--ink); color: var(--slot); font: 500 12px/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+@keyframes ult-said { 0% { opacity: 0; scale: .4; } 70% { opacity: 1; scale: 1.08; } 100% { opacity: 1; scale: 1; } }
+/* The Snap: the gauntlet rises over the board, the stones light one by one, the snap, the dust */
+.ult__gauntlet { position: absolute; left: var(--x); top: var(--y); display: flex; translate: -50% -50%; filter: drop-shadow(5px 5px 0 var(--ink)); animation: ult-rise .5s var(--ease-snap, ease-out) both, ult-snap-hand .25s ease-in-out 1.3s both; }
+@keyframes ult-rise { from { translate: -50% 60vh; } to { translate: -50% -50%; } }
+@keyframes ult-snap-hand { 50% { rotate: -10deg; scale: 1.08; } }
+.ult__stone { opacity: .35; animation: ult-stone .2s ease-out both; animation-delay: calc(.32s + var(--i) * .15s); }
+@keyframes ult-stone { to { opacity: 1; filter: brightness(1.5) drop-shadow(0 0 2px #fff); } }
+.ult__snapburst { opacity: 0; transform-box: fill-box; transform-origin: bottom center; animation: opsf-snap .5s ease-out 1.35s 2 both; }
+.ult-dust { animation: ult-dust 1.5s ease-in-out var(--ult-d, 0ms) both !important; }
+@keyframes ult-dust { 0% { opacity: 1; } 30%, 62% { opacity: 0; filter: grayscale(1) blur(3px); translate: 10px -8px; } 100% { opacity: 1; } }
+.ult__speck { position: absolute; width: 5px; height: 5px; opacity: 0; animation: ult-speck 1.2s ease-out calc(1.4s + var(--d)) both; }
+@keyframes ult-speck { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; translate: 40px -36px; } }
+/* Thwip: a strand shoots out of his card, then the net spreads over the board, holds, and tears away */
+.ult__strand { position: absolute; inset: 0; overflow: visible; }
+.ult__strand path { fill: none; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: ult-crack .45s cubic-bezier(.3,.7,.4,1) both, ult-strand-go .3s ease-in 1.9s both; }
+@keyframes ult-strand-go { to { opacity: 0; } }
+.ult__web { position: absolute; left: var(--x); top: var(--y); display: flex; translate: -50% -50%; filter: drop-shadow(3px 3px 0 var(--ink)); animation: ult-net .4s cubic-bezier(.2,1.4,.5,1) .45s both, ult-tear .35s ease-in 2.15s both; }
+@keyframes ult-net { from { scale: .05; rotate: -40deg; opacity: 0; } to { scale: 1; rotate: 0deg; opacity: 1; } }
+@keyframes ult-tear { to { scale: 1.25; opacity: 0; } }
+/* Roll Out: his truck roars across the middle of the board, leaving tyre tracks that fade */
+.ult__truck { position: absolute; left: 0; top: var(--y); display: flex; translate: -110% -50%; filter: drop-shadow(4px 4px 0 var(--ink)); animation: ult-drive 1.1s cubic-bezier(.45,.05,.55,.95) .25s both; }
+@keyframes ult-drive { 0% { translate: -110% -50%; } 45% { translate: calc(50vw - 50%) -50%; rotate: -2deg; } 55% { rotate: 1deg; } 100% { translate: 100vw -50%; rotate: 0deg; } }
+.ult__tracks { position: absolute; left: 0; right: 0; top: calc(var(--y) + 22px); height: 14px; background: repeating-linear-gradient(90deg, rgb(26 22 18 / .55) 0 10px, transparent 10px 16px); border-block: 3px solid rgb(26 22 18 / .2); transform-origin: left center; scale: 0 1; animation: ult-tracks 1.1s cubic-bezier(.45,.05,.55,.95) .25s both; }
+@keyframes ult-tracks { to { scale: 1 1; } }
+/* Static: the robots fizz the screen */
+.ult__noise { position: absolute; inset: 0; opacity: .5; mix-blend-mode: multiply; animation: ult-noise 1s steps(1) both; }
+@keyframes ult-noise { 0% { opacity: .55; } 30% { opacity: .35; } 60% { opacity: .6; } 99% { opacity: .3; } 100% { opacity: 0; } }
+#root.ult-glitch { animation: ult-glitch .16s steps(2) infinite; }
+@keyframes ult-glitch { 0% { translate: 0 0; filter: none; } 50% { translate: -3px 1px; filter: hue-rotate(160deg) saturate(1.6) contrast(1.2); } }
+/* who fired what, on the other phones, with a switch to mute them */
+.ult__chip { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; z-index: 66; display: flex; align-items: center; gap: 10px; translate: -50% 0; width: max-content; max-width: calc(100vw - 32px); padding: 6px 6px 6px 12px; border: var(--edge) solid var(--ink); background: var(--slot); box-shadow: var(--shadow-sm); font: 500 12px/1.3 var(--mono); pointer-events: auto; animation: react-in .32s var(--ease-snap, ease-out) both; }
+.ult__chip b { font-weight: 500; }
+.ult__chip button { flex: none; padding: 4px 8px; border: 2px solid var(--ink); background: var(--hit); font: 500 11px/1.2 var(--mono); cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks { display: none; }
+  .ult__web { animation: none; }
+  .ult-dust { animation-duration: .01s !important; }
+}
+
+/* ── Taunts (match/Taunts.tsx): hold your face, your Ops walks over and taunts someone's card ── */
+/* a long press on the face (to send your Ops out) mustn't select the card's text or flash a tap highlight */
+.mt-score, .mt-score * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.mt-score__ops--holding svg { scale: 1.15; transition: scale .5s ease-out; }
+.mt-score__ops--away svg { opacity: .18; filter: grayscale(1); }
+.mt-score__ops--taunted svg { animation: taunted .14s steps(2) infinite; }
+@keyframes taunted { 50% { translate: 1px -1px; rotate: -4deg; } }
+.mt-score__ops--pick svg { animation: taunt-pick .6s ease-in-out infinite alternate; }
+@keyframes taunt-pick { to { filter: drop-shadow(0 0 4px var(--hit)) drop-shadow(0 0 2px var(--ink)); scale: 1.08; } }
+.taunt { position: fixed; inset: 0; z-index: 61; pointer-events: none; }
+.taunt__ops { position: absolute; top: 0; left: 0; display: flex; will-change: transform; filter: drop-shadow(2px 2px 0 var(--ink)); }
+.taunt__ops > svg { transition: rotate .2s; }
+/* what each character does when it gets there */
+.taunt__ops--shout > svg { animation: taunt-shout .1s steps(2) infinite; }
+@keyframes taunt-shout { 50% { translate: 1px 0; scale: 1.12; } }
+.taunt__ops--snap > svg { animation: taunt-bob .5s ease-in-out infinite alternate; }
+.taunt__ops--hang > svg { rotate: 180deg; animation: taunt-sway 1s ease-in-out infinite alternate; transform-origin: 50% -40%; }
+.taunt__ops--hang::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 1.5px; height: 60vh; background: #fff; box-shadow: 0 0 0 .5px var(--ink); }
+@keyframes taunt-sway { from { rotate: 170deg; } to { rotate: 190deg; } }
+.taunt__ops--salute > svg { animation: taunt-bow 1.1s ease-in-out both; }
+@keyframes taunt-bow { 40%, 70% { rotate: 14deg; translate: 0 3px; } }
+.taunt__ops--dance > svg { animation: taunt-dance .3s steps(2) infinite; }
+@keyframes taunt-dance { 0% { rotate: -12deg; translate: -2px 0; } 100% { rotate: 12deg; translate: 2px -3px; } }
+@keyframes taunt-bob { to { translate: 0 -3px; } }
+.taunt__said { position: absolute; left: 50%; bottom: calc(100% + 8px); translate: -50% 0; width: max-content; max-width: min(200px, 60vw); padding: 4px 8px; border: 2px solid var(--ink); background: var(--slot); box-shadow: 3px 3px 0 var(--ink); font: 500 12px/1.3 var(--mono); text-align: center; animation: react-in .25s var(--ease-snap, ease-out) both; }
+.taunt__said b { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.taunt__said--below { bottom: auto; top: calc(100% + 10px); }
+.taunt__pick { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); left: 50%; z-index: 66; display: flex; align-items: center; gap: 10px; translate: -50% 0; width: max-content; padding: 6px 6px 6px 12px; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: var(--shadow-sm); font: 500 12px/1.3 var(--mono); animation: react-in .32s var(--ease-snap, ease-out) both; }
+.taunt__pick button { padding: 4px 8px; border: 2px solid var(--ink); background: var(--slot); font: 500 11px/1.2 var(--mono); cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  .taunt__ops > svg { animation: none !important; }
 }

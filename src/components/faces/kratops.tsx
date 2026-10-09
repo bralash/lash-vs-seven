@@ -65,7 +65,7 @@ export function Kratops({ mood }: { mood: OpsMood }) {
       </clipPath>
       <g clipPath="url(#opsf-warrior-clip)">
         {/* the stripe: over the scalp, down through the left eye, into the beard */}
-        <path d="M26 6h13l-2 58h-9z" fill="#c4262e" />
+        <path className="opsf-stripe" d="M26 6h13l-2 58h-9z" fill="#c4262e" />
         {f.wash && <rect x="9" y="10" width="76" height="84" fill={f.wash} opacity={f.wash === '#000' ? 0.3 : 0.22} />}
         <path d="M27 58q20-5 40 0l-1 18q-6 14-19 18q-13-4-19-18z" fill={BEARD} />
         <path d="M33 56q14-4 28 0" stroke={BEARD} strokeWidth="5" fill="none" />
@@ -82,6 +82,9 @@ export function Kratops({ mood }: { mood: OpsMood }) {
 
 /** What Kratops says: few words, all of them stern. */
 export const KRATOPS_LINES: Lines = {
+  taunt: ['BOY.', 'Kneel', 'Is this your best?'],
+  taunted: ['Leave my card', 'Do not test me', 'BOY. Out.'],
+  ulted: ['You will pay for that', 'Hm. Again, boy'],
   hello_easy: ['Ready, boy?', 'Let us begin'],
   hello_medium: ['Let us begin', 'Show me your strength'],
   hello_hard: ['You will not survive this', 'Prepare yourself'],

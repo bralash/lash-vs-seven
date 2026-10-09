@@ -3,11 +3,13 @@ import { KEYS, load, save } from '../lib/storage'
 import '../styles/opsfaces.css'
 import { Kratops } from './faces/kratops'
 import { DROP, Head, INK, heart, star } from './faces/parts'
+import { Opstimus } from './faces/opstimus'
+import { Spidops } from './faces/spidops'
 import { Thanops } from './faces/thanops'
 
 // Faces for Ops, the computer opponent. Players pick which one she wears at /ops (saved on the
 // device); OPS_LOOK is the default. Every look has the five base moods; Screen and the characters
-// (Kratops, Thanops: drawn in faces/) also have a face for every reaction, and the other looks
+// (Kratops, Thanops, Spidops, Opstimus: drawn in faces/) also have a face for every reaction, and the other looks
 // borrow the nearest base mood.
 
 export type BaseMood = 'idle' | 'think' | 'win' | 'lose' | 'draw'
@@ -18,7 +20,7 @@ export type ReactMood =
   /** when you poke or pet her (PokeOps) */
   | 'love' | 'giggle' | 'angry'
 export type OpsMood = BaseMood | ReactMood
-export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'visor' | 'warrior' | 'titan'
+export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'prime' | 'warrior' | 'titan' | 'spider'
 
 /** The face Ops wears until a player picks another. */
 export const OPS_LOOK: OpsStyle = 'screen'
@@ -40,17 +42,25 @@ export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: 
   { id: 'bot', name: 'Bot', blurb: 'Classic robot head in Seven blue: antenna, round eyes, grille mouth.', pronouns: SHE },
   { id: 'cyclops', name: 'Cyclops', blurb: 'One big camera eye that watches the board.', pronouns: SHE },
   { id: 'die', name: 'Die', blurb: 'A die whose pips are her eyes. Thinking rolls through the faces.', pronouns: SHE },
-  { id: 'visor', name: 'Visor', blurb: 'Dark head with a yellow visor; a light sweeps across while she thinks.', pronouns: SHE },
+  { id: 'prime', name: 'Opstimus', blurb: 'A robot leader in a blue helmet with tall antennae and bright blue eyes. His battle mask slides shut when he means business; he throws Energon cubes, and for his ultimate he turns into a truck.', pronouns: HE },
   { id: 'warrior', name: 'Kratops', blurb: 'Ash-grey god of war with a red stripe of war paint. He doesn’t throw tomatoes: he throws his axe, and it comes back.', pronouns: HE },
   { id: 'titan', name: 'Thanops', blurb: 'A purple titan with a ridged chin and a gold gauntlet. Six stones glow when he’s winning; he snaps when he wins, and when he loses they fall out.', pronouns: HE },
+  { id: 'spider', name: 'Spidops', blurb: 'A red mask with a web over it and two big white lenses that do all his frowning. His spider-sense buzzes when he’s worried; he shoots webs, and when he loses he hangs upside down.', pronouns: HE },
 ]
 
 /* ── The player's pick ── */
 
+/** Looks that were replaced, and who took their place (Visor made way for Opstimus). */
+const RETIRED: Record<string, OpsStyle> = { visor: 'prime' }
+/** A stored or sent look as one we still draw, or null if it isn't one. */
+export function asLook(v: unknown): OpsStyle | null {
+  if (typeof v === 'string' && v in RETIRED) return RETIRED[v]
+  return OPS_STYLES.some((s) => s.id === v) ? (v as OpsStyle) : null
+}
+
 const lookListeners = new Set<() => void>()
 function readLook(): OpsStyle {
-  const v = load(KEYS.opsLook)
-  return OPS_STYLES.some((s) => s.id === v) ? (v as OpsStyle) : OPS_LOOK
+  return asLook(load(KEYS.opsLook)) ?? OPS_LOOK
 }
 function subscribeLook(fn: () => void) {
   lookListeners.add(fn)
@@ -66,8 +76,7 @@ export function useOpsLook(): OpsStyle {
 }
 /** The look this player chose in Ops' room, or null if they never picked one (so they're on the default). */
 export function pickedOpsLook(): OpsStyle | null {
-  const v = load(KEYS.opsLook)
-  return OPS_STYLES.some((s) => s.id === v) ? (v as OpsStyle) : null
+  return asLook(load(KEYS.opsLook))
 }
 /** The pronouns for a look (she for the robot faces, he for Kratops…). */
 export const pronounsOf = (look: OpsStyle): Pronouns => OPS_STYLES.find((s) => s.id === look)?.pronouns ?? SHE
@@ -230,39 +239,6 @@ function Die({ mood }: { mood: OpsMood }) {
             <circle key={k} cx={pipAt(k).cx} cy={pipAt(k).cy - 2} r="3.5" fill={INK} opacity=".85" />
           ))}
         </>
-      )}
-    </Head>
-  )
-}
-
-function Visor({ mood }: { mood: OpsMood }) {
-  const band = mood === 'lose' ? 'var(--dim)' : 'var(--hit)'
-  return (
-    <Head fill="#17151c">
-      <rect x="15" y="27" width="64" height="22" fill={band} stroke={INK} strokeWidth="3" />
-      <clipPath id="opsf-visor-clip">
-        <rect x="16.5" y="28.5" width="61" height="19" />
-      </clipPath>
-      {(mood === 'idle' || mood === 'think') && (
-        <rect
-          className={`opsf-visor__sweep${mood === 'think' ? ' opsf-visor__sweep--fast' : ''}`}
-          clipPath="url(#opsf-visor-clip)"
-          x="16"
-          y="28"
-          width="14"
-          height="20"
-          fill="#fff"
-          opacity=".75"
-        />
-      )}
-      {mood === 'win' && <path d="M26 42l6-7 6 7M56 42l6-7 6 7" stroke={INK} strokeWidth="4" fill="none" />}
-      {mood === 'draw' && <path d="M26 38h12M56 38h12" stroke={INK} strokeWidth="4" />}
-      {mood === 'lose' && <path d="M40 27l6 9-5 5 7 8" stroke={INK} strokeWidth="2.5" fill="none" />}
-      {/* vents for a mouth; a grin when she wins */}
-      {mood === 'win' ? (
-        <path d="M33 62q14 10 28 0" stroke="var(--hit)" strokeWidth="4" fill="none" />
-      ) : (
-        [35, 43, 51, 59].map((x) => <rect key={x} x={x} y="60" width="4" height={mood === 'lose' ? 6 : 12} fill="var(--paper-2)" />)
       )}
     </Head>
   )
@@ -467,7 +443,7 @@ const REACT_FACES: Record<ReactMood, (px: string) => ReactNode> = {
 }
 
 /** Looks with their own face for every reaction (the rest borrow a base mood). */
-const OWN_REACTIONS = new Set<OpsStyle>(['screen', 'warrior', 'titan'])
+const OWN_REACTIONS = new Set<OpsStyle>(['screen', 'warrior', 'titan', 'spider', 'prime'])
 export const hasOwnReactions = (look: OpsStyle) => OWN_REACTIONS.has(look)
 
 /** The other looks only know the five base moods, so reactions borrow the nearest one. */
@@ -477,7 +453,7 @@ const BASE: Record<ReactMood, BaseMood> = {
   love: 'win', giggle: 'win', angry: 'lose',
 }
 
-const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, visor: Visor, warrior: Kratops, titan: Thanops }
+const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, prime: Opstimus, warrior: Kratops, titan: Thanops, spider: Spidops }
 
 /** Ops' face. Moods animate in CSS; remount (change `key`) to replay a one-shot mood. */
 export function OpsFace({ look: forced, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {

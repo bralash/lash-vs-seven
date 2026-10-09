@@ -28,6 +28,8 @@ export const KEYS = {
   opsLook: 'lvs_ops_look',
   /** 'off' when this player turned off auto-playing voice notes */
   voice: 'lvs_voice',
+  /** 'off' when this player turned off other players' ultimates (match/Ultimates.tsx) */
+  ults: 'lvs_ults',
 } as const
 
 

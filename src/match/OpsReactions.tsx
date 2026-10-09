@@ -4,7 +4,9 @@ import { useSound } from '../lib/sound'
 import { BOT_NAME, type Level, type Moment, type OpsSense } from './bot'
 import { Pops, ReactionButton, usePops, useSend, type ReactionKey } from './Reactions'
 import { lineFor, linesFor, type LineKey } from './opsLines'
+import { TauntLayer, visit, WALK_MS } from './Taunts'
 import { itemFrom, launch, ThrowLayer, type Item } from './Throws'
+import { onUnleash, UltLayer, unleash, useUlt } from './Ultimates'
 
 /*
  * Ops reacts the way a person does in an online match: a sticker pops up with her name and a
@@ -25,6 +27,10 @@ const WAIT_MS = 15_000
 const SLEEP_MS = 45_000
 /** how big a one-move swing in standing counts as a blunder or a great move */
 const SWING = 0.45
+/** she comes to taunt your card at most this often */
+const VISIT_GAP_MS = 30_000
+/** visiting back: once yours has gone home */
+const TAUNT_BACK_MS = 3800 - WALK_MS
 
 const HELLO: Record<Level, Say> = {
   easy: { face: 'hello', said: 'Hi!', line: 'hello_easy' },
@@ -79,9 +85,9 @@ function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
  * the last row she throws one back.
  */
 const HIT_ROWS: Record<Item, Say[]>[] = [
-  { stone: [{ face: 'wow', said: 'Is that… a stone?' }, { face: 'ouch', said: 'Ow, shiny' }], tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }], axe: [{ face: 'panic', said: 'AN AXE?!' }, { face: 'wow', said: 'Is that… mine?' }] },
-  { stone: [{ face: 'nervous', said: 'I felt that' }, { face: 'salty', said: 'Put it back' }], tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }], axe: [{ face: 'nervous', said: 'Not the axe' }, { face: 'salty', said: 'Overkill' }] },
-  { stone: [{ face: 'angry', said: 'ENOUGH' }], tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }], axe: [{ face: 'angry', said: 'ENOUGH' }] },
+  { cube: [{ face: 'wow', said: 'Energon?!' }, { face: 'ouch', said: 'Zzzt!' }], web: [{ face: 'panic', said: 'Sticky!' }, { face: 'ouch', said: 'I’m all webbed' }], stone: [{ face: 'wow', said: 'Is that… a stone?' }, { face: 'ouch', said: 'Ow, shiny' }], tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }], axe: [{ face: 'panic', said: 'AN AXE?!' }, { face: 'wow', said: 'Is that… mine?' }] },
+  { cube: [{ face: 'salty', said: 'I’m all tingly' }, { face: 'nervous', said: 'Too much energy' }], web: [{ face: 'salty', said: 'Get it off!' }, { face: 'nervous', said: 'So sticky' }], stone: [{ face: 'nervous', said: 'I felt that' }, { face: 'salty', said: 'Put it back' }], tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }], axe: [{ face: 'nervous', said: 'Not the axe' }, { face: 'salty', said: 'Overkill' }] },
+  { cube: [{ face: 'angry', said: 'OVERLOAD' }], web: [{ face: 'angry', said: 'UNWEB ME' }], stone: [{ face: 'angry', said: 'ENOUGH' }], tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }], axe: [{ face: 'angry', said: 'ENOUGH' }] },
 ]
 /** each row's line key: a character says its own words for how fed up it is, whatever it was hit with */
 const HITS = HIT_ROWS.map(
@@ -169,6 +175,9 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
         (youMoved && swing <= -SWING ? { face: 'wow', said: 'No way', line: 'brilliant' } : null) ||
         bandSay(band(was.standing), band(standing)),
     )
+    // pulling ahead (or taking something of yours), now and then she comes over to rub it in
+    const gloat = moment === 'took' || (band(standing) >= 1 && band(was.standing) < 1)
+    if (gloat && Date.now() - visitedAt.current > VISIT_GAP_MS && Math.random() < 0.3) visitRef.current(1500)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
@@ -208,6 +217,46 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     }, 700)
   }
 
+  // your Ops comes over to taunt hers: she glares, says so, and sometimes pays you a visit back
+  const visitedAt = useRef(0)
+  const visitTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(visitTimer.current), [])
+  const visitYou = (delay: number) => {
+    clearTimeout(visitTimer.current)
+    visitTimer.current = setTimeout(() => {
+      visitedAt.current = Date.now()
+      visit('p1', 'p0', Date.now())
+    }, delay)
+  }
+  const onArrive = ({ from, to }: { from: string; to: string }) => {
+    if (from !== 'p0' || to !== 'p1') return
+    sayRef.current({ face: 'angry', said: 'Go back to your card!', line: 'taunted' })
+    if (Math.random() < 0.4) visitYou(TAUNT_BACK_MS)
+  }
+  const visitRef = useRef(visitYou)
+  visitRef.current = visitYou
+
+  // she wins a game: her ultimate charges, and a few seconds later she fires it at you
+  const hers = useUlt('p1')?.charged
+  useEffect(() => {
+    if (!hers) return
+    const t = setTimeout(() => unleash('p1', false), 2500 + Math.random() * 2500)
+    return () => clearTimeout(t)
+  }, [hers])
+  // …and fire yours at her, and she has something to say about it once it's over
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>
+    const off = onUnleash((from) => {
+      if (from !== 'p0') return
+      clearTimeout(t)
+      t = setTimeout(() => sayRef.current({ face: 'salty', said: 'Not fair!', line: 'ulted' }), 3000)
+    })
+    return () => {
+      off()
+      clearTimeout(t)
+    }
+  }, [])
+
   // you react, she answers a moment later
   const send = useSend(pop, (k) => {
     clearTimeout(replyTimer.current)
@@ -222,6 +271,8 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
       <ReactionButton onPick={send} />
       <Pops pops={pops} other={BOT_NAME} />
       <ThrowLayer me="p0" onHit={onHit} />
+      <TauntLayer me="p0" onArrive={onArrive} />
+      <UltLayer me="p0" />
     </div>
   )
 }
