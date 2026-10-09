@@ -23,13 +23,14 @@ const MOODS: { id: BaseMood; label: string }[] = [
 const SOON = [
   { title: 'Outfits', body: 'Kente, a tux, a football kit…' },
   { title: 'Hats & specs', body: 'Crowns, caps, shades.' },
-  { title: 'Colours', body: 'Paint her head and screen.' },
+  { title: 'Colours', body: 'Paint the head and screen.' },
 ]
 
 export function OpsRoom() {
   const look = useOpsLook()
   const { play } = useSound()
   const current = OPS_STYLES.find((s) => s.id === look) ?? OPS_STYLES[0]
+  const { them } = current.pronouns
 
   return (
     <div className="page screen-in">
@@ -51,11 +52,11 @@ export function OpsRoom() {
           </div>
           <p className="label">Your computer opponent</p>
           <h1 className="lobby__title">Pick your Ops</h1>
-          <p className="hint">She wears it in every game on this device · tap her, or hold to pet</p>
+          <p className="hint">Ops wears this face in every game on this device · tap {them}, or hold to pet</p>
         </div>
 
         <section className="opsroom__section" aria-labelledby="looks-title">
-          <h2 id="looks-title" className="opsroom__h">Her face</h2>
+          <h2 id="looks-title" className="opsroom__h">Faces</h2>
           <div className="opsroom__looks" role="radiogroup" aria-labelledby="looks-title">
             {OPS_STYLES.map((s) => (
               <button
@@ -94,7 +95,7 @@ export function OpsRoom() {
         </section>
 
         <section className="opsroom__section" aria-labelledby="wardrobe-title">
-          <h2 id="wardrobe-title" className="opsroom__h">Her wardrobe</h2>
+          <h2 id="wardrobe-title" className="opsroom__h">Wardrobe</h2>
           <ul className="opsroom__soon">
             {SOON.map((w) => (
               <li key={w.title} className="opsroom__soon-card">
@@ -104,7 +105,7 @@ export function OpsRoom() {
               </li>
             ))}
           </ul>
-          <p className="hint">Dressing her up is coming soon</p>
+          <p className="hint">Dressing {them} up is coming soon</p>
         </section>
       </main>
     </div>

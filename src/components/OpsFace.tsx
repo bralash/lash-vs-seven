@@ -19,13 +19,25 @@ export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'visor' | 'warrior
 /** The face Ops wears until a player picks another. */
 export const OPS_LOOK: OpsStyle = 'screen'
 
-export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string }[] = [
-  { id: 'screen', name: 'Screen', blurb: 'A little monitor with pixel eyes. Thinking shows a loading bar.' },
-  { id: 'bot', name: 'Bot', blurb: 'Classic robot head in Seven blue: antenna, round eyes, grille mouth.' },
-  { id: 'cyclops', name: 'Cyclops', blurb: 'One big camera eye that watches the board.' },
-  { id: 'die', name: 'Die', blurb: 'A die whose pips are her eyes. Thinking rolls through the faces.' },
-  { id: 'visor', name: 'Visor', blurb: 'Dark head with a yellow visor; a light sweeps across while she thinks.' },
-  { id: 'warrior', name: 'Kratops', blurb: 'Ash-grey god of war with a red stripe of war paint. She doesn’t throw tomatoes: she throws her axe, and it comes back.' },
+/** How a look is talked about: Ops is the opponent, but each face is a character with their own pronouns. */
+export interface Pronouns {
+  /** she / he */
+  they: string
+  /** her / him */
+  them: string
+  /** her / his */
+  their: string
+}
+const SHE: Pronouns = { they: 'she', them: 'her', their: 'her' }
+const HE: Pronouns = { they: 'he', them: 'him', their: 'his' }
+
+export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: Pronouns }[] = [
+  { id: 'screen', name: 'Screen', blurb: 'A little monitor with pixel eyes. Thinking shows a loading bar.', pronouns: SHE },
+  { id: 'bot', name: 'Bot', blurb: 'Classic robot head in Seven blue: antenna, round eyes, grille mouth.', pronouns: SHE },
+  { id: 'cyclops', name: 'Cyclops', blurb: 'One big camera eye that watches the board.', pronouns: SHE },
+  { id: 'die', name: 'Die', blurb: 'A die whose pips are her eyes. Thinking rolls through the faces.', pronouns: SHE },
+  { id: 'visor', name: 'Visor', blurb: 'Dark head with a yellow visor; a light sweeps across while she thinks.', pronouns: SHE },
+  { id: 'warrior', name: 'Kratops', blurb: 'Ash-grey god of war with a red stripe of war paint. He doesn’t throw tomatoes: he throws his axe, and it comes back.', pronouns: HE },
 ]
 
 /* ── The player's pick ── */
@@ -52,6 +64,11 @@ export function pickedOpsLook(): OpsStyle | null {
   const v = load(KEYS.opsLook)
   return OPS_STYLES.some((s) => s.id === v) ? (v as OpsStyle) : null
 }
+/** The pronouns for a look (she for the robot faces, he for Kratops…). */
+export const pronounsOf = (look: OpsStyle): Pronouns => OPS_STYLES.find((s) => s.id === look)?.pronouns ?? SHE
+/** The pronouns for the look picked on this device. */
+export const useOpsPronouns = () => pronounsOf(useOpsLook())
+
 export function setOpsLook(look: OpsStyle) {
   save(KEYS.opsLook, look)
   lookListeners.forEach((fn) => fn())
@@ -468,7 +485,7 @@ const REACT_FACES: Record<ReactMood, (px: string) => ReactNode> = {
   ),
 }
 
-/* ── Kratops: ash-grey head, a red war-paint stripe over the left eye, a scar, a heavy brow, a goatee ── */
+/* ── Kratops (he): ash-grey head, a red war-paint stripe over the left eye, a scar, a heavy brow, a goatee ── */
 
 const ASH = '#d7d3cb'
 const BEARD = '#2b2420'

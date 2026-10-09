@@ -7,11 +7,11 @@ import { useSound } from '../lib/sound'
  * ball, picked at random. It lands with a splat and the face winces for a moment. Online it goes
  * over the reactions channel so every phone sees it fly from the thrower's card; against Ops she
  * takes it personally. Race games leave it out (no pelting someone mid-sprint). Whoever wears the
- * Warrior look throws her axe instead, and it spins back to their card.
+ * Kratops look throws his axe instead, and it spins back to their card.
  */
 
 export const ITEMS = ['tomato', 'rock', 'paper', 'axe'] as const
-/** what anyone but the Warrior picks from */
+/** what anyone but Kratops picks from */
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
 export const isItem = (k: unknown): k is Item => ITEMS.includes(k as Item)
@@ -92,7 +92,7 @@ function land(f: Flight) {
   landers.forEach((l) => l(f))
 }
 
-/** What this card throws: her axe if they wear the Warrior, otherwise whatever comes to hand. */
+/** What this card throws: the axe if they wear Kratops, otherwise whatever comes to hand. */
 export function itemFrom(id: string | null): Item {
   const el = faceEl(id)
   if (el instanceof HTMLElement && el.dataset.opsLook === 'warrior') return 'axe'

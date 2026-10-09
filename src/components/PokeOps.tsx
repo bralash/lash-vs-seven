@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useSound } from '../lib/sound'
-import { OpsFace, type BaseMood, type OpsMood } from './OpsFace'
+import { OpsFace, useOpsPronouns, type BaseMood, type OpsMood } from './OpsFace'
 import '../styles/pokeops.css'
 
 /**
@@ -45,6 +45,7 @@ const SULK_MS = 4000
 
 export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number }) {
   const { play } = useSound()
+  const { them } = useOpsPronouns()
   const [say, setSay] = useState<{ mood: OpsMood; line: string; n: number } | null>(null)
   const pokes = useRef({ count: rest === 'lose' ? 2 : 0, at: 0, sulkUntil: 0, n: 0, first: true })
   const hold = useRef<number | undefined>(undefined)
@@ -118,7 +119,7 @@ export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number
       <button
         type="button"
         className="poke__btn"
-        aria-label="Poke Ops (hold to pet her)"
+        aria-label={`Poke Ops (hold to pet ${them})`}
         onPointerDown={down}
         onPointerUp={up}
         onPointerLeave={() => clearTimeout(hold.current)}

@@ -40,7 +40,7 @@ export function Home() {
         <TopBar
           left={<Logo />}
           right={
-            <Link to="/ops" className="icon-btn icon-btn--ops" aria-label="Ops’ room: pick her face" onClick={() => play('tap')}>
+            <Link to="/ops" className="icon-btn icon-btn--ops" aria-label="Ops’ room: pick a face for Ops" onClick={() => play('tap')}>
               <OpsFace mood="hello" size={30} />
             </Link>
           }
