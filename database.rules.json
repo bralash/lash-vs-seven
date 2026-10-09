@@ -96,7 +96,7 @@
                 ".validate": "newData.isNumber()"
               },
               "look": {
-                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider)$/)"
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute)$/)"
               },
               "$other": {
                 ".validate": false
@@ -206,7 +206,7 @@
                 ".validate": "newData.isNumber()"
               },
               "look": {
-                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider)$/)"
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute)$/)"
               },
               "$other": {
                 ".validate": false

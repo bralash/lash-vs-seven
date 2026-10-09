@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { OpsMood } from '../components/OpsFace'
+import { FistArt } from '../components/faces/hulkops'
 import { TruckArt } from '../components/faces/opstimus'
 import { WebArt } from '../components/faces/spidops'
 import { GauntletArt } from '../components/faces/thanops'
@@ -17,28 +18,30 @@ import { ItemArt, throwsIn, type Item } from './Throws'
  * Rage slams his axe into the middle of the screen and cracks it; Thanops' Snap lights the six
  * stones and dusts half the board, which then puts itself back; Spidops' Thwip shoots a web from
  * his card and nets the whole board; Opstimus turns into his truck and roars across the board,
- * horn blaring, leaving tyre tracks. The robot faces fizz the screen
+ * horn blaring, leaving tyre tracks; Hulkops' Smash brings a giant fist down on the board, which jumps
+ * and shakes with a shockwave. The robot faces fizz the screen
  * into static. Looks only: the game underneath never changes and taps go straight through. One
  * use per win. Online it rides the reactions channel (k = 'ult'); anyone can mute incoming ones.
  */
 
-export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'static'
+export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'smash' | 'static'
 export const ULTS: Record<Ult, { name: string; said: string }> = {
   rage: { name: 'Spartan Rage', said: 'BOY.' },
   snap: { name: 'The Snap', said: 'Perfectly balanced.' },
   thwip: { name: 'Thwip', said: 'Thwip! Gotcha.' },
   rollout: { name: 'Roll Out', said: 'Opsbots, roll out!' },
+  smash: { name: 'Hulk Smash', said: 'HULK SMASH!' },
   static: { name: 'Static', said: 'Bzzt.' },
 }
-export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : 'static')
+export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : 'static')
 
 /** how long each show runs, and when it lands (the hit on the faces, the shake, the dust) */
-const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, static: 1700 }
-const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, static: 150 }
+const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, smash: 2600, static: 1700 }
+const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, smash: 480, static: 150 }
 /** what the faces it lands on wear, like a throw */
-const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, static: null }
+const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, smash: 'rubble', static: null }
 /** the firing card's face while it plays */
-export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', static: 'gotcha' }
+export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', smash: 'angry', static: 'gotcha' }
 
 interface Show {
   n: number
@@ -347,6 +350,24 @@ function Play({ s }: { s: Show }) {
         if (!calm) app?.animate([{ translate: '0 0' }, { translate: '0 4px' }, { translate: '0 -3px' }, { translate: '0 2px' }, { translate: '0 0' }], { duration: 420, easing: 'ease-out' })
       })
     }
+    if (s.ult === 'smash') {
+      play('whoosh')
+      // every piece of the board jumps when the fist lands, then settles
+      const pieces = found?.pieces ?? []
+      later(IMPACT_MS.smash, () => {
+        play('boom')
+        navigator.vibrate?.([120, 40, 160])
+        if (!calm) {
+          app?.animate([{ translate: '0 0' }, { translate: '0 12px' }, { translate: '-6px -8px' }, { translate: '5px 5px' }, { translate: '-3px -2px' }, { translate: '0 0' }], { duration: 560, easing: 'ease-out' })
+          for (const k of pieces) {
+            ;(k as HTMLElement).style.setProperty('--ult-d', `${Math.round(Math.random() * 120)}ms`)
+            k.classList.add('ult-jump')
+          }
+        }
+      })
+      later(IMPACT_MS.smash + 900, () => pieces.forEach((k) => k.classList.remove('ult-jump')))
+      dusted = pieces
+    }
     if (s.ult === 'static') {
       play('buzz')
       navigator.vibrate?.([30, 30, 30, 30, 30])
@@ -359,7 +380,7 @@ function Play({ s }: { s: Show }) {
     return () => {
       timers.forEach(clearTimeout)
       app?.classList.remove('ult-glitch')
-      dusted.forEach((k) => k.classList.remove('ult-dust'))
+      dusted.forEach((k) => k.classList.remove('ult-dust', 'ult-jump'))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -440,6 +461,15 @@ function Play({ s }: { s: Show }) {
           <span className="ult__tracks" />
           <span className="ult__truck">
             <TruckArt width={Math.min(260, innerWidth * 0.6)} />
+          </span>
+        </>
+      )}
+      {s.ult === 'smash' && (
+        <>
+          {/* the fist comes down from above the screen, a shockwave rings out from where it lands */}
+          <span className="ult__ring" />
+          <span className="ult__fist">
+            <FistArt size={Math.min(220, innerWidth * 0.5)} />
           </span>
         </>
       )}

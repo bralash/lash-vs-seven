@@ -139,3 +139,12 @@
 .opsf-crest--glow { animation: opsf-crest 1s ease-in-out infinite alternate; }
 @keyframes opsf-crest { to { filter: brightness(1.3) drop-shadow(0 0 3px #ffd23f); } }
 .opsf-eyes--blaze { filter: drop-shadow(0 0 2px #5fd4ff); }
+
+/* Hulkops: his fists pound when he's cross, flex when he's pleased; the hair bristles when he's angry */
+.opsf-pound { animation: opsf-pound .32s ease-in infinite alternate; }
+.opsf-pound--2 { animation-delay: .16s; }
+@keyframes opsf-pound { from { translate: 0 -6px; } to { translate: 0 2px; } }
+.opsf-flex { transform-box: fill-box; transform-origin: bottom center; animation: opsf-flex .9s ease-in-out infinite alternate; }
+@keyframes opsf-flex { to { scale: 1.12; rotate: -6deg; } }
+.opsf--brute.opsf--angry .opsf-mop, .opsf--brute.opsf--salty .opsf-mop { animation: opsf-bristle .12s steps(2) infinite; }
+@keyframes opsf-bristle { 50% { translate: 0 -1.5px; } }

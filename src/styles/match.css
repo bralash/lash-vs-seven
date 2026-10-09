@@ -344,6 +344,9 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .mt-score__ops--cube svg { animation: ops-zap 1.2s steps(6); }
 @keyframes ops-zap { 0%, 60% { filter: drop-shadow(0 0 4px #ff5fc8) hue-rotate(-60deg) brightness(1.3); translate: 1px 0; } 30% { translate: -1px 1px; } 100% { filter: none; } }
 .throw__glow { animation: opsf-beat .4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+/* Hulkops' rubble: the face is squashed flat, cracks over it, and pops back */
+.mt-score__ops--rubble svg { animation: ops-flat 1.2s var(--ease-snap, ease-out); transform-origin: bottom center; }
+@keyframes ops-flat { 0% { scale: 1 1; } 12%, 60% { scale: 1.25 .55; } 100% { scale: 1 1; } }
 @keyframes splat {
   0% { transform: scale(.3); opacity: 1; }
   15% { transform: scale(1.1); }
@@ -371,6 +374,7 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .mt-score__ops--ult-snap svg { filter: drop-shadow(0 0 5px #b98cff); }
 .mt-score__ops--ult-thwip svg { filter: drop-shadow(0 0 5px #ff4d57); }
 .mt-score__ops--ult-rollout svg { filter: drop-shadow(0 0 5px #5fd4ff); }
+.mt-score__ops--ult-smash svg { filter: drop-shadow(0 0 5px #7dff3a); animation: ult-rage-face .14s steps(2) infinite; }
 .mt-score__ops--ult-static svg { animation: ult-fizz .12s steps(2) infinite; }
 @keyframes ult-fizz { 50% { translate: -1px 1px; filter: hue-rotate(90deg) saturate(2); } }
 
@@ -392,6 +396,8 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .ult--rollout .ult__said { animation-delay: 1.15s; }
 .ult--rollout .ult__said strong { background: #8fb4ff; font-size: clamp(22px, 7vw, 38px); }
 .ult--static .ult__said { animation-delay: .5s; }
+.ult--smash .ult__said { animation-delay: .7s; }
+.ult--smash .ult__said strong { background: #9be36b; }
 .ult__said strong { padding: 6px 16px 4px; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: 6px 6px 0 var(--ink); font: 400 clamp(28px, 9vw, 48px)/1.1 var(--display); text-align: center; rotate: -3deg; }
 .ult--snap .ult__said strong { background: #d9c2ff; font-size: clamp(20px, 6.5vw, 34px); }
 .ult__by { padding: 2px 8px; background: var(--ink); color: var(--slot); font: 500 12px/1.4 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
@@ -419,6 +425,14 @@ html.scroll-locked .mt-banner.mt-banner--self {
 @keyframes ult-drive { 0% { translate: -110% -50%; } 45% { translate: calc(50vw - 50%) -50%; rotate: -2deg; } 55% { rotate: 1deg; } 100% { translate: 100vw -50%; rotate: 0deg; } }
 .ult__tracks { position: absolute; left: 0; right: 0; top: calc(var(--y) + 22px); height: 14px; background: repeating-linear-gradient(90deg, rgb(26 22 18 / .55) 0 10px, transparent 10px 16px); border-block: 3px solid rgb(26 22 18 / .2); transform-origin: left center; scale: 0 1; animation: ult-tracks 1.1s cubic-bezier(.45,.05,.55,.95) .25s both; }
 @keyframes ult-tracks { to { scale: 1 1; } }
+/* Hulk Smash: a giant fist drops onto the board, a shockwave rings out and every piece jumps */
+.ult__fist { position: absolute; left: var(--x); top: var(--y); display: flex; translate: -50% -100vh; filter: drop-shadow(6px 6px 0 var(--ink)); animation: ult-fist .48s cubic-bezier(.6,0,.9,.5) both, ult-fist-up .45s ease-in 1.9s forwards; }
+@keyframes ult-fist { to { translate: -50% -60%; } }
+@keyframes ult-fist-up { from { translate: -50% -60%; } to { translate: -50% -100vh; } }
+.ult__ring { position: absolute; left: var(--x); top: var(--y); width: 40px; height: 40px; border: 6px solid var(--ink); border-radius: 50%; translate: -50% -50%; opacity: 0; animation: ult-ring .7s ease-out .48s both; }
+@keyframes ult-ring { 0% { opacity: 1; scale: .5; } 100% { opacity: 0; scale: 14; border-width: 1px; } }
+.ult-jump { animation: ult-jump .55s cubic-bezier(.3,1.6,.5,1) var(--ult-d, 0ms) both !important; }
+@keyframes ult-jump { 0% { translate: 0 0; } 30% { translate: 0 -14px; rotate: -4deg; } 60% { translate: 0 2px; rotate: 3deg; } 100% { translate: 0 0; rotate: 0deg; } }
 /* Static: the robots fizz the screen */
 .ult__noise { position: absolute; inset: 0; opacity: .5; mix-blend-mode: multiply; animation: ult-noise 1s steps(1) both; }
 @keyframes ult-noise { 0% { opacity: .55; } 30% { opacity: .35; } 60% { opacity: .6; } 99% { opacity: .3; } 100% { opacity: 0; } }
@@ -429,7 +443,7 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .ult__chip b { font-weight: 500; }
 .ult__chip button { flex: none; padding: 4px 8px; border: 2px solid var(--ink); background: var(--hit); font: 500 11px/1.2 var(--mono); cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
-  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks { display: none; }
+  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks, .ult__fist, .ult__ring { display: none; }
   .ult__web { animation: none; }
   .ult-dust { animation-duration: .01s !important; }
 }
@@ -456,6 +470,8 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .taunt__ops--salute > svg { animation: taunt-bow 1.1s ease-in-out both; }
 @keyframes taunt-bow { 40%, 70% { rotate: 14deg; translate: 0 3px; } }
 .taunt__ops--dance > svg { animation: taunt-dance .3s steps(2) infinite; }
+.taunt__ops--pound > svg { animation: taunt-pound .22s ease-in infinite alternate; transform-origin: bottom center; }
+@keyframes taunt-pound { from { translate: 0 -8px; scale: 1.15; } to { translate: 0 0; scale: 1.15 1.05; } }
 @keyframes taunt-dance { 0% { rotate: -12deg; translate: -2px 0; } 100% { rotate: 12deg; translate: 2px -3px; } }
 @keyframes taunt-bob { to { translate: 0 -3px; } }
 .taunt__said { position: absolute; left: 50%; bottom: calc(100% + 8px); translate: -50% 0; width: max-content; max-width: min(200px, 60vw); padding: 4px 8px; border: 2px solid var(--ink); background: var(--slot); box-shadow: 3px 3px 0 var(--ink); font: 500 12px/1.3 var(--mono); text-align: center; animation: react-in .25s var(--ease-snap, ease-out) both; }
