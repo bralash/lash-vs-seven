@@ -5,8 +5,7 @@ import { OpsFace } from '../components/OpsFace'
 import { TopBar } from '../components/TopBar'
 import { CATEGORY_LABEL, GAMES, type Category, type GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
-import { Rivals } from './Rivals'
-import { Stakes } from './Stakes'
+import { CornerTiles } from './Corner'
 import '../styles/home.css'
 
 type Filter = 'all' | Category
@@ -38,7 +37,14 @@ export function Home() {
   return (
     <>
       <div className="page screen-in">
-        <TopBar left={<Logo />} />
+        <TopBar
+          left={<Logo />}
+          right={
+            <Link to="/ops" className="icon-btn icon-btn--ops" aria-label="Ops’ room: pick her face" onClick={() => play('tap')}>
+              <OpsFace mood="hello" size={30} />
+            </Link>
+          }
+        />
 
         <section className="hero" aria-labelledby="hero-title">
           <h1 id="hero-title" className="hero__title">
@@ -52,17 +58,7 @@ export function Home() {
           </ul>
         </section>
 
-        <Stakes />
-        <Rivals />
-
-        <Link to="/ops" className="ops-door" onClick={() => play('tap')}>
-          <OpsFace mood="hello" size={52} />
-          <span className="ops-door__text">
-            <span className="ops-door__title">Pick your Ops</span>
-            <span className="hint">Choose her face · outfits coming soon</span>
-          </span>
-          <span className="ops-door__go" aria-hidden="true">→</span>
-        </Link>
+        <CornerTiles />
 
         <section aria-labelledby="games-title">
           <div className="games-head">
@@ -138,6 +134,7 @@ function GameCard({ game, index }: { game: GameMeta; index: number }) {
         ))}
       </div>
       <h3 className="card__name">{game.name}</h3>
+      {game.players && <span className="card__players">{game.players[0]}–{game.players[1]} players</span>}
       <p className="card__blurb">{game.blurb}</p>
       <p className="card__meta">
         {game.players ? `${game.players[0]}–${game.players[1]}` : 2} players · {game.length} · {game.modes}

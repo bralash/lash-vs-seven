@@ -4,20 +4,29 @@ import { markPaid, useDebts, type Debt } from '../match/stakes'
 
 const gameName = (slug: string) => gameBySlug(slug)?.name ?? slug
 
+/** For the homepage tile: what's open ("You owe 1 · 2 owed to you"), and how many wait on you to tick. */
+export function stakesSummary(me: string, debts: Debt[]) {
+  const mine = debts.filter((d) => d.from === me).length
+  const theirs = debts.length - mine
+  return {
+    line: [mine && `You owe ${mine}`, theirs && `${theirs} owed to you`].filter(Boolean).join(' · '),
+    // the other side has ticked theirs and it's down to you
+    waiting: debts.filter((d) => !d.paid?.[me] && d.paid?.[d.from === me ? d.to : d.from]).length,
+  }
+}
+
 /**
- * "Stakes" on the homepage: what you owe and what you're owed from matches played for stakes. A debt
+ * "Stakes" (/stakes): what you owe and what you're owed from matches played for stakes. A debt
  * is settled (and drops off) once both of you tick it — the payer says they paid, the other that they
  * got it. Nothing changes hands through the app.
  */
 export function Stakes() {
   const { me, debts } = useDebts()
-  if (!me || !debts.length) return null
-  const mine = debts.filter((d) => d.from === me).length
-  const theirs = debts.length - mine
+  if (!me) return null
+  if (!debts.length) return <p className="hint rivals__empty">Nothing owed either way. Play a match for stakes and who owes whom shows up here until you both tick it off.</p>
   return (
-    <section className="stakes" aria-labelledby="stakes-title">
-      <h2 id="stakes-title" className="rivals__title">Stakes</h2>
-      <p className="hint">{[mine && `You owe ${mine}`, theirs && `${theirs} owed to you`].filter(Boolean).join(' · ')}</p>
+    <section className="stakes" aria-label="Stakes">
+      <p className="hint">{stakesSummary(me, debts).line}</p>
       <ul className="stakes__list">
         {debts.map((d) => (
           <DebtRow key={d.id} d={d} me={me} />

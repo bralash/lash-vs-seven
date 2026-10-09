@@ -5,9 +5,6 @@ import { useSound } from '../lib/sound'
 import { featById } from '../match/feats'
 import { groupLead, lastGame, listGroups, listRivals, standingLine, standings, type Group, type Rival, type Tally } from '../match/rivalry'
 
-/** rivals shown before "Show all" */
-const FIRST = 4
-
 const gameName = (slug: string) => gameBySlug(slug)?.name ?? slug
 const playable = (slug: string | undefined) => !!slug && gameBySlug(slug)?.status === 'live'
 
@@ -48,21 +45,34 @@ function groupName(g: Group) {
   return `${names.slice(0, -1).join(', ')} & ${names.at(-1)}`
 }
 
+const allEntries = () =>
+  [...listRivals().map((r): Entry => ({ kind: 'rival', r })), ...listGroups().map((g): Entry => ({ kind: 'group', g }))].sort((a, b) => updated(b) - updated(a))
+
+/** For the homepage tile: how many rivals, and the latest one's score ("Kofi 4–2"). Null with none yet. */
+export function rivalsSummary(): { count: number; latest: string } | null {
+  const [e, ...rest] = allEntries()
+  if (!e) return null
+  if (e.kind === 'group') {
+    const g = e.g
+    const local = g.key.startsWith('localgroup:')
+    return { count: rest.length + 1, latest: local ? `${Object.keys(g.members).length} players` : groupName(g) }
+  }
+  const { me, them } = sides(e.r)
+  const { w, l } = e.r.total
+  return { count: rest.length + 1, latest: `${me === 'You' ? them : `${me} vs ${them}`} ${w}–${l}` }
+}
+
 /**
- * "Your rivals" on the homepage: everyone you've finished a match against, with a one-tap rematch.
+ * "Your rivals" (/rivals): everyone you've finished a match against, with a one-tap rematch.
  * People you play in a three or four are one card for the group, not a card each.
  */
 export function Rivals() {
-  const [entries] = useState<Entry[]>(() =>
-    [...listRivals().map((r): Entry => ({ kind: 'rival', r })), ...listGroups().map((g): Entry => ({ kind: 'group', g }))].sort((a, b) => updated(b) - updated(a)),
-  )
+  const [entries] = useState<Entry[]>(allEntries)
   const [open, setOpen] = useState<string | null>(null)
-  const [all, setAll] = useState(false)
   const navigate = useNavigate()
   const { play } = useSound()
 
-  if (!entries.length) return null
-  const shown = all ? entries : entries.slice(0, FIRST)
+  if (!entries.length) return <p className="hint rivals__empty">Finish a match against someone and they show up here, with a one-tap rematch.</p>
 
   // online: the lobby opens a room straight away and names who it's for; pass & play: just the game
   const go = (slug: string, who: string | null) => {
@@ -72,10 +82,9 @@ export function Rivals() {
   const challenge = (slug: string, r: Rival & { key: string }, local: boolean) => go(slug, local ? null : r.name)
 
   return (
-    <section className="rivals" aria-labelledby="rivals-title">
-      <h2 id="rivals-title" className="rivals__title">Your rivals</h2>
+    <section className="rivals" aria-label="Your rivals">
       <ul className="rivals__list">
-        {shown.map((e, i) => {
+        {entries.map((e, i) => {
           if (e.kind === 'group') return <GroupCard key={e.g.key} g={e.g} first={i === 0} open={open === e.g.key} onToggle={() => setOpen(open === e.g.key ? null : e.g.key)} onGo={go} />
           const r = e.r
           const { local, me, them } = sides(r)
@@ -159,11 +168,6 @@ export function Rivals() {
           )
         })}
       </ul>
-      {entries.length > FIRST && (
-        <button type="button" className="link-btn rivals__more" onClick={() => setAll((a) => !a)}>
-          {all ? 'Show fewer' : `Show all ${entries.length}`}
-        </button>
-      )}
     </section>
   )
 }

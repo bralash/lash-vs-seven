@@ -20,6 +20,7 @@ import { WordHunt } from './games/wordhunt/WordHunt'
 import { SoundProvider } from './lib/sound'
 import { Home } from './pages/Home'
 import { OpsRoom } from './pages/OpsRoom'
+import { RivalsPage, StakesPage } from './pages/Corner'
 
 // Dev-only sandbox; the DEV guard lets the bundler drop it from production builds.
 const BoardLab = import.meta.env.DEV ? lazy(() => import('./dev/BoardLab')) : null
@@ -36,6 +37,8 @@ const OpsLab = import.meta.env.DEV ? lazy(() => import('./dev/OpsLab')) : null
 const routes: RouteObject[] = [
   { path: '/', element: <Home /> },
   { path: '/ops', element: <OpsRoom /> },
+  { path: '/rivals', element: <RivalsPage /> },
+  { path: '/stakes', element: <StakesPage /> },
   { path: '/wordhunt', element: <WordHunt /> },
   { path: '/anagram', element: <Anagram /> },
   { path: '/tictactoe', element: <TicTacToe /> },

@@ -243,7 +243,7 @@
 }
 
 /* ── Your rivals (only once you've finished a match) ───── */
-.rivals { display: grid; gap: 18px; margin-bottom: clamp(36px, 6vw, 64px); }
+.rivals { display: grid; gap: 18px; }
 .rivals__title { font-size: clamp(34px, 5vw, 52px); }
 .rivals__list {
   list-style: none;
@@ -352,19 +352,6 @@
   text-transform: uppercase;
 }
 .rival__feat b { font: 400 14px/1.1 var(--display); letter-spacing: 0; }
-.rivals__more {
-  justify-self: start;
-  min-height: 44px;
-  padding: 8px 0;
-  border: 0;
-  background: none;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: .12em;
-  text-decoration: underline;
-  text-transform: uppercase;
-  cursor: pointer;
-}
 @media (width <= 480px) {
   .rival__main { column-gap: 10px; min-height: 68px; padding: 10px 10px 10px 12px; }
   .rival__name { font-size: 20px; }
@@ -372,28 +359,37 @@
   .rival > .rival__go { margin-right: 10px; padding: 9px 10px; font-size: 14px; }
 }
 
-/* ── The way in to /ops ──────────────────────────────────── */
-.ops-door {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 18px;
-  margin-bottom: clamp(36px, 6vw, 64px);
+/* ── Rivals & stakes: a tile each on the homepage, a page each behind them ── */
+.corner { display: flex; gap: 12px; margin-bottom: clamp(28px, 5vw, 48px); }
+.corner__tile {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  max-width: 360px;
+  padding: 10px 14px;
   border: var(--edge) solid var(--ink);
   background: var(--slot);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
   transition: transform .14s var(--ease-out), box-shadow .14s var(--ease-out), background .14s;
 }
-.ops-door:hover, .ops-door:focus-visible { transform: translate(-2px, -2px); box-shadow: var(--shadow); background: #fff6d6; }
-.ops-door:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
-.ops-door__text { display: grid; gap: 4px; flex: 1; min-width: 0; }
-.ops-door__title { font-family: var(--display); font-size: clamp(20px, 3vw, 26px); text-transform: uppercase; line-height: 1; }
-.ops-door__go { font-family: var(--display); font-size: 22px; }
+.corner__tile:hover, .corner__tile:focus-visible { transform: translate(-2px, -2px); box-shadow: var(--shadow); background: #fff6d6; }
+.corner__tile:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.corner__title { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 20px; line-height: 1; text-transform: uppercase; }
+.corner__title b { font-weight: 400; color: var(--lash); }
+.corner__title .corner__badge { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; background: var(--strike); color: var(--paper); font: 500 12px var(--mono); }
+.corner__line { overflow: hidden; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; color: var(--ink-soft); }
+.corner-page { display: grid; gap: 18px; padding-bottom: 48px; }
+.rivals__empty { max-width: 46ch; }
+
+/* Ops in the top bar: her room is a tap away */
+.icon-btn--ops { padding: 2px; }
+.icon-btn.icon-btn--ops svg { width: 34px; height: 34px; }
 
 /* Stakes: who owes whom, until both tick it */
-.stakes { display: grid; gap: 12px; margin-bottom: clamp(36px, 6vw, 64px); }
-.stakes .hint { margin: -6px 0 0; }
+.stakes { display: grid; gap: 12px; }
+.stakes .hint { margin: 0; }
 .stakes__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: 12px; }
 .debt {
   display: grid;
@@ -415,3 +411,29 @@
 .debt__meta { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
 .debt__meta b { font-weight: 500; color: var(--ink); }
 .debt__btn { white-space: nowrap; }
+
+/* ── Phones: a one-line title and two columns of small cards, so the games show without scrolling ── */
+@media (width <= 640px) {
+  .hero { gap: 0; padding: 8px 0 20px; }
+  .hero__title { display: flex; justify-content: center; align-items: baseline; gap: .22em; font-size: clamp(32px, 11vw, 50px); }
+  .hero__modes { display: none; }
+  .hero__seven { text-shadow: 2px 2px 0 var(--ink); }
+  .games-head { margin-bottom: 16px; gap: 12px; }
+  .games-head h2 { font-size: 28px; }
+
+  .games { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .card { gap: 6px; padding: 8px 8px 10px; box-shadow: var(--shadow-sm); }
+  .card__num, .card__cat, .card__blurb, .card__meta, .card__cta, .card__top .stamp--live { display: none; }
+  /* no top row: the vs Ops badge (and a Soon stamp) sit on the card's corner, so every card is the same height */
+  .card__top { position: absolute; top: -9px; right: -7px; z-index: 1; min-height: 0; gap: 4px; }
+  .card__ops { padding: 1px; font-size: 0; gap: 0; box-shadow: 2px 2px 0 var(--ink); }
+  .card { padding-top: 12px; }
+  .card__tiles { gap: 3px; padding: 6px; margin: 0; }
+  .card__tiles span { font-size: 13px; border-bottom-width: 2px; }
+  .card__name { font-size: 18px; line-height: 1.05; }
+  .card__players { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+  .corner__title { font-size: 17px; }
+}
+@media (width > 640px) {
+  .card__players { display: none; }
+}
