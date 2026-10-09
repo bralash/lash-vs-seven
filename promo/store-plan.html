@@ -1,0 +1,414 @@
+<title>Chip Shop Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* Layout: one reading column on the app's dotted paper; mock-ups sit in phone frames beside the text, chips drawn in SVG.
+     Single look on purpose: the app itself is light-only, so the plan matches it. */
+  :root {
+    color-scheme: light;
+    --paper: #f3ead8;
+    --paper-2: #e8dcc2;
+    --slot: #fbf7ee;
+    --ink: #121016;
+    --ink-soft: #3b3742;
+    --dim: #6f6a7a;
+    --hit: #ffd23f;
+    --lash: #ff5a1f;
+    --seven: #2d5bff;
+    --good: #1f9d55;
+    --purple: #8a3fd1;
+    --display: "Bowlby One", "Arial Black", Impact, sans-serif;
+    --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --edge: 3px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    background-image: radial-gradient(rgb(18 16 22 / .08) 1px, transparent 1.4px);
+    background-size: 20px 20px;
+    color: var(--ink);
+    font: 15px/1.6 var(--mono);
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 56px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 400; text-transform: uppercase; line-height: 1.02; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(40px, 8vw, 76px); letter-spacing: -.01em; }
+  h2 { font-size: clamp(26px, 4.4vw, 38px); }
+  h3 { font-size: 20px; }
+  p { margin: 0; max-width: 64ch; }
+  .label { font-size: 12px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft); }
+  .stack { display: grid; gap: 14px; min-width: 0; }
+  .box { border: var(--edge) solid var(--ink); background: var(--slot); box-shadow: 6px 6px 0 var(--ink); }
+  .tag { display: inline-block; padding: 2px 8px; border: 2px solid var(--ink); background: var(--hit); font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+  .tag--off { background: var(--paper-2); }
+
+  /* hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+  .hero .title-plate { display: inline-block; padding: 8px 18px 12px; background: var(--hit); border: var(--edge) solid var(--ink); box-shadow: 8px 8px 0 var(--ink); rotate: -1.5deg; }
+  .hero__chips { position: relative; height: 260px; }
+  .hero__chips svg { position: absolute; filter: drop-shadow(5px 5px 0 var(--ink)); }
+  @media (width < 760px) { .hero { grid-template-columns: 1fr; } .hero__chips { height: 200px; } }
+
+  /* chip rack */
+  .rack { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+  .rack figure { margin: 0; display: grid; justify-items: center; gap: 8px; padding: 18px 10px 14px; text-align: center; }
+  .rack figcaption { display: grid; gap: 2px; }
+  .rack b { font-family: var(--display); font-weight: 400; font-size: 20px; }
+  .rack small { color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+  .rack button { border: 0; background: none; padding: 0; cursor: pointer; }
+  .rack button:focus-visible { outline: 3px solid var(--seven); outline-offset: 4px; border-radius: 50%; }
+  .spin { animation: spin .7s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes spin { from { rotate: 0deg; } to { rotate: 360deg; } }
+  @media (width < 760px) { .rack { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+  /* two-column section: text beside a phone */
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 36px; align-items: start; }
+  @media (width < 860px) { .split { grid-template-columns: 1fr; } .phone { justify-self: center; } }
+
+  /* phone mock-ups */
+  .phone { width: 100%; max-width: 340px; padding: 10px; border: var(--edge) solid var(--ink); border-radius: 30px; background: var(--ink); box-shadow: 8px 8px 0 var(--lash); }
+  .screen { border-radius: 22px; background: var(--paper); overflow: hidden; min-height: 520px; display: grid; align-content: start; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: var(--edge) solid var(--ink); background: var(--slot); }
+  .bar strong { font-family: var(--display); font-weight: 400; font-size: 18px; text-transform: uppercase; }
+  .bal { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border: 2px solid var(--ink); background: var(--hit); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tabs { display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto; border-bottom: 2px solid var(--ink); }
+  .tabs span { flex: none; padding: 4px 9px; border: 2px solid var(--ink); font-size: 11px; font-weight: 500; text-transform: uppercase; background: var(--slot); }
+  .tabs span.on { background: var(--ink); color: var(--paper); }
+  .shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+  .item { display: grid; gap: 4px; padding: 8px; border: 2px solid var(--ink); background: var(--slot); box-shadow: 3px 3px 0 var(--ink); }
+  .item__art { display: grid; place-items: center; height: 74px; background: var(--paper-2); border: 2px solid var(--ink); }
+  .item__name { font-family: var(--display); font-size: 13px; text-transform: uppercase; line-height: 1.1; }
+  .price { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .item--owned .price { color: var(--good); }
+  .item--wear { outline: 3px solid var(--seven); outline-offset: -1px; }
+
+  /* result-screen mock */
+  .result { display: grid; justify-items: center; gap: 10px; padding: 22px 16px; text-align: center; }
+  .result h3 { font-size: 34px; padding: 4px 14px; background: var(--hit); border: var(--edge) solid var(--ink); box-shadow: 5px 5px 0 var(--ink); rotate: -2deg; }
+  .earned { display: grid; gap: 8px; width: 100%; padding: 12px; border: 2px solid var(--ink); background: var(--slot); text-align: left; font-size: 13px; }
+  .earned div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .earned .sum { border-top: 2px solid var(--ink); padding-top: 8px; font-weight: 500; }
+  .drop { display: flex; gap: 4px; justify-content: center; min-height: 54px; align-items: flex-end; }
+  .drop svg { filter: drop-shadow(2px 2px 0 var(--ink)); }
+  .drop svg.fall { animation: fall .5s cubic-bezier(.3,1.5,.5,1) both; }
+  @keyframes fall { from { translate: 0 -60px; opacity: 0; } }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: 4px 4px 0 var(--ink); font: 400 15px/1 var(--display); text-transform: uppercase; color: var(--ink); cursor: pointer; }
+  .btn:active { translate: 3px 3px; box-shadow: 1px 1px 0 var(--ink); }
+  .btn:focus-visible { outline: 3px solid var(--seven); outline-offset: 3px; }
+
+  /* tables */
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--slot); border: var(--edge) solid var(--ink); box-shadow: 6px 6px 0 var(--ink); font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 2px solid var(--paper-2); }
+  th { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; background: var(--ink); color: var(--paper); font-weight: 500; }
+  td.n { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 500; }
+  td small { color: var(--ink-soft); }
+
+  /* catalogue */
+  .cat { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; }
+  .cat article { display: grid; gap: 10px; align-content: start; padding: 18px; }
+  .cat header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .cat ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+  .cat .cost { font-size: 12px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  /* rules + steps */
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+  .rules > div { padding: 18px; display: grid; gap: 8px; align-content: start; }
+  .rules .no { background: #ffe1d6; }
+  ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: s; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; align-items: start; padding: 14px 16px; }
+  ol.steps li::before { content: counter(s); display: grid; place-items: center; width: 44px; height: 44px; border: var(--edge) solid var(--ink); background: var(--hit); font: 400 20px/1 var(--display); }
+  ol.steps b { font-family: var(--display); font-weight: 400; text-transform: uppercase; }
+
+  .ask { display: grid; gap: 12px; padding: 22px; background: var(--ink); color: var(--paper); box-shadow: 8px 8px 0 var(--lash); }
+  .ask h2 { color: var(--hit); }
+  .ask ol { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+  .ask .label { color: #c9c2d4; }
+
+  @media (prefers-reduced-motion: reduce) { .spin, .drop svg.fall { animation: none; } }
+</style>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="stack">
+      <p class="label">Lash vs Seven · plan for the store</p>
+      <h1><span class="title-plate">Chip shop</span></h1>
+      <p>Every match pays out in chips. Chips buy looks: hats and outfits for your Ops, new things to throw, sticker packs, win celebrations, card backs and new characters. Nothing in the shop helps anyone win, and chips are never bought with money.</p>
+    </div>
+    <div class="hero__chips" id="hero-chips" aria-hidden="true"></div>
+  </section>
+
+  <section class="stack" aria-labelledby="chips-h">
+    <p class="label">The currency</p>
+    <h2 id="chips-h">Chips, like a casino table</h2>
+    <p>Each value has its own colour, the way real casino chips do: a thick ink rim, striped notches round the edge, the value in the middle. Tap one to flip it.</p>
+    <div class="rack" id="rack"></div>
+  </section>
+
+  <section class="split" aria-labelledby="earn-h">
+    <div class="stack">
+      <p class="label">Earning</p>
+      <h2 id="earn-h">What a match pays</h2>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>When</th><th>Chips</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Win a match</td><td class="n">25</td><td><small>Online or pass &amp; play</small></td></tr>
+            <tr><td>Lose a match</td><td class="n">5</td><td><small>Turning up still counts</small></td></tr>
+            <tr><td>Draw</td><td class="n">10</td><td></td></tr>
+            <tr><td>First match of the day</td><td class="n">+15</td><td><small>A reason to come back</small></td></tr>
+            <tr><td>Win streak vs the same rival</td><td class="n">+10</td><td><small>Each win from the 3rd in a row</small></td></tr>
+            <tr><td>Earn a feat</td><td class="n">100</td><td><small>Feats become worth chasing</small></td></tr>
+            <tr><td>Beat Ops</td><td class="n">5 / 15</td><td><small>Easy and Medium / Hard</small></td></tr>
+            <tr><td>Stay to the end, 4 players</td><td class="n">+5</td><td><small>Rewards not walking out</small></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><b>Against farming:</b> at most 3 paid wins against the same rival a day. Pressing Leave counts as a loss, as it already does for stakes. A match over in a few seconds pays nothing.</p>
+    </div>
+    <div class="phone" aria-label="Mock-up: chips paid out on the result screen">
+      <div class="screen">
+        <div class="bar"><strong>Connect Four</strong><span class="bal" id="bal-result"></span></div>
+        <div class="result">
+          <p class="label">Match 3 · best of 3</p>
+          <h3>You win</h3>
+          <p style="font-family:var(--display);font-size:22px">2 — 1</p>
+          <div class="drop" id="drop"></div>
+          <div class="earned">
+            <div><span>Win</span><span class="price" id="e1"></span></div>
+            <div><span>First match today</span><span class="price" id="e2"></span></div>
+            <div><span>3 in a row vs Seven</span><span class="price" id="e3"></span></div>
+            <div class="sum"><span>Paid out</span><span>50 chips</span></div>
+          </div>
+          <button class="btn" type="button" id="replay">Pay out again</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="split" aria-labelledby="shop-h">
+    <div class="stack">
+      <p class="label">The shop</p>
+      <h2 id="shop-h">A page of its own</h2>
+      <p>Opened from a tile on the homepage, next to Rivals and Stakes, and laid out like Ops’ room. Your stack of chips sits in the corner. Each item shows its price in chips; once bought it says Owned, and Wear puts it on. Whatever you wear goes into your room entry, the same way your Ops face does, so every phone in the match sees it.</p>
+      <p>Paying sends your chips flying out of the stack onto the item. Everyone starts with one free hat and one free throwable, so the shop makes sense from day one.</p>
+    </div>
+    <div class="phone" aria-label="Mock-up: the shop, wardrobe tab">
+      <div class="screen">
+        <div class="bar"><strong>Shop</strong><span class="bal" id="bal-shop"></span></div>
+        <div class="tabs"><span class="on">Wardrobe</span><span>Throwables</span><span>Stickers</span><span>Wins</span><span>Skins</span></div>
+        <div class="shelf" id="shelf"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stack" aria-labelledby="cat-h">
+    <p class="label">The catalogue</p>
+    <h2 id="cat-h">What chips buy</h2>
+    <div class="cat">
+      <article class="box">
+        <header><h3>Wardrobe</h3><span class="cost">100–800</span></header>
+        <p>Already teased as coming soon in Ops’ room.</p>
+        <ul>
+          <li>Hats &amp; specs: crown, snapback, kufi, chef’s hat, party hat, Ghops’ shades</li>
+          <li>Outfits: kente scarf, Black Stars jersey, tux, graduation gown, fugu smock</li>
+          <li>Colours: gold, chrome or camo paint for the head</li>
+        </ul>
+      </article>
+      <article class="box">
+        <header><h3>Throwables</h3><span class="cost">250 each</span></header>
+        <p>New things to throw at faces, each with its own splat.</p>
+        <ul>
+          <li>Chalewote slipper</li>
+          <li>Water balloon</li>
+          <li>Custard pie</li>
+          <li>Fan Ice</li>
+          <li>Kenkey ball</li>
+        </ul>
+      </article>
+      <article class="box">
+        <header><h3>Sticker packs</h3><span class="cost">200 a pack</span></header>
+        <p>Six extra reactions in the tray.</p>
+        <ul>
+          <li>Ghana: Chale, Herh!, Ei!, Ayekoo, Sharp, Small small</li>
+          <li>Football: Goal!, Offside!, Red card, VAR</li>
+        </ul>
+      </article>
+      <article class="box">
+        <header><h3>Win celebrations</h3><span class="cost">300–600</span></header>
+        <p>Replace the confetti when you win.</p>
+        <ul>
+          <li>Gold chips raining down</li>
+          <li>Fireworks</li>
+          <li>Trumpet blast and a Champion banner</li>
+        </ul>
+      </article>
+      <article class="box">
+        <header><h3>Board &amp; card skins</h3><span class="cost">400–800</span></header>
+        <p>Per game, starting with Spar.</p>
+        <ul>
+          <li>Spar card backs</li>
+          <li>Ludo boards</li>
+          <li>Connect Four discs, Checkers pieces</li>
+          <li>Memory card backs</li>
+        </ul>
+      </article>
+      <article class="box">
+        <header><h3>Score card flair</h3><span class="cost">150–500</span></header>
+        <p>Show off on every match.</p>
+        <ul>
+          <li>Frames round your score card</li>
+          <li>Titles under your name: Spar King, Ludo Menace (some earned free with feats)</li>
+          <li>Your name in gold</li>
+        </ul>
+      </article>
+      <article class="box">
+        <header><h3>Ultimate skins</h3><span class="cost">800</span></header>
+        <p>Retheme your character’s ultimate.</p>
+        <ul>
+          <li>A gold Snap</li>
+          <li>A camo Airstrike</li>
+          <li>A neon Thwip</li>
+        </ul>
+      </article>
+      <article class="box">
+        <header><h3>New characters</h3><span class="cost">1,500–2,500</span></header>
+        <p>The nine faces you have stay free. Characters added from now on cost chips: the big thing to save up for.</p>
+        <ul>
+          <li>Each comes with its faces, lines, throw, taunt and ultimate</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <section class="stack" aria-labelledby="rules-h">
+    <p class="label">House rules</p>
+    <h2 id="rules-h">What the shop never does</h2>
+    <div class="rules">
+      <div class="box no"><h3>No pay to win</h3><p>No hints, undos or extra time. Everything is looks or fun.</p></div>
+      <div class="box no"><h3>No real money</h3><p>Chips can’t be bought, cashed out or sent to someone else.</p></div>
+      <div class="box no"><h3>No betting chips</h3><p>Stakes stay about real things between friends. Chips you could bet would make the app look like gambling, which matters for app stores and younger players. The casino look stays a look.</p></div>
+    </div>
+  </section>
+
+  <section class="stack" aria-labelledby="tech-h">
+    <p class="label">Under the hood</p>
+    <h2 id="tech-h">Where chips live</h2>
+    <p>Players are anonymous accounts on their own phone, so a cleared browser or a new phone would lose everything. Phase one keeps chips in the database under the player’s id, with rules that cap how much one result can add. Phase two adds “Back up your chips” with Google sign-in, so chips and items move to a new phone.</p>
+    <p>Without a paid server, someone determined could edit their own count. For a friends app that’s fine: chips only buy looks, and nobody can spend them on anyone else.</p>
+  </section>
+
+  <section class="stack" aria-labelledby="order-h">
+    <p class="label">Build order</p>
+    <h2 id="order-h">One step at a time</h2>
+    <ol class="steps">
+      <li class="box"><div><b>Chips</b><p>The chip art, your stack on the homepage, payouts on every result screen with the clack, and the farming limits.</p></div></li>
+      <li class="box"><div><b>Shop page</b><p>Items, prices, Buy, Owned and Wear, laid out like Ops’ room.</p></div></li>
+      <li class="box"><div><b>Wardrobe</b><p>Hats, outfits and colours. Every character needs spots to hang them on, so this is the biggest drawing job.</p></div></li>
+      <li class="box"><div><b>Throwables and sticker packs</b><p>Quick wins: both systems already exist.</p></div></li>
+      <li class="box"><div><b>Celebrations and score card flair</b></div></li>
+      <li class="box"><div><b>Board and card skins</b><p>One game at a time, Spar card backs first.</p></div></li>
+      <li class="box"><div><b>Back up with Google</b><p>Chips and items follow you to a new phone.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="ask" aria-labelledby="ask-h">
+    <p class="label">Still to decide</p>
+    <h2 id="ask-h">Open questions</h2>
+    <ol>
+      <li>New characters: cost chips from now on, or every character free?</li>
+      <li>Should games against Ops pay chips? The plan says yes, less, with Hard paying more.</li>
+      <li>The name: chips, or something local like pesewas?</li>
+      <li>Phase one: chips on the phone only (simplest, lost if cleared) or in the database from the start?</li>
+      <li>Which outfits first: kente and the Black Stars jersey?</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+  // Casino chips, drawn in SVG: rim, eight notches round the edge, a dashed inner ring, the value.
+  const CHIPS = [
+    { v: 1, face: '#f4f1ea', notch: '#121016', text: '#121016', name: 'White', use: 'Small rewards' },
+    { v: 5, face: '#e8452c', notch: '#fbf7ee', text: '#fbf7ee', name: 'Red', use: 'A loss, a draw' },
+    { v: 25, face: '#2d5bff', notch: '#fbf7ee', text: '#fbf7ee', name: 'Blue', use: 'A win' },
+    { v: 100, face: '#17151c', notch: '#ffd23f', text: '#ffd23f', name: 'Black', use: 'Feats, streaks' },
+    { v: 500, face: '#8a3fd1', notch: '#fbf7ee', text: '#fbf7ee', name: 'Purple', use: 'Big milestones' },
+  ]
+  const byV = Object.fromEntries(CHIPS.map((c) => [c.v, c]))
+
+  function chip(v, size) {
+    const c = byV[v]
+    const notches = Array.from({ length: 8 }, (_, i) => `<rect x="-6" y="-48" width="12" height="15" fill="${c.notch}" transform="rotate(${i * 45})"/>`).join('')
+    const fs = String(v).length > 2 ? 22 : 28
+    return `<svg viewBox="-52 -52 104 104" width="${size}" height="${size}" role="img" aria-label="${v} chip">
+      <circle r="48" fill="${c.face}" stroke="#121016" stroke-width="4"/>
+      ${notches}
+      <circle r="48" fill="none" stroke="#121016" stroke-width="4"/>
+      <circle r="30" fill="${c.face}" stroke="${c.notch}" stroke-width="3" stroke-dasharray="7 5"/>
+      <circle r="24" fill="none" stroke="#121016" stroke-width="2" opacity=".35"/>
+      <text y="${fs * 0.36}" text-anchor="middle" font-family="Bowlby One, Arial Black, sans-serif" font-size="${fs}" fill="${c.text}">${v}</text>
+    </svg>`
+  }
+
+  // the rack
+  const rack = document.getElementById('rack')
+  rack.innerHTML = CHIPS.map((c) => `<figure class="box"><button type="button" aria-label="Flip the ${c.v} chip">${chip(c.v, 96)}</button><figcaption><b>${c.v}</b><small>${c.name} · ${c.use}</small></figcaption></figure>`).join('')
+  rack.querySelectorAll('button').forEach((b) =>
+    b.addEventListener('click', () => {
+      b.classList.remove('spin')
+      void b.offsetWidth
+      b.classList.add('spin')
+    }),
+  )
+
+  // hero: a scattered pile
+  const pile = [[100, 8, 10, 150, -12], [25, 34, 46, 130, 8], [500, 60, 4, 110, 18], [5, 18, 120, 100, -20], [25, 54, 112, 120, 4], [1, 74, 140, 84, 26]]
+  document.getElementById('hero-chips').innerHTML = pile
+    .map(([v, l, t, s, r]) => chip(v, s).replace('<svg ', `<svg style="left:${l}%;top:${t}px;rotate:${r}deg" `))
+    .join('')
+
+  // balances and prices
+  const bal = (n) => `${chip(25, 22)}${n.toLocaleString()}`
+  document.getElementById('bal-result').innerHTML = bal(1240)
+  document.getElementById('bal-shop').innerHTML = bal(1290)
+  const price = (n, v = 25) => `${chip(v, 16)}${n}`
+  document.getElementById('e1').innerHTML = price(25)
+  document.getElementById('e2').innerHTML = price(15, 5)
+  document.getElementById('e3').innerHTML = price(10, 5)
+
+  // the shop shelf (example items)
+  const ITEMS = [
+    { art: '👑', name: 'Crown', price: 400, state: 'wear' },
+    { art: '🧢', name: 'Snapback', price: 150, state: 'owned' },
+    { art: '🧣', name: 'Kente scarf', price: 300 },
+    { art: '⚽', name: 'Black Stars jersey', price: 600 },
+    { art: '🎩', name: 'Tux', price: 800 },
+    { art: '🕶️', name: 'Ghops’ shades', price: 250 },
+  ]
+  document.getElementById('shelf').innerHTML = ITEMS.map((i) => `
+    <div class="item${i.state === 'owned' ? ' item--owned' : ''}${i.state === 'wear' ? ' item--owned item--wear' : ''}">
+      <div class="item__art" style="font-size:38px" aria-hidden="true">${i.art}</div>
+      <span class="item__name">${i.name}</span>
+      <span class="price">${i.state ? (i.state === 'wear' ? 'Wearing' : 'Owned') : `${chip(25, 16)}${i.price}`}</span>
+    </div>`).join('')
+
+  // the payout: chips drop in one by one
+  const drop = document.getElementById('drop')
+  function payout() {
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const set = [25, 5, 5, 5, 5, 5]
+    drop.innerHTML = ''
+    set.forEach((v, i) => {
+      const add = () => {
+        drop.insertAdjacentHTML('beforeend', chip(v, 40))
+        const el = drop.lastElementChild
+        if (!calm) el.classList.add('fall')
+      }
+      if (calm) add()
+      else setTimeout(add, i * 140)
+    })
+  }
+  payout()
+  document.getElementById('replay').addEventListener('click', payout)
+</script>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Lash vs Seven — Features</title>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #f3ead8; --paper-2: #e8dcc2; --slot: #fbf7ee; --board: #17151c;
+    --ink: #121016; --ink-soft: #3b3742; --dim: #6f6a7a;
+    --hit: #ffd23f; --lash: #ff5a1f; --seven: #2d5bff; --p3: #1f9d55; --p4: #9b3fd6;
+    --display: "Bowlby One", "Arial Black", Impact, sans-serif;
+    --mono: "DM Mono", ui-monospace, monospace;
+    --emoji: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    --edge: 4px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; background: var(--paper); }
+  body {
+    padding: 64px 56px 56px;
+    color: var(--ink);
+    font-family: var(--mono);
+    background-color: var(--paper);
+    background-image: radial-gradient(rgb(18 16 22 / .09) 1.2px, transparent 1.6px);
+    background-size: 22px 22px;
+  }
+
+  /* ── header ── */
+  .head { display: grid; justify-items: center; text-align: center; gap: 18px; margin-bottom: 44px; }
+  .vs { display: flex; align-items: center; gap: 14px; }
+  .vs .name { font-family: var(--display); font-size: 92px; line-height: .9; text-transform: uppercase; letter-spacing: -.01em; }
+  .vs .lash { color: var(--lash); -webkit-text-stroke: 3px var(--ink); text-shadow: 6px 6px 0 var(--ink); }
+  .vs .seven { color: var(--seven); -webkit-text-stroke: 3px var(--ink); text-shadow: 6px 6px 0 var(--ink); }
+  .vs .tag {
+    display: grid; place-items: center; width: 74px; height: 74px;
+    border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: 5px 5px 0 var(--ink);
+    font-family: var(--display); font-size: 30px; rotate: -6deg;
+  }
+  .kicker { font-size: 22px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft); }
+  .title {
+    display: inline-block; padding: 10px 26px 14px;
+    border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: 8px 8px 0 var(--ink);
+    font-family: var(--display); font-size: 54px; line-height: 1; text-transform: uppercase; rotate: -1.5deg;
+  }
+
+  /* ── sections ── */
+  .label {
+    display: flex; align-items: center; gap: 14px;
+    margin: 40px 0 18px;
+    font-size: 20px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase;
+  }
+  .label::after { content: ""; flex: 1; height: var(--edge); background: var(--ink); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+
+  .card {
+    position: relative;
+    display: grid; grid-template-columns: 76px 1fr; column-gap: 18px; align-items: start;
+    padding: 22px 22px 22px 18px;
+    border: var(--edge) solid var(--ink); border-top-width: 12px;
+    background: var(--slot); box-shadow: 6px 6px 0 var(--ink);
+  }
+  .card:nth-child(4n+1), .card:nth-child(4n+4) { border-top-color: var(--lash); }
+  .card:nth-child(4n+2), .card:nth-child(4n+3) { border-top-color: var(--seven); }
+  .icon {
+    display: grid; place-items: center; width: 76px; height: 76px;
+    border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: 4px 4px 0 var(--ink);
+    font-family: var(--emoji); font-size: 40px; line-height: 1;
+  }
+  .card:nth-child(even) .icon { background: var(--paper-2); }
+  .card h3 { margin: 2px 0 8px; font-family: var(--display); font-size: 27px; line-height: 1.05; font-weight: 400; text-transform: uppercase; }
+  .card p { font-size: 18.5px; line-height: 1.45; color: var(--ink-soft); }
+
+  /* the big games card */
+  .hero { grid-template-columns: 96px 1fr; padding: 26px; border-top-color: var(--hit) !important; }
+  .hero .icon { width: 96px; height: 96px; font-size: 52px; }
+  .hero h3 { font-size: 40px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .chip {
+    padding: 6px 12px 7px; border: 3px solid var(--ink); background: var(--paper);
+    font-size: 17px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .chip.w { background: #ffe9a8; }
+
+  /* coming soon */
+  .soon { background: var(--board); color: var(--slot); border-top-color: var(--p4) !important; grid-template-columns: 96px 1fr; padding: 26px; }
+  .soon .icon { width: 96px; height: 96px; font-size: 52px; background: var(--hit) !important; }
+  .soon h3 { font-size: 36px; }
+  .soon p { color: #d9d2c4; }
+  .stamp {
+    position: absolute; top: -26px; right: 22px;
+    padding: 6px 14px 8px; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: 4px 4px 0 var(--ink);
+    font-family: var(--display); font-size: 22px; text-transform: uppercase; color: var(--ink); rotate: 3deg;
+  }
+
+  /* footer */
+  .foot { display: grid; justify-items: center; gap: 16px; margin-top: 52px; text-align: center; }
+  .foot .cta { font-family: var(--display); font-size: 40px; text-transform: uppercase; line-height: 1; }
+  .link {
+    padding: 14px 30px 16px; border: var(--edge) solid var(--ink); background: var(--ink); color: var(--hit);
+    box-shadow: 8px 8px 0 var(--lash);
+    font-size: 34px; font-weight: 500; letter-spacing: .02em;
+  }
+  .foot .small { font-size: 18px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+</style>
+</head>
+<body>
+  <header class="head">
+    <div class="vs"><span class="name lash">Lash</span><span class="tag">VS</span><span class="name seven">Seven</span></div>
+    <p class="kicker">Game night · on your phones</p>
+    <h1 class="title">What’s inside</h1>
+  </header>
+
+  <div class="card hero">
+    <span class="icon">🎲</span>
+    <div>
+      <h3>17 games, one place</h3>
+      <p>Word games, board games, cards and classics. Play them online or on one phone.</p>
+      <div class="chips">
+        <span class="chip w">Word Hunt</span><span class="chip w">Anagram Race</span><span class="chip w">Battleword</span><span class="chip w">Hangman</span><span class="chip w">Crossword</span>
+        <span class="chip">Connect Four</span><span class="chip">Checkers</span><span class="chip">Othello</span><span class="chip">Oware</span><span class="chip">Ludo</span><span class="chip">Quoridor</span><span class="chip">Tic-Tac-Toe</span><span class="chip">Dots &amp; Boxes</span>
+        <span class="chip">Battleship</span><span class="chip">Spar</span><span class="chip">Sudoku</span><span class="chip">Memory</span>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="label">Play your way</h2>
+  <div class="grid">
+    <div class="card"><span class="icon">🔗</span><div><h3>Online with a code</h3><p>Create a room, send the link, play on your own phones.</p></div></div>
+    <div class="card"><span class="icon">📱</span><div><h3>Pass &amp; play</h3><p>One phone, two players. Just pass it across.</p></div></div>
+    <div class="card"><span class="icon">👥</span><div><h3>Up to 4 players</h3><p>Starting with Spar. Someone leaves? They’re dealt out and the match carries on.</p></div></div>
+    <div class="card"><span class="icon">🤖</span><div><h3>Play Ops</h3><p>The computer opponent, in 13 games, from easy to tough.</p></div></div>
+  </div>
+
+  <h2 class="label">Meet Ops</h2>
+  <div class="grid">
+    <div class="card"><span class="icon">🎭</span><div><h3>Ops’ room</h3><p>Pick your face: Kratops, Thanops, Spidops, Opstimus, Hulkops, Ghops or the robots. Each one talks like themselves.</p></div></div>
+    <div class="card"><span class="icon">😜</span><div><h3>Ops reacts</h3><p>She pulls faces, cheers her luck and answers your reactions while you play.</p></div></div>
+  </div>
+
+  <h2 class="label">Trash talk</h2>
+  <div class="grid">
+    <div class="card"><span class="icon">🔥</span><div><h3>Reactions</h3><p>Fire off 🔥 😂 😱 😤 🤝 ⏳ mid-match, or throw something at your rival’s face.</p></div></div>
+    <div class="card"><span class="icon">🎙️</span><div><h3>Voice notes</h3><p>Hold to talk, up to 10 seconds. They delete themselves.</p></div></div>
+    <div class="card"><span class="icon">😈</span><div><h3>Taunts</h3><p>Hold your face and your character walks over to your rival’s card to taunt them.</p></div></div>
+    <div class="card"><span class="icon">⚡</span><div><h3>Ultimates</h3><p>Win a game, tap your face: Spartan Rage, the Snap, Thwip, Roll Out, Hulk Smash or Airstrike on every phone.</p></div></div>
+  </div>
+
+  <h2 class="label">Bragging rights</h2>
+  <div class="grid">
+    <div class="card"><span class="icon">🏆</span><div><h3>Rivalry record</h3><p>Your all-time score against each friend, streaks and all.</p></div></div>
+    <div class="card"><span class="icon">🎖️</span><div><h3>Feats</h3><p>Achievements you earn against a rival. Battleship first, more to come.</p></div></div>
+    <div class="card"><span class="icon">💸</span><div><h3>Stakes</h3><p>Play for a friendly bet. The app keeps track of who owes who. Leave and you lose.</p></div></div>
+    <div class="card"><span class="icon">📤</span><div><h3>Share your win</h3><p>A result card ready to post the moment you win.</p></div></div>
+  </div>
+
+  <h2 class="label">Coming soon</h2>
+  <div class="card soon">
+    <span class="stamp">Soon</span>
+    <span class="icon">👁️</span>
+    <div><h3>Watch matches</h3><p>Got a friend’s room code? Watch their game live, react from the sidelines and hear their voice notes. Connect Four first.</p></div>
+  </div>
+
+  <footer class="foot">
+    <p class="cta">Challenge someone</p>
+    <p class="link">lash-vs-seven.web.app</p>
+    <p class="small">Free · no sign-up · works on any phone</p>
+  </footer>
+</body>
+</html>
