@@ -1,18 +1,20 @@
 import { useEffect, useRef } from 'react'
-import type { OpsMood } from '../components/OpsFace'
+import { useOpsLook, type OpsMood } from '../components/OpsFace'
 import { useSound } from '../lib/sound'
 import { BOT_NAME, type Level, type Moment, type OpsSense } from './bot'
 import { Pops, ReactionButton, usePops, useSend, type ReactionKey } from './Reactions'
+import { lineFor, linesFor, type LineKey } from './opsLines'
 import { itemFrom, launch, ThrowLayer, type Item } from './Throws'
 
 /*
  * Ops reacts the way a person does in an online match: a sticker pops up with her name and a
  * word, only with her face pulling the mood instead of an emoji. She speaks up at big moments
  * only (a swing in who's ahead, a capture, a game won or lost, you taking ages) and answers the
- * reactions you send her.
+ * reactions you send her. Each moment has a key (`line`), so a character look (Kratops, Thanops)
+ * says its own words there; the face stays the same.
  */
 
-type Say = { face: OpsMood; said: string }
+type Say = { face: OpsMood; said: string; line?: LineKey }
 
 /** quiet for at least this long between unprompted reactions */
 const GAP_MS = 8000
@@ -25,16 +27,16 @@ const SLEEP_MS = 45_000
 const SWING = 0.45
 
 const HELLO: Record<Level, Say> = {
-  easy: { face: 'hello', said: 'Hi!' },
-  medium: { face: 'hello', said: 'Let’s go' },
-  hard: { face: 'hello', said: 'Bring it' },
+  easy: { face: 'hello', said: 'Hi!', line: 'hello_easy' },
+  medium: { face: 'hello', said: 'Let’s go', line: 'hello_medium' },
+  hard: { face: 'hello', said: 'Bring it', line: 'hello_hard' },
 }
 
 const MOMENT: Record<Moment, Say> = {
-  took: { face: 'gotcha', said: 'Mine' },
-  lost: { face: 'ouch', said: 'Rude' },
-  lucky: { face: 'lucky', said: 'Yes!' },
-  unlucky: { face: 'unlucky', said: 'Rigged' },
+  took: { face: 'gotcha', said: 'Mine', line: 'took' },
+  lost: { face: 'ouch', said: 'Rude', line: 'lost' },
+  lucky: { face: 'lucky', said: 'Yes!', line: 'lucky' },
+  unlucky: { face: 'unlucky', said: 'Rigged', line: 'unlucky' },
 }
 
 /** where a standing sits: −2 losing badly, −1 behind, 0 level, 1 ahead, 2 crushing */
@@ -43,10 +45,10 @@ const band = (s: number) => (s >= 0.6 ? 2 : s >= 0.25 ? 1 : s <= -0.6 ? -2 : s <
 /** what a new band makes her say, if anything */
 function bandSay(from: number, to: number): Say | null {
   if (to === from) return null
-  if (to === 2) return { face: 'sorry', said: 'Sorry…' }
-  if (to === 1 && from < 1) return { face: 'smug', said: 'Hehe' }
-  if (to === -2) return { face: 'panic', said: 'No no no' }
-  if (to === -1 && from > -1) return { face: 'nervous', said: 'Uh oh' }
+  if (to === 2) return { face: 'sorry', said: 'Sorry…', line: 'crushing' }
+  if (to === 1 && from < 1) return { face: 'smug', said: 'Hehe', line: 'ahead' }
+  if (to === -2) return { face: 'panic', said: 'No no no', line: 'losing' }
+  if (to === -1 && from > -1) return { face: 'nervous', said: 'Uh oh', line: 'behind' }
   return null
 }
 
@@ -54,17 +56,21 @@ function bandSay(from: number, to: number): Say | null {
 function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
   switch (k) {
     case 'fire':
-      return s >= 0.25 ? { face: 'smug', said: 'Cute' } : s <= -0.25 ? { face: 'nervous', said: 'Uh oh' } : { face: 'smug', said: 'We’ll see' }
+      return s >= 0.25
+        ? { face: 'smug', said: 'Cute', line: 'fire_ahead' }
+        : s <= -0.25
+          ? { face: 'nervous', said: 'Uh oh', line: 'fire_behind' }
+          : { face: 'smug', said: 'We’ll see', line: 'fire_level' }
     case 'lol':
-      return s <= -0.25 ? { face: 'ouch', said: 'Rude' } : { face: 'smug', said: 'Hehe' }
+      return s <= -0.25 ? { face: 'ouch', said: 'Rude', line: 'lol_behind' } : { face: 'smug', said: 'Hehe', line: 'lol' }
     case 'wow':
-      return s >= 0.25 ? { face: 'sorry', said: 'Sorry…' } : { face: 'wow', said: 'Me too' }
+      return s >= 0.25 ? { face: 'sorry', said: 'Sorry…', line: 'wow_ahead' } : { face: 'wow', said: 'Me too', line: 'wow' }
     case 'grr':
-      return s >= 0.25 ? { face: 'gotcha', said: 'Mine' } : { face: 'pity', said: 'Easy now' }
+      return s >= 0.25 ? { face: 'gotcha', said: 'Mine', line: 'grr_ahead' } : { face: 'pity', said: 'Easy now', line: 'grr' }
     case 'gg':
-      return { face: 'gg', said: 'GG' }
+      return { face: 'gg', said: 'GG', line: 'gg' }
     case 'hurry':
-      return herTurn ? { face: 'think', said: 'Patience' } : { face: 'wait', said: 'Your go!' }
+      return herTurn ? { face: 'think', said: 'Patience', line: 'hurry_mine' } : { face: 'wait', said: 'Your go!', line: 'hurry_yours' }
   }
 }
 
@@ -72,13 +78,20 @@ function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
  * Something thrown at her card, by how fed up she is (the index; like a poke, it wears off). Past
  * the last row she throws one back.
  */
-const HITS: Record<Item, Say[]>[] = [
-  { tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }], axe: [{ face: 'panic', said: 'AN AXE?!' }, { face: 'wow', said: 'Is that… mine?' }] },
-  { tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }], axe: [{ face: 'nervous', said: 'Not the axe' }, { face: 'salty', said: 'Overkill' }] },
-  { tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }], axe: [{ face: 'angry', said: 'ENOUGH' }] },
+const HIT_ROWS: Record<Item, Say[]>[] = [
+  { stone: [{ face: 'wow', said: 'Is that… a stone?' }, { face: 'ouch', said: 'Ow, shiny' }], tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }], axe: [{ face: 'panic', said: 'AN AXE?!' }, { face: 'wow', said: 'Is that… mine?' }] },
+  { stone: [{ face: 'nervous', said: 'I felt that' }, { face: 'salty', said: 'Put it back' }], tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }], axe: [{ face: 'nervous', said: 'Not the axe' }, { face: 'salty', said: 'Overkill' }] },
+  { stone: [{ face: 'angry', said: 'ENOUGH' }], tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }], axe: [{ face: 'angry', said: 'ENOUGH' }] },
 ]
-const AXE_BACK: Say[] = [{ face: 'gotcha', said: 'BOY.' }, { face: 'smug', said: 'Catch' }, { face: 'gotcha', said: 'Axe time' }]
-const BACK: Say[] = [{ face: 'gotcha', said: 'Take that' }, { face: 'smug', said: 'Your turn' }, { face: 'gotcha', said: 'Ha!' }]
+/** each row's line key: a character says its own words for how fed up it is, whatever it was hit with */
+const HITS = HIT_ROWS.map(
+  (row, i) => Object.fromEntries(Object.entries(row).map(([k, says]) => [k, says.map((x) => ({ ...x, line: `hit_${i + 1}` as LineKey }))])) as Record<Item, Say[]>,
+)
+const BACK: Say[] = [
+  { face: 'gotcha', said: 'Take that', line: 'throw_back' },
+  { face: 'smug', said: 'Your turn', line: 'throw_back' },
+  { face: 'gotcha', said: 'Ha!', line: 'throw_back' },
+]
 /** every this long without a throw takes one off how fed up she is */
 const HIT_COOL_MS = 4000
 const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)]
@@ -86,9 +99,9 @@ const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)]
 /** What she says when a game ends. */
 function endSay(winner: 0 | 1 | -1, final: boolean, level: Level): Say | null {
   if (!final) return winner === 1 ? MOMENT.took : winner === 0 ? MOMENT.lost : null
-  if (winner === 0) return level === 'hard' ? { face: 'salty', said: 'Again?' } : { face: 'gg', said: 'GG' }
-  if (winner === 1) return level === 'hard' ? { face: 'smug', said: 'Too easy' } : { face: 'gg', said: 'GG' }
-  return { face: 'gg', said: 'GG' }
+  if (winner === 0) return level === 'hard' ? { face: 'salty', said: 'Again?', line: 'lose_final_hard' } : { face: 'gg', said: 'GG', line: 'lose_final' }
+  if (winner === 1) return level === 'hard' ? { face: 'smug', said: 'Too easy', line: 'win_final_hard' } : { face: 'gg', said: 'GG', line: 'win_final' }
+  return { face: 'gg', said: 'GG', line: 'draw_final' }
 }
 
 /**
@@ -103,10 +116,12 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
   const replyTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const stateRef = useRef(state)
   stateRef.current = state
+  // she plays (and talks) as the face picked on this device
+  const lines = linesFor(useOpsLook())
 
   const say = (s: Say, buzz = true) => {
     saidAt.current = Date.now()
-    pop({ mine: false, face: s.face, said: s.said })
+    pop({ mine: false, face: s.face, said: lineFor(lines, s.line, s.said) })
     play('tap')
     if (buzz) navigator.vibrate?.(40)
   }
@@ -150,8 +165,8 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     const swing = standing - was.standing
     maybe(
       (moment && (typeof moment === 'string' ? MOMENT[moment] : { face: MOMENT[moment.moment].face, said: moment.said })) ||
-        (youMoved && swing >= SWING ? { face: 'pity', said: 'Oof' } : null) ||
-        (youMoved && swing <= -SWING ? { face: 'wow', said: 'No way' } : null) ||
+        (youMoved && swing >= SWING ? { face: 'pity', said: 'Oof', line: 'blunder' } : null) ||
+        (youMoved && swing <= -SWING ? { face: 'wow', said: 'No way', line: 'brilliant' } : null) ||
         bandSay(band(was.standing), band(standing)),
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,8 +176,8 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
   const yourTurn = sense.turn(state) === 0 && !sense.ended(state)
   useEffect(() => {
     if (!yourTurn) return
-    const a = setTimeout(() => maybeRef.current({ face: 'wait', said: 'Hurry up' }), WAIT_MS)
-    const b = setTimeout(() => sayRef.current({ face: 'sleep', said: 'Zzz' }), SLEEP_MS)
+    const a = setTimeout(() => maybeRef.current({ face: 'wait', said: 'Hurry up', line: 'hurry' }), WAIT_MS)
+    const b = setTimeout(() => sayRef.current({ face: 'sleep', said: 'Zzz', line: 'sleep' }), SLEEP_MS)
     return () => {
       clearTimeout(a)
       clearTimeout(b)
@@ -189,7 +204,7 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     backTimer.current = setTimeout(() => {
       const item = itemFrom('p1')
       launch('p1', 'p0', item)
-      sayRef.current(item === 'axe' ? pick(AXE_BACK) : pick(BACK))
+      sayRef.current(pick(BACK))
     }, 700)
   }
 

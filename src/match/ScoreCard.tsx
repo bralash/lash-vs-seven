@@ -40,7 +40,7 @@ export function ScoreCard({ p, you, active, turn, score, value, meta }: Props) {
       <span className="mt-score__row">
         <span className="mt-score__n">{value}</span>
         {look && (
-          <span className={`mt-score__ops${hit ? ' mt-score__ops--hit' : ''}`} data-ops-face={p.id} data-ops-look={look} data-ops-turn={active || undefined}>
+          <span className={`mt-score__ops${hit ? ` mt-score__ops--hit mt-score__ops--${hit.item}` : ''}`} data-ops-face={p.id} data-ops-look={look} data-ops-turn={active || undefined}>
             {throwAt ? (
               <button type="button" className="mt-score__throw" onClick={throwAt} aria-label={`Throw something at ${p.name}`}>
                 <OpsFace look={look} mood={hit ? 'ouch' : mood} size={40} />

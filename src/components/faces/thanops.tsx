@@ -1,3 +1,4 @@
+import type { Lines } from '../../match/opsLines'
 import type { CSSProperties } from 'react'
 import type { OpsMood } from '../OpsFace'
 import { BLUSH, DROP, HEARTS, Head, INK, RAIN, SPARKLE, STEAM, VEIN, ZZ, brows, eyes, mouth, type Faces } from './parts'
@@ -147,4 +148,55 @@ export function Thanops({ mood }: { mood: OpsMood }) {
       {f.own && <Gauntlet {...f.own} />}
     </Head>
   )
+}
+
+/** What Thanops says: calm, patient, everything is about balance. */
+export const THANOPS_LINES: Lines = {
+  hello_easy: ['Hello, little one', 'Shall we?'],
+  hello_medium: ['Let us find balance', 'Shall we begin?'],
+  hello_hard: ['I am inevitable', 'You should have gone home'],
+  took: ['Balanced', 'A small price', 'Into the gauntlet'],
+  lost: ['That… cost me', 'A sacrifice', 'Hm. Bold'],
+  lucky: ['Fate agrees', 'As foretold'],
+  unlucky: ['Even fate resists', 'A stone short'],
+  crushing: ['Perfectly balanced', 'It was always going to end this way'],
+  ahead: ['As it should be', 'The stones are pleased'],
+  losing: ['Impossible…', 'This does not put a smile on my face'],
+  behind: ['A setback', 'Interesting'],
+  blunder: ['That was a mistake', 'You should have aimed higher'],
+  brilliant: ['Clever, little one', 'Unexpected'],
+  hurry: ['Time is a stone too', 'I can wait. Can you?'],
+  sleep: ['Resting, as a titan does', 'Wake me for the snap'],
+  fire_ahead: ['Burn out, then', 'Fire changes nothing'],
+  fire_behind: ['Enjoy it', 'For now'],
+  fire_level: ['We shall see', 'Balance will decide'],
+  lol_behind: ['Laugh. It changes nothing', 'Mock me while you can'],
+  lol: ['Amusing', 'Laughter. How small'],
+  wow_ahead: ['Inevitable', 'You see it now'],
+  wow: ['Unexpected', 'Even I did not foresee that'],
+  grr_ahead: ['Rage. How small', 'Accept it'],
+  grr: ['Calm yourself', 'Breathe, little one'],
+  gg: ['Well played, child', 'You were a worthy test'],
+  hurry_mine: ['Balance takes time', 'Patience'],
+  hurry_yours: ['Your move', 'The stones are waiting'],
+  win_final_hard: ['*snap*', 'Perfectly balanced'],
+  win_final: ['Balanced, as all things should be', 'A fine game'],
+  lose_final_hard: ['Again. I insist', 'This is not the end'],
+  lose_final: ['You have earned a stone', 'Hm. Well played'],
+  draw_final: ['Perfect balance', 'As it should be'],
+  hit_1: ['A tickle', 'Hm.', 'Was that meant to hurt?'],
+  hit_2: ['You are testing me', 'Careful, little one'],
+  hit_3: ['Enough', 'You will get the snap'],
+  throw_back: ['*snap*', 'Catch, little one', 'Balance restored'],
+  poke_1: ['Hm?', 'Little one…'],
+  poke_2: ['Curious, are you?', 'Yes?'],
+  poke_3: ['Careful', 'Hm.'],
+  poke_4: ['Don’t', 'I am counting'],
+  poke_5: ['One more', 'My fingers are ready'],
+  poke_6: ['I will snap you', 'ENOUGH'],
+  sulk: ['…', 'You are dust to me', 'Gone. Like half of everything'],
+  pet: ['…Fine', 'Balance', 'A rare kindness'],
+  results_win: ['Good effort, little one', 'Again?'],
+  results_lose: ['A rare loss', 'Savour it'],
+  results_draw: ['Balanced', 'Perfectly even'],
 }

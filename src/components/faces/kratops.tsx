@@ -1,3 +1,4 @@
+import type { Lines } from '../../match/opsLines'
 import type { OpsMood } from '../OpsFace'
 import { BLUSH, DROP, HEARTS, Head, RAIN, SPARKLE, STEAM, VEIN, ZZ, brows, eyes, mouth, wave, type Faces } from './parts'
 
@@ -77,4 +78,55 @@ export function Kratops({ mood }: { mood: OpsMood }) {
       {f.extra}
     </Head>
   )
+}
+
+/** What Kratops says: few words, all of them stern. */
+export const KRATOPS_LINES: Lines = {
+  hello_easy: ['Ready, boy?', 'Let us begin'],
+  hello_medium: ['Let us begin', 'Show me your strength'],
+  hello_hard: ['You will not survive this', 'Prepare yourself'],
+  took: ['Mine now', 'Weak', 'Spoils of war'],
+  lost: ['You dare?', 'Insolent', 'A scratch'],
+  lucky: ['The gods favour me', 'As it should be'],
+  unlucky: ['Cursed gods!', 'The fates mock me'],
+  crushing: ['This ends now', 'Kneel'],
+  ahead: ['Hm. As expected', 'You are outmatched'],
+  losing: ['This is not over', 'I have faced worse'],
+  behind: ['Focus…', 'Hm.'],
+  blunder: ['Pathetic', 'Sloppy, boy'],
+  brilliant: ['Impressive. For a mortal', 'Hm. Not bad'],
+  hurry: ['Make your move', 'We do not have all day'],
+  sleep: ['Wake me when you are ready', 'Zzz… boy…'],
+  fire_ahead: ['Your fire is nothing', 'Burn all you like'],
+  fire_behind: ['Do not get comfortable', 'Enjoy it while it lasts'],
+  fire_level: ['Prove it', 'Words are cheap'],
+  lol_behind: ['Laugh while you can', 'You will not laugh for long'],
+  lol: ['Silence', 'Is something funny?'],
+  wow_ahead: ['Yes. Fear me', 'Now you understand'],
+  wow: ['Even I did not see that', 'Hm!'],
+  grr_ahead: ['Rage is useless here', 'Anger will not save you'],
+  grr: ['Control your anger', 'Breathe, boy'],
+  gg: ['Well fought', 'You honour me'],
+  hurry_mine: ['Patience is a weapon', 'Do not rush a god'],
+  hurry_yours: ['Your move, boy', 'Waiting on you'],
+  win_final_hard: ['Kneel', 'You were never ready'],
+  win_final: ['You fought well', 'A good battle'],
+  lose_final_hard: ['Again. Now.', 'This is not finished'],
+  lose_final: ['You have earned this', 'Well fought, warrior'],
+  draw_final: ['We are evenly matched', 'Again'],
+  hit_1: ['Is that all?', 'Hm.', 'You missed. Almost'],
+  hit_2: ['Do not test me', 'Enough games'],
+  hit_3: ['You will regret that', 'ENOUGH!'],
+  throw_back: ['BOY.', 'Catch!', 'Return to sender'],
+  poke_1: ['Hm?', 'What.'],
+  poke_2: ['Do not touch me', 'Why'],
+  poke_3: ['Careful…', 'Hm.'],
+  poke_4: ['I am warning you', 'Stop'],
+  poke_5: ['Last warning', 'Do not'],
+  poke_6: ['ENOUGH!', 'You test a god'],
+  sulk: ['…', 'I will not speak to you', 'Leave me'],
+  pet: ['…Fine', 'Hm. Acceptable', 'Do not tell anyone'],
+  results_win: ['A worthy fight', 'Again, if you dare'],
+  results_lose: ['You got lucky', 'Leave me', 'This time'],
+  results_draw: ['Again', 'Evenly matched'],
 }

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } from 'react'
 import { Portal } from '../components/Portal'
 import { useSound } from '../lib/sound'
 
@@ -7,10 +7,11 @@ import { useSound } from '../lib/sound'
  * ball, picked at random. It lands with a splat and the face winces for a moment. Online it goes
  * over the reactions channel so every phone sees it fly from the thrower's card; against Ops she
  * takes it personally. Race games leave it out (no pelting someone mid-sprint). Whoever wears the
- * Kratops look throws his axe instead, and it spins back to their card.
+ * Kratops look throws his axe instead, and it spins back to their card; Thanops snaps and throws
+ * a stone from his gauntlet, and whoever it hits turns to dust for a moment.
  */
 
-export const ITEMS = ['tomato', 'rock', 'paper', 'axe'] as const
+export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone'] as const
 /** what anyone but Kratops picks from */
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
@@ -92,10 +93,11 @@ function land(f: Flight) {
   landers.forEach((l) => l(f))
 }
 
-/** What this card throws: the axe if they wear Kratops, otherwise whatever comes to hand. */
+/** What this card throws: Kratops his axe, Thanops a stone, anyone else whatever comes to hand. */
 export function itemFrom(id: string | null): Item {
   const el = faceEl(id)
   if (el instanceof HTMLElement && el.dataset.opsLook === 'warrior') return 'axe'
+  if (el instanceof HTMLElement && el.dataset.opsLook === 'titan') return 'stone'
   return JUNK[Math.floor(Math.random() * JUNK.length)]
 }
 
@@ -190,7 +192,7 @@ function Flying({ f }: { f: Flight }) {
     // a lob: up over the straight line, higher the further it goes
     // …but never off the top of the screen (the cards sit near it)
     const lift = Math.min(160, 50 + Math.hypot(x1 - x0, y1 - y0) * 0.35, Math.max(16, Math.min(y0, y1) - 20))
-    const spin = (f.item === 'axe' ? 1080 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
+    const spin = (f.item === 'axe' ? 1080 : f.item === 'stone' ? 720 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
     const frames = Array.from({ length: 11 }, (_, i) => {
       const t = i / 10
       const x = x0 + (x1 - x0) * t
@@ -210,14 +212,18 @@ function Flying({ f }: { f: Flight }) {
   }, [f])
   return (
     <span ref={el} className="throw__item">
-      <ItemArt item={f.item} />
+      <ItemArt item={f.item} id={f.id} />
     </span>
   )
 }
 
 const INK = 'var(--ink)'
 
-export function ItemArt({ item, size = 34 }: { item: Item; size?: number }) {
+/** the six stones' colours; which one flies is picked from the flight, so it's random per throw */
+const STONE = ['#3a7bff', '#e5333b', '#9b4dff', '#ffd23f', '#ff8c1a', '#2fbf5b']
+const stoneOf = (id = 0) => id % STONE.length
+
+export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id?: number }) {
   return (
     <svg viewBox="0 0 40 40" width={size} height={size}>
       {item === 'tomato' && (
@@ -231,6 +237,13 @@ export function ItemArt({ item, size = 34 }: { item: Item; size?: number }) {
         <>
           <path d="M8 24l4-11 10-5 10 5 2 12-7 8-13 0z" fill="#9a9a9a" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
           <path d="M14 18l5 2M24 14l1 6M18 28l6-2" stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      )}
+      {item === 'stone' && (
+        <>
+          <circle className="throw__glow" cx="20" cy="20" r="14" fill={STONE[stoneOf(id)]} opacity=".35" />
+          <path d="M20 8l10 7-3 13H13L10 15z" fill={STONE[stoneOf(id)]} stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M15 15l5-4 4 3" stroke="#fff" strokeWidth="2" fill="none" opacity=".8" />
         </>
       )}
       {item === 'axe' && (
@@ -267,6 +280,13 @@ export function Splat({ hit }: { hit: Hit }) {
           />
         )}
         {hit.item === 'rock' && <path d="M20 3l4 10 11-3-7 9 9 6-11 1 1 11-7-8-7 8 1-11-11-1 9-6-7-9 11 3z" fill="var(--hit)" stroke={INK} strokeWidth="2" strokeLinejoin="round" />}
+        {hit.item === 'stone' && (
+          <g className="throw__dust">
+            {[[10, 12], [28, 8], [34, 22], [6, 26], [22, 30], [16, 20], [30, 32], [12, 4]].map(([x, y], i) => (
+              <rect key={i} x={x} y={y} width="4" height="4" fill={i % 2 ? '#8a7f6e' : '#b9ad98'} style={{ '--i': i } as CSSProperties} />
+            ))}
+          </g>
+        )}
         {hit.item === 'axe' && (
           <g stroke={INK} strokeWidth="2.5" strokeLinecap="round" fill="none">
             <path d="M8 8l24 24" stroke="#c4262e" strokeWidth="4" />

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useSound } from '../lib/sound'
-import { OpsFace, useOpsPronouns, type BaseMood, type OpsMood } from './OpsFace'
+import { lineFor, linesFor, type LineKey } from '../match/opsLines'
+import { OpsFace, useOpsLook, useOpsPronouns, type BaseMood, type OpsMood } from './OpsFace'
 import '../styles/pokeops.css'
 
 /**
@@ -46,6 +47,9 @@ const SULK_MS = 4000
 export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number }) {
   const { play } = useSound()
   const { them } = useOpsPronouns()
+  // a character (Kratops, Thanops) says its own words; the face is the same
+  const lines = linesFor(useOpsLook())
+  const own = ([mood, line]: Say, key: LineKey): Say => [mood, lineFor(lines, key, line)]
   const [say, setSay] = useState<{ mood: OpsMood; line: string; n: number } | null>(null)
   const pokes = useRef({ count: rest === 'lose' ? 2 : 0, at: 0, sulkUntil: 0, n: 0, first: true })
   const hold = useRef<number | undefined>(undefined)
@@ -65,7 +69,7 @@ export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number
     const p = pokes.current
     const now = Date.now()
     if (now < p.sulkUntil) {
-      show(pick(SULK))
+      show(own(pick(SULK), 'sulk'))
       return
     }
     p.count = Math.max(0, p.count - Math.floor((now - p.at) / COOL_MS)) + 1
@@ -73,7 +77,7 @@ export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number
     if (p.first && FIRST[rest].length) {
       p.first = false
       play('tap')
-      show(pick(FIRST[rest]))
+      show(own(pick(FIRST[rest]), rest === 'win' ? 'results_win' : rest === 'lose' ? 'results_lose' : 'results_draw'))
       return
     }
     p.first = false
@@ -82,10 +86,10 @@ export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number
       p.count = 0
       p.sulkUntil = now + SULK_MS
       play('error')
-      show(pick(SULK), SULK_MS)
+      show(own(pick(SULK), 'sulk'), SULK_MS)
       return
     }
-    const s = pick(POKES[row])
+    const s = own(pick(POKES[row]), `poke_${row + 1}` as LineKey)
     play(s[0] === 'angry' || s[0] === 'salty' ? 'error' : 'tap')
     show(s)
   }
@@ -96,7 +100,7 @@ export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number
     p.sulkUntil = 0
     p.at = Date.now()
     play('find')
-    show(pick(PETS), 2200)
+    show(own(pick(PETS), 'pet'), 2200)
   }
 
   const down = (e: PointerEvent) => {
