@@ -371,6 +371,26 @@ export const GAMES: GameMeta[] = [
       { title: 'Scoring', body: 'Games to 11, win by 2. Two serves each, then one each from 10–10. Win a single game, or the best of 3 or 5.' },
     ],
   },
+  {
+    slug: 'pool',
+    fullscreen: true,
+    tiles: 'POOL',
+    name: 'Pool',
+    blurb: 'American 8-ball. Break, take solids or stripes, clear your group and sink the 8. Drag the cue round to aim with the full guide line, pull the power cue down and let go.',
+    category: 'sport',
+    length: '~10 min',
+    modes: 'local',
+    status: 'live',
+    tagline: 'American 8-ball · drag the cue to aim · pull the power cue down to shoot',
+    rules: [
+      { title: 'Aim', body: 'Grab the cue and drag it round the ball, or touch anywhere else on the table to point the shot there. The guide line shows where the cue ball goes, the ghost ball where it meets the first ball, which way that ball travels and where the cue ball heads after. For a thin cut, slide the ridged wheel at the top of the side panel up or down to nudge the aim.' },
+      { title: 'Shoot', body: 'Pull the cue in the side panel down (the cue on the table draws back with it) and let go to strike. A short pull is a soft touch, all the way down a full-power break; push it back up to call the shot off. Tap the cue ball at the bottom of the panel to set spin on a big ball: drag the red dot high for follow (it rolls on after the hit), low for draw (it comes back), or left or right for side, which bends it off the cushions that way.' },
+      { title: 'The pockets', body: 'Each cushion turns back into the rail at a pocket. Catch that edge and the ball bounces off it, or rattles in the jaws and stays out; send it cleanly between them and it drops.' },
+      { title: 'Solids or stripes', body: 'After the break the table is open. The first ball you pot makes that group yours (solids 1–7 or stripes 9–15) and the other group your opponent’s.' },
+      { title: 'Your turn', body: 'Pot one of yours and you shoot again. Miss, pot only theirs, or pot the cue ball (a scratch, it goes back on its spot) and it’s their turn.' },
+      { title: 'The 8', body: 'Once your group is cleared, pot the 8 to win the frame. Pot the 8 before that, or scratch while potting it, and you lose the frame. On the break the 8 just comes back up. Win a single frame, or the best of 3 or 5.' },
+    ],
+  },
 ]
 
 export const CATEGORY_LABEL: Record<Category, string> = {

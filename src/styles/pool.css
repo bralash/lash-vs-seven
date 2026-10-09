@@ -1,0 +1,196 @@
+/* ── Pool: the HUD, a status line, the table with the power strip beside it and fine aim under it ── */
+.poolm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 10px;
+  width: min(620px, 100%);
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+.poolm > * { width: 100%; }
+
+.poolm-frame {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 76px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.poolm-frame .label { color: var(--paper-2); font-size: 10px; }
+.poolm-to { font: 500 10px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--paper); }
+
+/* what just happened: a stamp over the far end of the table that fades after a moment */
+.poolm-status {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  width: max-content;
+  max-width: calc(100% - 48px);
+  margin: 0;
+  padding: 5px 12px 3px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--display);
+  font-size: clamp(13px, 3.6vw, 18px);
+  line-height: 1.15;
+  text-transform: uppercase;
+  text-align: center;
+  pointer-events: none;
+  animation: stamp-in .25s var(--ease-snap) both, poolm-fade .4s 3.2s ease-in forwards;
+}
+.poolm-status--you { background: var(--hit); }
+/* a frame's result stays up until the next rack */
+.poolm-status--stay { animation: stamp-in .25s var(--ease-snap) both; }
+@keyframes poolm-fade { to { opacity: 0; } }
+
+/* the table as big as the screen allows, with the side panel (fine aim, the power cue, spin) beside it */
+.poolm-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 44px;
+  justify-content: center;
+  align-items: stretch;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.poolm-table {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: min(calc(100dvh - 170px), calc((100vw - 62px) * 1.866), 900px);
+  min-height: 300px;
+  width: auto;
+  max-width: 100%;
+  touch-action: none;
+  /* the cue can reach past the table */
+  overflow: visible;
+  cursor: crosshair;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / .35));
+}
+.poolm-grab { cursor: grab; touch-action: none; }
+.pool-num { font: 700 6.4px/1 var(--mono); fill: #17151c; }
+.poolm-guide line { stroke: #fff; stroke-width: 1.6; stroke-linecap: round; opacity: .9; }
+.poolm-guide .poolm-guide__cue { opacity: .75; }
+.poolm-ghost { fill: rgb(255 255 255 / .28); stroke: rgb(255 255 255 / .85); stroke-width: 1.2; }
+
+/* the side panel: dark, rounded like the rest of the table */
+.poolm-side {
+  display: grid;
+  grid-template-rows: 70px 1fr 44px;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #1d2433, #121722);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .08), 0 6px 12px rgb(0 0 0 / .3);
+}
+.poolm-side--off .poolm-fine, .poolm-side--off .poolm-power, .poolm-side--off .poolm-spin { opacity: .4; pointer-events: none; }
+/* a ridged wheel: slide up or down to nudge the aim */
+.poolm-fine { position: relative; overflow: hidden; border-radius: 8px; background: linear-gradient(90deg, #3a4253, #6a7385 50%, #3a4253); touch-action: none; cursor: ns-resize; }
+.poolm-fine__ridges { position: absolute; inset: 0; background: repeating-linear-gradient(180deg, rgb(0 0 0 / .45) 0 2px, transparent 2px 10px); }
+/* the power cue: pull it down, let go */
+.poolm-power {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(90deg, #0b0f17, #1c2331 50%, #0b0f17);
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .18);
+  touch-action: none;
+  cursor: ns-resize;
+}
+.poolm-power__ticks { position: absolute; inset: 14px 0; background: repeating-linear-gradient(180deg, transparent 0 calc(16.6% - 2px), rgb(255 255 255 / .35) calc(16.6% - 2px) 16.6%); mask: linear-gradient(90deg, #000 0 22%, transparent 22% 78%, #000 78%); }
+.poolm-power__cue {
+  position: absolute;
+  top: 6px;
+  bottom: 10%;
+  left: 50%;
+  width: 7px;
+  margin-left: -3.5px;
+  border-radius: 3px 3px 4px 4px;
+  background: linear-gradient(180deg, #f7f4ec 0 6px, #e4bf7c 6px 62%, #b3202a 62% 70%, #f2ede2 70% 72%, #b3202a 72% 80%, #f2ede2 80% 82%, #b3202a 82% 96%, #2a1a12 96%);
+  box-shadow: 1px 0 0 rgb(255 255 255 / .25) inset, 0 2px 4px rgb(0 0 0 / .5);
+}
+.poolm-power__value { position: absolute; inset: auto 0 6px; font: 700 11px var(--mono); color: #fff; text-align: center; text-shadow: 0 1px 2px #000; }
+.poolm-spin { padding: 0; border: 0; background: none; cursor: pointer; touch-action: none; justify-self: center; }
+.poolm-spin svg { display: block; width: 36px; height: 36px; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .5)); }
+
+/* the spin picker: a big cue ball over the screen */
+.poolm-spinpick {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(6 10 20 / .72);
+  animation: poolm-in .15s ease-out both;
+}
+@keyframes poolm-in { from { opacity: 0; } }
+.poolm-spinpick__card {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  width: min(340px, 100%);
+  padding: 18px 16px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1d2433, #121722);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1), 0 18px 40px rgb(0 0 0 / .5);
+  color: #fff;
+}
+.poolm-spinpick__title { margin: 0; font: 400 18px/1.1 var(--display); text-transform: uppercase; text-align: center; }
+.poolm-spinpick__ball { position: relative; padding: 22px 34px; }
+.poolm-spinpick__ball svg { display: block; width: min(56vw, 230px); height: auto; touch-action: none; cursor: crosshair; filter: drop-shadow(0 10px 14px rgb(0 0 0 / .5)); }
+.poolm-spinpick__tag { position: absolute; font: 500 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: rgb(255 255 255 / .7); }
+.poolm-spinpick__tag--t { top: 2px; left: 50%; translate: -50% 0; }
+.poolm-spinpick__tag--b { bottom: 2px; left: 50%; translate: -50% 0; }
+.poolm-spinpick__tag--l { left: 0; top: 50%; translate: 0 -50%; }
+.poolm-spinpick__tag--r { right: 0; top: 50%; translate: 0 -50%; }
+.poolm-spinpick__actions .btn { color: var(--ink); }
+.poolm-spinpick__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+
+/* results */
+.poolm-results { gap: 22px; padding-top: clamp(8px, 4vh, 40px); }
+.poolm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.poolm-results__title { font-size: clamp(48px, 12vw, 100px); animation: stamp-in .5s var(--ease-snap) both; }
+.poolm-results__title--win { justify-self: center; width: auto; padding: 0 .15em; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: var(--shadow-lg); transform: rotate(-2deg); }
+.poolm-results__line { margin: 0; font-family: var(--display); font-size: clamp(24px, 5vw, 32px); }
+.poolm-results__line span { color: var(--dim); }
+.poolm-results__frames { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font: 500 12px var(--mono); letter-spacing: .04em; color: var(--ink-soft); }
+
+/* wider screens have taller score cards above */
+@media (width >= 900px) {
+  .poolm-table { height: min(calc(100dvh - 210px), 900px); }
+}
+
+/* phones during the match: everything on one screen, the table nearly edge to edge. The stage takes
+   whatever height is left under the score cards and the table is sized from that (container units), so
+   it never runs off the bottom however tall the cards or the browser bars are */
+@media (width < 900px) {
+  html.scroll-locked .poolm {
+    flex: 1;
+    min-height: 0;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    gap: 8px;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  html.scroll-locked .poolm > .poolm-stage {
+    width: calc(100% + 20px);
+    margin-inline: -10px;
+    min-height: 0;
+    container-type: size;
+    align-content: start;
+  }
+  html.scroll-locked .poolm-table,
+  html.scroll-locked .poolm-side { height: min(100cqh, (100cqw - 50px) * 1.852); min-height: 0; }
+  html.scroll-locked .poolm-side { align-self: start; }
+  html.scroll-locked .poolm .mt-score { padding-block: 6px 8px; }
+}

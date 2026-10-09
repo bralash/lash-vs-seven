@@ -121,7 +121,7 @@ export function LocalSetup({
           Start game <span className="keycap">↵</span>
         </button>
         <button type="button" className="link-btn" onClick={onBack}>
-          {game.modes === 'vs Ops' ? 'Back' : 'Play online instead'}
+          {game.modes === 'vs Ops' || game.modes === 'local' ? 'Back' : 'Play online instead'}
         </button>
       </form>
     </main>

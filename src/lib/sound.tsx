@@ -1,7 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { KEYS, load, save } from './storage'
 
-export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack' | 'pong' | 'ping' | 'smash'
+export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack' | 'pong' | 'ping' | 'smash' | 'cue' | 'clink' | 'pot'
 
 // Short synthesized cues — no audio files to load.
 const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; len: number; vol: number }> = {
@@ -23,6 +23,10 @@ const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; le
   // table tennis: the racket, and the ball off the table
   pong: { type: 'triangle', notes: [520], gap: 0, len: 0.05, vol: 0.09 },
   ping: { type: 'sine', notes: [1500], gap: 0, len: 0.04, vol: 0.06 },
+  // pool: the cue on the ball, two balls meeting, one dropping
+  cue: { type: 'triangle', notes: [340], gap: 0, len: 0.05, vol: 0.08 },
+  clink: { type: 'sine', notes: [2300], gap: 0, len: 0.035, vol: 0.07 },
+  pot: { type: 'triangle', notes: [190, 120], gap: 0.05, len: 0.1, vol: 0.12 },
   smash: { type: 'square', notes: [420, 210], gap: 0.02, len: 0.09, vol: 0.12 },
   // a chip landing on the pile
   clack: { type: 'square', notes: [1900, 1300], gap: 0.012, len: 0.025, vol: 0.05 },
@@ -41,12 +45,42 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   const [muted, setMuted] = useState(() => load(KEYS.sound) === 'off')
   const ctxRef = useRef<AudioContext | null>(null)
 
+  /**
+   * The audio, awake. Phones put it to sleep (screen locked, another app, a call, the mic for a voice
+   * note) and it can start asleep when the first sound isn't from a tap; it never wakes by itself.
+   */
+  const wake = useCallback(() => {
+    let ctx = ctxRef.current
+    if (!ctx || ctx.state === 'closed') ctx = ctxRef.current = new AudioContext()
+    if (ctx.state !== 'running') ctx.resume().catch(() => {})
+    return ctx
+  }, [])
+  // every tap or key wakes it (browsers only let a tap do that), and so does coming back to the page
+  useEffect(() => {
+    if (muted) return
+    const onTap = () => {
+      try {
+        wake()
+      } catch {
+        /* audio unavailable */
+      }
+    }
+    const onShow = () => document.visibilityState === 'visible' && ctxRef.current && onTap()
+    window.addEventListener('pointerdown', onTap, true)
+    window.addEventListener('keydown', onTap, true)
+    document.addEventListener('visibilitychange', onShow)
+    return () => {
+      window.removeEventListener('pointerdown', onTap, true)
+      window.removeEventListener('keydown', onTap, true)
+      document.removeEventListener('visibilitychange', onShow)
+    }
+  }, [muted, wake])
+
   const play = useCallback(
     (cue: Cue) => {
       if (muted) return
       try {
-        ctxRef.current ??= new AudioContext()
-        const ctx = ctxRef.current
+        const ctx = wake()
         const { type, notes, gap, len, vol } = CUES[cue]
         notes.forEach((freq, i) => {
           const osc = ctx.createOscillator()
@@ -64,7 +98,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
         /* audio unavailable */
       }
     },
-    [muted],
+    [muted, wake],
   )
 
   const toggle = useCallback(() => {

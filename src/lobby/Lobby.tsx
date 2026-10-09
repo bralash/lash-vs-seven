@@ -606,7 +606,17 @@ function StartScreen({
         </div>
       )}
 
-      {game.modes !== 'vs Ops' && (
+      {/* a game on one device for now: no rooms yet */}
+      {game.modes === 'local' && onLocal && (
+        <div className="lobby__stack">
+          <button type="button" className="btn btn--primary btn--lg btn--block" onClick={onLocal}>
+            Pass &amp; play <span className="keycap">↵</span>
+          </button>
+          <p className="hint lobby__center">On one device for now · playing a friend online comes next</p>
+        </div>
+      )}
+
+      {game.modes !== 'vs Ops' && game.modes !== 'local' && (
         <>
           <form className="lobby__stack" onSubmit={onCreate}>
             <NameField value={name} onChange={setName} autoFocus={!name} />
@@ -647,7 +657,7 @@ function StartScreen({
         </>
       )}
 
-      {onLocal && (
+      {onLocal && game.modes !== 'local' && (
         <>
           <div className="divider" role="separator"><span>or on one device</span></div>
           <div className={onBot ? 'lobby__solo' : undefined}>
