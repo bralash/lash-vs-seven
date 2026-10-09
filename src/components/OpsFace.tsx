@@ -2,6 +2,7 @@ import { useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { KEYS, load, save } from '../lib/storage'
 import '../styles/opsfaces.css'
 import { Kratops } from './faces/kratops'
+import { Ghops } from './faces/ghops'
 import { Hulkops } from './faces/hulkops'
 import { DROP, Head, INK, heart, star } from './faces/parts'
 import { Opstimus } from './faces/opstimus'
@@ -10,7 +11,7 @@ import { Thanops } from './faces/thanops'
 
 // Faces for Ops, the computer opponent. Players pick which one she wears at /ops (saved on the
 // device); OPS_LOOK is the default. Every look has the five base moods; Screen and the characters
-// (Kratops, Thanops, Spidops, Opstimus, Hulkops: drawn in faces/) also have a face for every reaction, and the other looks
+// (Kratops, Thanops, Spidops, Opstimus, Hulkops, Ghops: drawn in faces/) also have a face for every reaction, and the other looks
 // borrow the nearest base mood.
 
 export type BaseMood = 'idle' | 'think' | 'win' | 'lose' | 'draw'
@@ -21,7 +22,7 @@ export type ReactMood =
   /** when you poke or pet her (PokeOps) */
   | 'love' | 'giggle' | 'angry'
 export type OpsMood = BaseMood | ReactMood
-export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'prime' | 'warrior' | 'titan' | 'spider' | 'brute'
+export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'prime' | 'warrior' | 'titan' | 'spider' | 'brute' | 'ghost'
 
 /** The face Ops wears until a player picks another. */
 export const OPS_LOOK: OpsStyle = 'screen'
@@ -48,6 +49,7 @@ export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: 
   { id: 'titan', name: 'Thanops', blurb: 'A purple titan with a ridged chin and a gold gauntlet. Six stones glow when he’s winning; he snaps when he wins, and when he loses they fall out.', pronouns: HE },
   { id: 'spider', name: 'Spidops', blurb: 'A red mask with a web over it and two big white lenses that do all his frowning. His spider-sense buzzes when he’s worried; he shoots webs, and when he loses he hangs upside down.', pronouns: HE },
   { id: 'brute', name: 'Hulkops', blurb: 'A huge green brute with a black mop of hair and fists like boulders. He pounds his fists when he’s cross and throws chunks of rubble; when he loses he shrinks back into a pale little scientist in glasses.', pronouns: HE },
+  { id: 'ghost', name: 'Ghops', blurb: 'A soldier in a black balaclava with a white skull on it; only his eyes show. His headset blinks while he thinks, the shades go on when he wins, and he throws flashbangs. Few words.', pronouns: HE },
 ]
 
 /* ── The player's pick ── */
@@ -445,7 +447,7 @@ const REACT_FACES: Record<ReactMood, (px: string) => ReactNode> = {
 }
 
 /** Looks with their own face for every reaction (the rest borrow a base mood). */
-const OWN_REACTIONS = new Set<OpsStyle>(['screen', 'warrior', 'titan', 'spider', 'prime', 'brute'])
+const OWN_REACTIONS = new Set<OpsStyle>(['screen', 'warrior', 'titan', 'spider', 'prime', 'brute', 'ghost'])
 export const hasOwnReactions = (look: OpsStyle) => OWN_REACTIONS.has(look)
 
 /** The other looks only know the five base moods, so reactions borrow the nearest one. */
@@ -455,7 +457,7 @@ const BASE: Record<ReactMood, BaseMood> = {
   love: 'win', giggle: 'win', angry: 'lose',
 }
 
-const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, prime: Opstimus, warrior: Kratops, titan: Thanops, spider: Spidops, brute: Hulkops }
+const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, prime: Opstimus, warrior: Kratops, titan: Thanops, spider: Spidops, brute: Hulkops, ghost: Ghops }
 
 /** Ops' face. Moods animate in CSS; remount (change `key`) to replay a one-shot mood. */
 export function OpsFace({ look: forced, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {

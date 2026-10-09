@@ -146,5 +146,9 @@
 @keyframes opsf-pound { from { translate: 0 -6px; } to { translate: 0 2px; } }
 .opsf-flex { transform-box: fill-box; transform-origin: bottom center; animation: opsf-flex .9s ease-in-out infinite alternate; }
 @keyframes opsf-flex { to { scale: 1.12; rotate: -6deg; } }
+/* Ghops: the headset's comms light blinks; the shades drop on */
+.opsf-comms { animation: opsf-comms .6s steps(1) infinite; }
+@keyframes opsf-comms { 50% { opacity: .2; } }
+.opsf-shades { animation: opsf-plate .25s ease-out both; }
 .opsf--brute.opsf--angry .opsf-mop, .opsf--brute.opsf--salty .opsf-mop { animation: opsf-bristle .12s steps(2) infinite; }
 @keyframes opsf-bristle { 50% { translate: 0 -1.5px; } }

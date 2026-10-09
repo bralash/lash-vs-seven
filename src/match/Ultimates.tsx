@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { OpsMood } from '../components/OpsFace'
+import { ReticleArt } from '../components/faces/ghops'
 import { FistArt } from '../components/faces/hulkops'
 import { TruckArt } from '../components/faces/opstimus'
 import { WebArt } from '../components/faces/spidops'
@@ -19,29 +20,31 @@ import { ItemArt, throwsIn, type Item } from './Throws'
  * stones and dusts half the board, which then puts itself back; Spidops' Thwip shoots a web from
  * his card and nets the whole board; Opstimus turns into his truck and roars across the board,
  * horn blaring, leaving tyre tracks; Hulkops' Smash brings a giant fist down on the board, which jumps
- * and shakes with a shockwave. The robot faces fizz the screen
+ * and shakes with a shockwave; Ghops calls in an Airstrike: a red reticle locks onto the board, then
+ * three blasts shake it. The robot faces fizz the screen
  * into static. Looks only: the game underneath never changes and taps go straight through. One
  * use per win. Online it rides the reactions channel (k = 'ult'); anyone can mute incoming ones.
  */
 
-export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'smash' | 'static'
+export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'smash' | 'airstrike' | 'static'
 export const ULTS: Record<Ult, { name: string; said: string }> = {
   rage: { name: 'Spartan Rage', said: 'BOY.' },
   snap: { name: 'The Snap', said: 'Perfectly balanced.' },
   thwip: { name: 'Thwip', said: 'Thwip! Gotcha.' },
   rollout: { name: 'Roll Out', said: 'Opsbots, roll out!' },
   smash: { name: 'Hulk Smash', said: 'HULK SMASH!' },
+  airstrike: { name: 'Airstrike', said: 'Danger close.' },
   static: { name: 'Static', said: 'Bzzt.' },
 }
-export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : 'static')
+export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : look === 'ghost' ? 'airstrike' : 'static')
 
 /** how long each show runs, and when it lands (the hit on the faces, the shake, the dust) */
-const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, smash: 2600, static: 1700 }
-const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, smash: 480, static: 150 }
+const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, smash: 2600, airstrike: 2900, static: 1700 }
+const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, smash: 480, airstrike: 1000, static: 150 }
 /** what the faces it lands on wear, like a throw */
-const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, smash: 'rubble', static: null }
+const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, smash: 'rubble', airstrike: 'flash', static: null }
 /** the firing card's face while it plays */
-export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', smash: 'angry', static: 'gotcha' }
+export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', smash: 'angry', airstrike: 'smug', static: 'gotcha' }
 
 interface Show {
   n: number
@@ -368,6 +371,16 @@ function Play({ s }: { s: Show }) {
       later(IMPACT_MS.smash + 900, () => pieces.forEach((k) => k.classList.remove('ult-jump')))
       dusted = pieces
     }
+    if (s.ult === 'airstrike') {
+      // the reticle beeps as it locks on, then three blasts
+      for (let i = 0; i < 4; i++) later(150 + i * 200, () => play('tick'))
+      for (let i = 0; i < 3; i++)
+        later(IMPACT_MS.airstrike + i * 220, () => {
+          play('boom')
+          navigator.vibrate?.(70)
+          if (!calm) app?.animate([{ translate: '0 0' }, { translate: `${i % 2 ? 7 : -7}px 5px` }, { translate: '-4px -4px' }, { translate: '0 0' }], { duration: 300, easing: 'ease-out' })
+        })
+    }
     if (s.ult === 'static') {
       play('buzz')
       navigator.vibrate?.([30, 30, 30, 30, 30])
@@ -471,6 +484,18 @@ function Play({ s }: { s: Show }) {
           <span className="ult__fist">
             <FistArt size={Math.min(220, innerWidth * 0.5)} />
           </span>
+        </>
+      )}
+      {s.ult === 'airstrike' && (
+        <>
+          <span className="ult__reticle">
+            <ReticleArt size={Math.min(geo.span, 300)} />
+          </span>
+          {/* three blasts around the middle of the board */}
+          {[[-0.22, -0.12], [0.2, 0.06], [-0.04, 0.2]].map(([dx, dy], i) => (
+            <span key={i} className="ult__blast" style={{ '--bx': `${dx * geo.span}px`, '--by': `${dy * geo.span}px`, '--i': i } as CSSProperties} />
+          ))}
+          <div className="ult__flash ult__flash--blast" />
         </>
       )}
       {s.ult === 'static' && (

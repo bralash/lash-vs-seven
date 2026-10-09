@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } from 'react'
+import { FlashArt } from '../components/faces/ghops'
 import { RubbleArt } from '../components/faces/hulkops'
 import { WebArt, webPath } from '../components/faces/spidops'
 import { Portal } from '../components/Portal'
@@ -12,10 +13,10 @@ import { useSound } from '../lib/sound'
  * Kratops look throws his axe instead, and it spins back to their card; Thanops snaps and throws
  * a stone from his gauntlet, and whoever it hits turns to dust for a moment; Spidops shoots a ball
  * of web that wraps whoever it hits; Opstimus throws a glowing Energon cube that zaps the face pink; Hulkops hurls a chunk of rubble that
- * squashes the face flat for a moment.
+ * squashes the face flat for a moment; Ghops lobs a flashbang that blinds the face white.
  */
 
-export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble'] as const
+export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble', 'flash'] as const
 /** what anyone but the characters picks from */
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
@@ -99,7 +100,7 @@ function land(f: Flight) {
   landers.forEach((l) => l(f))
 }
 
-/** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, Hulkops rubble, anyone else whatever comes to hand. */
+/** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, Hulkops rubble, Ghops a flashbang, anyone else whatever comes to hand. */
 export function itemFrom(id: string | null): Item {
   const el = faceEl(id)
   if (el instanceof HTMLElement && el.dataset.opsLook === 'warrior') return 'axe'
@@ -107,6 +108,7 @@ export function itemFrom(id: string | null): Item {
   if (el instanceof HTMLElement && el.dataset.opsLook === 'spider') return 'web'
   if (el instanceof HTMLElement && el.dataset.opsLook === 'prime') return 'cube'
   if (el instanceof HTMLElement && el.dataset.opsLook === 'brute') return 'rubble'
+  if (el instanceof HTMLElement && el.dataset.opsLook === 'ghost') return 'flash'
   return JUNK[Math.floor(Math.random() * JUNK.length)]
 }
 
@@ -202,7 +204,7 @@ function Flying({ f }: { f: Flight }) {
     // a lob: up over the straight line, higher the further it goes
     // …but never off the top of the screen (the cards sit near it)
     const lift = Math.min(160, 50 + Math.hypot(x1 - x0, y1 - y0) * 0.35, Math.max(16, Math.min(y0, y1) - 20))
-    const spin = (f.item === 'axe' ? 1080 : f.item === 'stone' ? 720 : f.item === 'web' ? 160 : f.item === 'cube' ? 450 : f.item === 'rubble' ? 380 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
+    const spin = (f.item === 'axe' ? 1080 : f.item === 'stone' ? 720 : f.item === 'web' ? 160 : f.item === 'cube' ? 450 : f.item === 'rubble' ? 380 : f.item === 'flash' ? 600 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
     const frames = Array.from({ length: 11 }, (_, i) => {
       const t = i / 10
       const x = x0 + (x1 - x0) * t
@@ -273,6 +275,7 @@ export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id
         </>
       )}
       {item === 'rubble' && <RubbleArt />}
+      {item === 'flash' && <FlashArt />}
       {item === 'axe' && (
         <>
           <path d="M9 33L29 13" stroke="#7a4a26" strokeWidth="4.5" strokeLinecap="round" />
@@ -291,7 +294,7 @@ export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id
   )
 }
 
-/** What's left on a face for a moment: a red splat, a bonk star, paper bits, dust, a web, a pink zap or cracks. */
+/** What's left on a face for a moment: a red splat, a bonk star, paper bits, dust, a web, a pink zap, cracks or a flash. */
 export function Splat({ hit }: { hit: Hit }) {
   if (hit.item === 'web')
     return (
@@ -333,6 +336,7 @@ export function Splat({ hit }: { hit: Hit }) {
             <rect x="29" y="31" width="4" height="4" fill="#a39a8c" />
           </g>
         )}
+        {hit.item === 'flash' && <path d="M20 1l4 12 12-5-7 11 10 6-12 2 2 12-9-8-9 8 2-12-12-2 10-6-7-11 12 5z" fill="#fff" stroke="#ffd23f" strokeWidth="2" strokeLinejoin="round" />}
         {hit.item === 'cube' && (
           <g fill="none" stroke="#ff5fc8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 2l-3 8 5 2-3 8M38 18l-8 1 1 5-8 1M4 24l8-2 0 5 7-1M24 38l-2-8-5 1-1-7" />

@@ -1,4 +1,5 @@
 import type { OpsStyle } from '../components/OpsFace'
+import { GHOPS_LINES } from '../components/faces/ghops'
 import { HULKOPS_LINES } from '../components/faces/hulkops'
 import { KRATOPS_LINES } from '../components/faces/kratops'
 import { OPSTIMUS_LINES } from '../components/faces/opstimus'
@@ -39,7 +40,7 @@ export type LineKey =
 
 export type Lines = Partial<Record<LineKey, string[]>>
 
-const BY_LOOK: Partial<Record<OpsStyle, Lines>> = { warrior: KRATOPS_LINES, titan: THANOPS_LINES, spider: SPIDOPS_LINES, prime: OPSTIMUS_LINES, brute: HULKOPS_LINES }
+const BY_LOOK: Partial<Record<OpsStyle, Lines>> = { warrior: KRATOPS_LINES, titan: THANOPS_LINES, spider: SPIDOPS_LINES, prime: OPSTIMUS_LINES, brute: HULKOPS_LINES, ghost: GHOPS_LINES }
 
 export const linesFor = (look: OpsStyle): Lines => BY_LOOK[look] ?? {}
 
