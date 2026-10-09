@@ -59,3 +59,14 @@
 }
 .opsroom__soon-card .stamp { justify-self: start; }
 .opsroom__soon-card .opsroom__name { color: color-mix(in srgb, var(--ink) 62%, var(--paper)); }
+
+/* ── Faces for sale: a chip price on the locked ones, and the buy bar under the one you're looking at ── */
+.opsroom__wallet { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 0; padding: 4px 12px 4px 6px; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: var(--shadow-sm); font: 500 14px var(--mono); font-variant-numeric: tabular-nums; }
+.opsroom__look--locked > svg { filter: grayscale(.55); opacity: .8; }
+.opsroom__look--locked[aria-checked="true"] > svg { filter: none; opacity: 1; }
+.opsroom__price { position: absolute; top: -12px; left: -8px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 3px; border: 2px solid var(--ink); background: var(--slot); box-shadow: 2px 2px 0 var(--ink); font: 500 12px var(--mono); font-variant-numeric: tabular-nums; rotate: -5deg; }
+.opsroom__buy { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; margin-bottom: 14px; padding: 12px 14px; border: var(--edge) solid var(--ink); background: var(--slot); box-shadow: var(--shadow-sm); font: 14px var(--mono); }
+.opsroom__buy > span:first-child { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.opsroom__buy b { font: 400 20px var(--display); }
+.opsroom__need { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.opsroom__buy .error-text { flex-basis: 100%; text-align: center; }

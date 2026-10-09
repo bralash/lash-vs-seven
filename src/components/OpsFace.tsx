@@ -39,18 +39,21 @@ export interface Pronouns {
 const SHE: Pronouns = { they: 'she', them: 'her', their: 'her' }
 const HE: Pronouns = { they: 'he', them: 'him', their: 'his' }
 
-export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: Pronouns }[] = [
+export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: Pronouns; /** chips to unlock it; the robot faces are free */ price?: number }[] = [
   { id: 'screen', name: 'Screen', blurb: 'A little monitor with pixel eyes. Thinking shows a loading bar.', pronouns: SHE },
   { id: 'bot', name: 'Bot', blurb: 'Classic robot head in Seven blue: antenna, round eyes, grille mouth.', pronouns: SHE },
   { id: 'cyclops', name: 'Cyclops', blurb: 'One big camera eye that watches the board.', pronouns: SHE },
   { id: 'die', name: 'Die', blurb: 'A die whose pips are her eyes. Thinking rolls through the faces.', pronouns: SHE },
-  { id: 'prime', name: 'Opstimus', blurb: 'A robot leader in a blue helmet with tall antennae and bright blue eyes. His battle mask slides shut when he means business; he throws Energon cubes, and for his ultimate he turns into a truck.', pronouns: HE },
-  { id: 'warrior', name: 'Kratops', blurb: 'Ash-grey god of war with a red stripe of war paint. He doesn’t throw tomatoes: he throws his axe, and it comes back.', pronouns: HE },
-  { id: 'titan', name: 'Thanops', blurb: 'A purple titan with a ridged chin and a gold gauntlet. Six stones glow when he’s winning; he snaps when he wins, and when he loses they fall out.', pronouns: HE },
-  { id: 'spider', name: 'Spidops', blurb: 'A red mask with a web over it and two big white lenses that do all his frowning. His spider-sense buzzes when he’s worried; he shoots webs, and when he loses he hangs upside down.', pronouns: HE },
-  { id: 'brute', name: 'Hulkops', blurb: 'A huge green brute with a black mop of hair and fists like boulders. He pounds his fists when he’s cross and throws chunks of rubble; when he loses he shrinks back into a pale little scientist in glasses.', pronouns: HE },
-  { id: 'ghost', name: 'Ghops', blurb: 'A soldier in a black balaclava with a white skull on it; only his eyes show. His headset blinks while he thinks, the shades go on when he wins, and he throws flashbangs. Few words.', pronouns: HE },
+  { id: 'prime', name: 'Opstimus', blurb: 'A robot leader in a blue helmet with tall antennae and bright blue eyes. His battle mask slides shut when he means business; he throws Energon cubes, and for his ultimate he turns into a truck.', pronouns: HE, price: 400 },
+  { id: 'warrior', name: 'Kratops', blurb: 'Ash-grey god of war with a red stripe of war paint. He doesn’t throw tomatoes: he throws his axe, and it comes back.', pronouns: HE, price: 300 },
+  { id: 'titan', name: 'Thanops', blurb: 'A purple titan with a ridged chin and a gold gauntlet. Six stones glow when he’s winning; he snaps when he wins, and when he loses they fall out.', pronouns: HE, price: 400 },
+  { id: 'spider', name: 'Spidops', blurb: 'A red mask with a web over it and two big white lenses that do all his frowning. His spider-sense buzzes when he’s worried; he shoots webs, and when he loses he hangs upside down.', pronouns: HE, price: 500 },
+  { id: 'brute', name: 'Hulkops', blurb: 'A huge green brute with a black mop of hair and fists like boulders. He pounds his fists when he’s cross and throws chunks of rubble; when he loses he shrinks back into a pale little scientist in glasses.', pronouns: HE, price: 600 },
+  { id: 'ghost', name: 'Ghops', blurb: 'A soldier in a black balaclava with a white skull on it; only his eyes show. His headset blinks while he thinks, the shades go on when he wins, and he throws flashbangs. Few words.', pronouns: HE, price: 800 },
 ]
+
+/** What a look costs in chips (0: free). */
+export const priceOf = (look: OpsStyle) => OPS_STYLES.find((s) => s.id === look)?.price ?? 0
 
 /* ── The player's pick ── */
 

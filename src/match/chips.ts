@@ -1,6 +1,7 @@
-import { onValue, ref, runTransaction } from 'firebase/database'
+import { get, onValue, ref, runTransaction } from 'firebase/database'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { db, signIn } from '../lib/firebase'
+import { pickedOpsLook, priceOf, type OpsStyle } from '../components/OpsFace'
 import type { Level } from './bot'
 
 /*
@@ -62,6 +63,8 @@ interface Paid {
 interface Wallet {
   chips: number
   paid?: Record<string, Paid>
+  /** the faces bought (or kept: whoever already wore one when they went on sale) */
+  owned?: Partial<Record<OpsStyle, true>>
 }
 
 export interface PayLine {
@@ -197,6 +200,82 @@ export function useChips(): number | null {
     }
   }, [])
   return chips
+}
+
+/** My wallet, live: the balance and the faces I own (null until it's known). */
+export function useWallet(): { chips: number; owned: Partial<Record<OpsStyle, true>> } | null {
+  const [w, setW] = useState<{ chips: number; owned: Partial<Record<OpsStyle, true>> } | null>(null)
+  useEffect(() => {
+    let stop: (() => void) | undefined
+    let alive = true
+    signIn()
+      .then((uid) => {
+        if (!alive) return
+        stop = onValue(
+          ref(db, `wallets/${uid}`),
+          (s) => {
+            const v = (s.val() ?? {}) as Partial<Wallet>
+            setW({ chips: Number(v.chips) || 0, owned: v.owned ?? {} })
+          },
+          () => setW({ chips: 0, owned: {} }),
+        )
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+      stop?.()
+    }
+  }, [])
+  return w
+}
+
+/** Free, or mine. */
+export const ownsLook = (owned: Partial<Record<OpsStyle, true>> | undefined, look: OpsStyle) => !priceOf(look) || !!owned?.[look]
+
+/** Buys a face with chips. 'short': not enough chips. */
+export async function buyLook(look: OpsStyle): Promise<'ok' | 'short' | 'error'> {
+  const price = priceOf(look)
+  try {
+    const uid = await signIn()
+    const at = ref(db, `wallets/${uid}`)
+    // read first: a transaction that starts on an empty cache would see no chips and give up
+    await get(at)
+    let short = false
+    const res = await runTransaction(at, (cur: Wallet | null) => {
+      const w: Wallet = cur ?? { chips: 0 }
+      if (w.owned?.[look]) return
+      if ((w.chips ?? 0) < price) {
+        short = true
+        return
+      }
+      short = false
+      return { ...w, chips: w.chips - price, owned: { ...w.owned, [look]: true } }
+    })
+    return res.committed ? 'ok' : short ? 'short' : 'ok'
+  } catch {
+    return 'error'
+  }
+}
+
+/**
+ * Faces went on sale after people had picked them: whoever was already wearing a paid face keeps it
+ * for free. Run once the wallet is known; a pick that isn't owned can only be from before the sale.
+ */
+export async function keepWornLook() {
+  const look = pickedOpsLook()
+  if (!look || !priceOf(look)) return
+  try {
+    const uid = await signIn()
+    const at = ref(db, `wallets/${uid}`)
+    await get(at)
+    await runTransaction(at, (cur: Wallet | null) => {
+      const w: Wallet = cur ?? { chips: 0 }
+      if (w.owned?.[look]) return
+      return { ...w, chips: w.chips ?? 0, owned: { ...w.owned, [look]: true } }
+    })
+  } catch {
+    /* rules not there yet: try again next visit */
+  }
 }
 
 /** A pile of chips adding up to `n`, biggest first (at most `max` chips; the rest stays implied). */

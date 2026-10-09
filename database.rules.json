@@ -242,6 +242,11 @@
         "chips": {
           ".validate": "newData.isNumber()"
         },
+        "owned": {
+          "$look": {
+            ".validate": "newData.val() === true && $look.matches(/^(prime|warrior|titan|spider|brute|ghost)$/)"
+          }
+        },
         "paid": {
           "$match": {
             ".validate": "newData.hasChildren(['d', 't']) && newData.child('d').isString() && newData.child('d').val().length <= 10 && newData.child('t').isNumber() && newData.child('t').val() >= 0 && newData.child('t').val() <= 600",
