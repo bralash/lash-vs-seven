@@ -102,9 +102,24 @@ export const CODE_LENGTH = 4
 const STALE_MS = 24 * 60 * 60 * 1000
 
 /** my Ops pick for my room entry, if I made one */
-const myLook = () => {
+const myLook = (): { look?: OpsStyle } => {
   const look = pickedOpsLook()
   return look ? { look } : {}
+}
+
+/**
+ * Writes with my look, and if the database turns it down, again without it. A face newer than the
+ * deployed rules (Hulkops before his rules went out) then just means a random face, never a room you
+ * can't make or join.
+ */
+async function withMyLook(write: (look: { look?: OpsStyle | null }) => Promise<unknown>) {
+  const look = myLook()
+  try {
+    await write(look)
+  } catch (err) {
+    if (!look.look) throw err
+    await write({ look: null })
+  }
 }
 
 export const roomPath = (game: string, code: string) => `matches/${game}/${code}`
@@ -156,18 +171,20 @@ export async function createRoom(game: string, name: string, seats = 2): Promise
     const code = randomCode()
     const existing = await get(roomRef(game, code))
     if (existing.exists()) continue
-    await set(roomRef(game, code), {
-      game,
-      code,
-      status: 'waiting',
-      hostId: pid,
-      createdAt: serverTimestamp(),
-      ...(seats > 2 ? { seatCount: seats } : {}),
-      seats: { s0: pid },
-      players: {
-        [pid]: { name, seat: 0, online: true, joinedAt: serverTimestamp(), ...myLook() },
-      },
-    })
+    await withMyLook((look) =>
+      set(roomRef(game, code), {
+        game,
+        code,
+        status: 'waiting',
+        hostId: pid,
+        createdAt: serverTimestamp(),
+        ...(seats > 2 ? { seatCount: seats } : {}),
+        seats: { s0: pid },
+        players: {
+          [pid]: { name, seat: 0, online: true, joinedAt: serverTimestamp(), ...look },
+        },
+      }),
+    )
     rememberRoom(game, code)
     return code
   }
@@ -213,7 +230,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
 
     // already seated (refresh, or coming back after a drop): just mark ourselves present again
     if (room.players?.[pid]) {
-      await update(at(game, code, `players/${pid}`), { name, online: true, look: pickedOpsLook() })
+      await withMyLook((look) => update(at(game, code, `players/${pid}`), { name, online: true, look: look.look ?? null }))
       return { ok: true }
     }
     if (room.status !== 'waiting') return { ok: false, error: 'started', room }
@@ -222,7 +239,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
     for (const seat of freeSeats(room)) {
       const claim = await runTransaction(at(game, code, `seats/s${seat}`), (cur: string | null) => (cur ? undefined : pid))
       if (!claim.committed) continue
-      await set(at(game, code, `players/${pid}`), { name, seat, online: true, joinedAt: serverTimestamp(), ...myLook() })
+      await withMyLook((look) => set(at(game, code, `players/${pid}`), { name, seat, online: true, joinedAt: serverTimestamp(), ...look }))
       return { ok: true }
     }
     return { ok: false, error: 'full', room }
@@ -281,7 +298,7 @@ export function watchRoom(game: string, code: string, name: string) {
     if (snap.val() !== true) return
     onDisconnect(mine)
       .remove()
-      .then(() => set(mine, { name, at: serverTimestamp(), ...myLook() }))
+      .then(() => withMyLook((look) => set(mine, { name, at: serverTimestamp(), ...look })))
       .catch(() => {})
   })
   return () => {
