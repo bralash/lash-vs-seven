@@ -13,7 +13,8 @@
 .lobby__hero { display: grid; justify-items: center; gap: 12px; }
 .lobby__title { font-size: clamp(48px, 10vw, 88px); }
 
-.lobby__stack { display: grid; gap: 22px; width: 100%; text-align: left; }
+/* minmax(0, 1fr): the column stays the screen's width whatever's inside it (the stakes field once pushed it wider) */
+.lobby__stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; width: 100%; text-align: left; }
 .lobby__center { text-align: center; }
 .lobby__error { min-height: 1.5em; margin-top: -10px; }
 
@@ -229,6 +230,8 @@
 .stake__field { display: flex; gap: 10px; }
 .stake__field input {
   flex: 1;
+  /* no width of its own: at this font size its default width alone was wider than a phone */
+  width: 0;
   min-width: 0;
   padding: 2px 0 6px;
   border: 0;
