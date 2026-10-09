@@ -25,7 +25,7 @@ interface Props {
  * One player's card in the match HUD: name (+ you / away), big score, caption, and the player's Ops
  * in the empty side, reacting to how they're doing. Tap someone else's Ops to throw something at it.
  * Under the face, the ultimate's meter: it fills when they win a game, and then a tap on your own
- * face fires it. Hold your own face and your Ops walks over to taunt someone else's card (Taunts).
+ * face fires it. Hold your own face and your character walks over to taunt someone else's card (Taunts).
  * Seat colour on top.
  */
 export function ScoreCard({ p, you, active, turn, score, value, meta }: Props) {
@@ -63,7 +63,7 @@ export function ScoreCard({ p, you, active, turn, score, value, meta }: Props) {
                 <OpsFace look={look} mood={mood} size={40} />
               </button>
             ) : onTap ? (
-              <button type="button" className="mt-score__throw" onClick={onTap} aria-label={taunt?.pick ? `Send your Ops to ${p.name}` : `Throw something at ${p.name}`}>
+              <button type="button" className="mt-score__throw" onClick={onTap} aria-label={taunt?.pick ? `Send your character to ${p.name}` : `Throw something at ${p.name}`}>
                 <OpsFace look={look} mood={face} size={40} />
               </button>
             ) : (

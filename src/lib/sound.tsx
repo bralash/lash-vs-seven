@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { KEYS, load, save } from './storage'
 
-export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack'
+export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack' | 'pong' | 'ping' | 'smash'
 
 // Short synthesized cues — no audio files to load.
 const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; len: number; vol: number }> = {
@@ -20,6 +20,10 @@ const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; le
   thwip: { type: 'triangle', notes: [1800, 900, 520], gap: 0.025, len: 0.05, vol: 0.07 },
   horn: { type: 'square', notes: [233, 294, 233, 294], gap: 0.16, len: 0.15, vol: 0.06 },
   taunt: { type: 'square', notes: [660, 520, 660, 520], gap: 0.09, len: 0.07, vol: 0.05 },
+  // table tennis: the racket, and the ball off the table
+  pong: { type: 'triangle', notes: [520], gap: 0, len: 0.05, vol: 0.09 },
+  ping: { type: 'sine', notes: [1500], gap: 0, len: 0.04, vol: 0.06 },
+  smash: { type: 'square', notes: [420, 210], gap: 0.02, len: 0.09, vol: 0.12 },
   // a chip landing on the pile
   clack: { type: 'square', notes: [1900, 1300], gap: 0.012, len: 0.025, vol: 0.05 },
   error: { type: 'sawtooth', notes: [180, 140], gap: 0.09, len: 0.14, vol: 0.06 },

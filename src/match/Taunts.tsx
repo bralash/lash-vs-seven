@@ -15,7 +15,7 @@ import { linesFor } from './opsLines'
  * she answers back, and now and then she comes to visit you.
  */
 
-/** hold this long to send your Ops out */
+/** hold this long to send your character out */
 const HOLD_MS = 500
 /** one visit per this long */
 const COOLDOWN_MS = 10_000
@@ -182,7 +182,7 @@ export function useTaunt(id: string | undefined, theirGo: boolean) {
           },
         }
       : null,
-    /** while picking: send your Ops here */
+    /** while picking: send your character here */
     pick: picking && picking !== id ? () => (l.send(id), stopPicking()) : null,
   }
 }

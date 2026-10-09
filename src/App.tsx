@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { createBrowserRouter, Link, RouterProvider, type RouteObject } from 'react-router-dom'
+import { createBrowserRouter, Link, Navigate, RouterProvider, type RouteObject } from 'react-router-dom'
 import { Anagram } from './games/anagram/Anagram'
 import { ConnectFour } from './games/connect4/ConnectFour'
+import { PingPong } from './games/pingpong/PingPong'
 import { Crossword } from './games/crossword/Crossword'
 import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
 import { Othello } from './games/othello/Othello'
@@ -19,7 +20,7 @@ import { TicTacToe } from './games/tictactoe/TicTacToe'
 import { WordHunt } from './games/wordhunt/WordHunt'
 import { SoundProvider } from './lib/sound'
 import { Home } from './pages/Home'
-import { OpsRoom } from './pages/OpsRoom'
+import { Locker } from './pages/Locker'
 import { RivalsPage, StakesPage } from './pages/Corner'
 
 // Dev-only sandbox; the DEV guard lets the bundler drop it from production builds.
@@ -36,13 +37,16 @@ const OpsLab = import.meta.env.DEV ? lazy(() => import('./dev/OpsLab')) : null
 // A data router (rather than <BrowserRouter>) so games can block navigation mid-match with useBlocker.
 const routes: RouteObject[] = [
   { path: '/', element: <Home /> },
-  { path: '/ops', element: <OpsRoom /> },
+  { path: '/locker', element: <Locker /> },
+  // Ops' room became the Locker
+  { path: '/ops', element: <Navigate to="/locker" replace /> },
   { path: '/rivals', element: <RivalsPage /> },
   { path: '/stakes', element: <StakesPage /> },
   { path: '/wordhunt', element: <WordHunt /> },
   { path: '/anagram', element: <Anagram /> },
   { path: '/tictactoe', element: <TicTacToe /> },
   { path: '/connect4', element: <ConnectFour /> },
+  { path: '/pingpong', element: <PingPong /> },
   { path: '/dots', element: <DotsAndBoxes /> },
   { path: '/othello', element: <Othello /> },
   { path: '/oware', element: <Oware /> },

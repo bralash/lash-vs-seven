@@ -24,7 +24,7 @@ export const KEYS = {
   /** last level picked for Ops */
   botLevel: 'lvs_bot_level',
   sound: 'lvs_sound',
-  /** the face this player picked for Ops (/ops) */
+  /** the Crew character this player wears (picked in the Locker, /locker) */
   opsLook: 'lvs_ops_look',
   /** 'off' when this player turned off auto-playing voice notes */
   voice: 'lvs_voice',

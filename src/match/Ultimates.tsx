@@ -14,7 +14,7 @@ import { ItemArt, throwsIn, type Item } from './Throws'
 
 /*
  * Ultimates: win a game in the match (a round of Spar, a game of a best-of-3; in a one-game match,
- * the match itself) and the meter under your Ops fills and glows. Tap your own face to fire it at
+ * the match itself) and the meter under your character fills and glows. Tap your own face to fire it at
  * everyone else: a 2–3 second show on every phone, picked by the face you wear. Kratops' Spartan
  * Rage slams his axe into the middle of the screen and cracks it; Thanops' Snap lights the six
  * stones and dusts half the board, which then puts itself back; Spidops' Thwip shoots a web from

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useOpsLook, type OpsMood } from '../components/OpsFace'
+import { OPS_LOOK, type OpsMood } from '../components/OpsFace'
 import { useSound } from '../lib/sound'
 import { BOT_NAME, type Level, type Moment, type OpsSense } from './bot'
 import { Pops, ReactionButton, usePops, useSend, type ReactionKey } from './Reactions'
@@ -122,8 +122,8 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
   const replyTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const stateRef = useRef(state)
   stateRef.current = state
-  // she plays (and talks) as the face picked on this device
-  const lines = linesFor(useOpsLook())
+  // she always plays (and talks) as herself
+  const lines = linesFor(OPS_LOOK)
 
   const say = (s: Say, buzz = true) => {
     saidAt.current = Date.now()
@@ -217,7 +217,7 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     }, 700)
   }
 
-  // your Ops comes over to taunt hers: she glares, says so, and sometimes pays you a visit back
+  // your character comes over to taunt her: she glares, says so, and sometimes pays you a visit back
   const visitedAt = useRef(0)
   const visitTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => () => clearTimeout(visitTimer.current), [])

@@ -1,7 +1,7 @@
 import { get, onValue, ref, runTransaction } from 'firebase/database'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { db, signIn } from '../lib/firebase'
-import { pickedOpsLook, priceOf, type OpsStyle } from '../components/OpsFace'
+import { pickedCrewLook, priceOf, type OpsStyle } from '../components/OpsFace'
 import type { Level } from './bot'
 
 /*
@@ -262,7 +262,7 @@ export async function buyLook(look: OpsStyle): Promise<'ok' | 'short' | 'error'>
  * for free. Run once the wallet is known; a pick that isn't owned can only be from before the sale.
  */
 export async function keepWornLook() {
-  const look = pickedOpsLook()
+  const look = pickedCrewLook()
   if (!look || !priceOf(look)) return
   try {
     const uid = await signIn()

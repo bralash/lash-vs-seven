@@ -2,7 +2,7 @@ import { FeedbackButton } from '../components/Feedback'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../components/Logo'
-import { OpsFace } from '../components/OpsFace'
+import { OpsFace, useCrewLook } from '../components/OpsFace'
 import { TopBar } from '../components/TopBar'
 import { CATEGORY_LABEL, GAMES, type Category, type GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
@@ -16,7 +16,7 @@ type Filter = 'all' | Category
 const ORDERED = [...GAMES].sort((a, b) => Number(a.status !== 'live') - Number(b.status !== 'live'))
 
 const MODES = ['Date nights', 'Friendly battles', 'Long-distance rivals', 'Family game night']
-const FILTERS: Filter[] = ['all', 'word', 'board', 'card', 'puzzle']
+const FILTERS: Filter[] = ['all', 'word', 'board', 'card', 'puzzle', 'sport']
 
 const TICKER = [
   ['STONE', 800], ['HUNT', 400], ['CRANE', 800], ['KENTE', 800], ['SEVEN', 800], ['LASH', 400],
@@ -26,9 +26,10 @@ const TICKER = [
 export function Home() {
   const [filter, setFilter] = useState<Filter>('all')
   const { play } = useSound()
+  const crewLook = useCrewLook()
 
   const counts = useMemo(() => {
-    const c: Record<Filter, number> = { all: GAMES.length, word: 0, board: 0, card: 0, puzzle: 0 }
+    const c: Record<Filter, number> = { all: GAMES.length, word: 0, board: 0, card: 0, puzzle: 0, sport: 0 }
     GAMES.forEach((g) => c[g.category]++)
     return c
   }, [])
@@ -41,8 +42,8 @@ export function Home() {
         <TopBar
           left={<Logo />}
           right={
-            <Link to="/ops" className="icon-btn icon-btn--ops" aria-label="Ops’ room: pick a face for Ops" onClick={() => play('tap')}>
-              <OpsFace mood="hello" size={30} />
+            <Link to="/locker" className="icon-btn icon-btn--ops" aria-label="Locker: pick your character" onClick={() => play('tap')}>
+              <OpsFace look={crewLook ?? 'bot'} mood="hello" size={30} />
             </Link>
           }
         />
@@ -64,12 +65,12 @@ export function Home() {
         <section aria-labelledby="games-title">
           <div className="games-head">
             <h2 id="games-title">Pick a game</h2>
-            <div className="seg" role="group" aria-label="Filter games">
+            <div className="filters" role="group" aria-label="Filter games">
               {FILTERS.map((f) => (
                 <button
                   key={f}
                   type="button"
-                  className="seg__btn"
+                  className="filters__btn"
                   aria-pressed={filter === f}
                   onClick={() => {
                     setFilter(f)
@@ -77,7 +78,7 @@ export function Home() {
                   }}
                 >
                   {f === 'all' ? 'All' : CATEGORY_LABEL[f]}
-                  <span className="seg__count">{counts[f]}</span>
+                  <span className="filters__count">{counts[f]}</span>
                 </button>
               ))}
             </div>

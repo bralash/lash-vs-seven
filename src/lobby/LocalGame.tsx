@@ -7,7 +7,7 @@ import { PokeOps } from '../components/PokeOps'
 import { LocalSessionProvider, type Session } from '../match/session'
 import { LooksProvider, looksFor } from '../match/looks'
 import { UltEarn } from '../match/Ultimates'
-import { useOpsLook } from '../components/OpsFace'
+import { OPS_LOOK, useCrewLook } from '../components/OpsFace'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
 import type { AnySeat, Room, Seat } from './rooms'
 
@@ -121,7 +121,7 @@ export function LocalSetup({
           Start game <span className="keycap">↵</span>
         </button>
         <button type="button" className="link-btn" onClick={onBack}>
-          Play online instead
+          {game.modes === 'vs Ops' ? 'Back' : 'Play online instead'}
         </button>
       </form>
     </main>
@@ -171,7 +171,7 @@ export function LocalGame({
   sense?: OpsSense
 }) {
   const level = brain ? match.bot : undefined
-  const opsLook = useOpsLook()
+  const crewLook = useCrewLook()
   const [state, setState] = useState(match.state)
   const [startedAt] = useState(() => match.startedAt ?? Date.now())
 
@@ -226,8 +226,8 @@ export function LocalGame({
   const seat: AnySeat = level ? 0 : turn
   const me: Me = { id: `p${seat}`, seat: (seat < 2 ? seat : 0) as Seat, seatN: seat, isHost: true }
 
-  // against Ops, her card wears the face picked on this device; everyone else's is drawn for the match
-  const looks = looksFor(room, level ? { p1: opsLook } : {})
+  // against Ops: you wear your character (if you picked one) and she wears her own face; in pass & play every face is drawn for the match
+  const looks = looksFor(room, level ? { p1: OPS_LOOK, ...(crewLook ? { p0: crewLook } : {}) } : {})
 
   return (
     <LocalSessionProvider value={session}>

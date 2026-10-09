@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useSyncExternalStore } from 'react'
-import { asLook, OPS_STYLES, type OpsMood, type OpsStyle } from '../components/OpsFace'
+import { asCrew, CREW_STYLES, type OpsMood, type OpsStyle } from '../components/OpsFace'
 import type { Room } from '../lobby/rooms'
 
 /**
- * The Ops each player wears on their score card. Someone who picked a face in Ops' room brings it
+ * The Crew character each player wears on their score card. Someone who picked one in the Locker brings it
  * with them (it's in their room entry); everyone else gets one nobody in the room is wearing. That
  * random pick is seeded by the room, so every phone shows the same faces for the whole match.
  */
@@ -24,17 +24,17 @@ export function looksFor(room: Room, fixed: Looks = {}): Looks {
   const players = Object.entries(room.players ?? {}).sort(([, a], [, b]) => a.seat - b.seat)
   const out: Looks = { ...fixed }
   for (const [id, p] of players) {
-    const look = asLook(p.look)
+    const look = asCrew(p.look)
     if (!out[id] && look) out[id] = look
   }
   const rand = seeded(`${room.game}:${room.code}:${room.createdAt}`)
-  const free = OPS_STYLES.map((s) => s.id).filter((l) => !Object.values(out).includes(l))
+  const free = CREW_STYLES.map((s) => s.id).filter((l) => !Object.values(out).includes(l))
   for (let i = free.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1))
     ;[free[i], free[j]] = [free[j], free[i]]
   }
-  // five looks and at most four players, so there's always one free
-  for (const [id] of players) if (!out[id]) out[id] = free.shift() ?? OPS_STYLES[0].id
+  // nine characters and at most four players, so there's always one free
+  for (const [id] of players) if (!out[id]) out[id] = free.shift() ?? CREW_STYLES[0].id
   return out
 }
 

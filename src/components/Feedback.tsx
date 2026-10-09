@@ -14,7 +14,7 @@ const FEEDBACK_TO = '233503123939'
 type Kind = 'bug' | 'idea'
 const KINDS: { k: Kind; label: string; hint: string }[] = [
   { k: 'bug', label: '🐞 Bug', hint: 'What went wrong? What were you doing when it happened?' },
-  { k: 'idea', label: '💡 Idea', hint: 'A game, a feature, a face for Ops…' },
+  { k: 'idea', label: '💡 Idea', hint: 'A game, a feature, a new Crew character…' },
 ]
 
 export function feedbackLink(kind: Kind, text: string, game?: string) {

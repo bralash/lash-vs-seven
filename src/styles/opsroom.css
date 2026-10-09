@@ -1,4 +1,4 @@
-/* ── Ops' room (/ops) ─────────────────────────────────── */
+/* ── The Locker (/locker), once Ops' room ─────────────────────────────────── */
 .opsroom { gap: 34px; }
 .opsroom__star { padding-top: 40px; } /* room for her sticker when she's poked */
 .opsroom__section { display: grid; gap: 14px; width: 100%; }

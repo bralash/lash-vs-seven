@@ -9,8 +9,9 @@ import { Opstimus } from './faces/opstimus'
 import { Spidops } from './faces/spidops'
 import { Thanops } from './faces/thanops'
 
-// Faces for Ops, the computer opponent. Players pick which one she wears at /ops (saved on the
-// device); OPS_LOOK is the default. Every look has the five base moods; Screen and the characters
+// The faces. Ops, the computer opponent, always wears Screen (OPS_LOOK, reserved for her). The rest
+// are the Crew: the characters players wear on their score cards, picked (and bought) in the Locker
+// at /locker and saved on the device. Every look has the five base moods; Screen and the characters
 // (Kratops, Thanops, Spidops, Opstimus, Hulkops, Ghops: drawn in faces/) also have a face for every reaction, and the other looks
 // borrow the nearest base mood.
 
@@ -24,7 +25,7 @@ export type ReactMood =
 export type OpsMood = BaseMood | ReactMood
 export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'prime' | 'warrior' | 'titan' | 'spider' | 'brute' | 'ghost'
 
-/** The face Ops wears until a player picks another. */
+/** Ops' own face: always hers, never worn by a player. */
 export const OPS_LOOK: OpsStyle = 'screen'
 
 /** How a look is talked about: Ops is the opponent, but each face is a character with their own pronouns. */
@@ -37,6 +38,8 @@ export interface Pronouns {
   their: string
 }
 const SHE: Pronouns = { they: 'she', them: 'her', their: 'her' }
+/** Ops is always she */
+export const OPS_PRONOUNS = SHE
 const HE: Pronouns = { they: 'he', them: 'him', their: 'his' }
 
 export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: Pronouns; /** chips to unlock it; the robot faces are free */ price?: number }[] = [
@@ -52,10 +55,15 @@ export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: 
   { id: 'ghost', name: 'Ghops', blurb: 'A soldier in a black balaclava with a white skull on it; only his eyes show. His headset blinks while he thinks, the shades go on when he wins, and he throws flashbangs. Few words.', pronouns: HE, price: 800 },
 ]
 
+/** The Crew: every face a player can wear (all but Ops' own). */
+export const CREW_STYLES = OPS_STYLES.filter((s) => s.id !== OPS_LOOK)
+/** the free robots, for anyone who was wearing Screen before it became Ops' alone */
+const FREE_CREW = CREW_STYLES.filter((s) => !s.price).map((s) => s.id)
+
 /** What a look costs in chips (0: free). */
 export const priceOf = (look: OpsStyle) => OPS_STYLES.find((s) => s.id === look)?.price ?? 0
 
-/* ── The player's pick ── */
+/* ── The player's pick: their Crew character ── */
 
 /** Looks that were replaced, and who took their place (Visor made way for Opstimus). */
 const RETIRED: Record<string, OpsStyle> = { visor: 'prime' }
@@ -64,10 +72,22 @@ export function asLook(v: unknown): OpsStyle | null {
   if (typeof v === 'string' && v in RETIRED) return RETIRED[v]
   return OPS_STYLES.some((s) => s.id === v) ? (v as OpsStyle) : null
 }
+/** A look a player can wear: Screen is Ops' (an old phone may still send it), so it doesn't count. */
+export function asCrew(v: unknown): OpsStyle | null {
+  const look = asLook(v)
+  return look === OPS_LOOK ? null : look
+}
 
 const lookListeners = new Set<() => void>()
-function readLook(): OpsStyle {
-  return asLook(load(KEYS.opsLook)) ?? OPS_LOOK
+function readLook(): OpsStyle | null {
+  const raw = asLook(load(KEYS.opsLook))
+  // picked Screen before it was Ops' alone: swap it for one of the free robots, once
+  if (raw === OPS_LOOK) {
+    const swap = FREE_CREW[Math.floor(Math.random() * FREE_CREW.length)]
+    save(KEYS.opsLook, swap)
+    return swap
+  }
+  return raw
 }
 function subscribeLook(fn: () => void) {
   lookListeners.add(fn)
@@ -77,20 +97,17 @@ function subscribeLook(fn: () => void) {
     window.removeEventListener('storage', fn)
   }
 }
-/** The look this player picked for Ops (updates live when it changes, in this tab or another). */
-export function useOpsLook(): OpsStyle {
-  return useSyncExternalStore(subscribeLook, readLook, () => OPS_LOOK)
+/** The character this player picked in the Locker, or null if they never picked one (then each match hands them one). Updates live. */
+export function useCrewLook(): OpsStyle | null {
+  return useSyncExternalStore(subscribeLook, readLook, () => null)
 }
-/** The look this player chose in Ops' room, or null if they never picked one (so they're on the default). */
-export function pickedOpsLook(): OpsStyle | null {
-  return asLook(load(KEYS.opsLook))
-}
+/** The same, outside React. */
+export const pickedCrewLook = readLook
 /** The pronouns for a look (she for the robot faces, he for Kratops…). */
 export const pronounsOf = (look: OpsStyle): Pronouns => OPS_STYLES.find((s) => s.id === look)?.pronouns ?? SHE
-/** The pronouns for the look picked on this device. */
-export const useOpsPronouns = () => pronounsOf(useOpsLook())
 
-export function setOpsLook(look: OpsStyle) {
+export function setCrewLook(look: OpsStyle) {
+  if (look === OPS_LOOK) return
   save(KEYS.opsLook, look)
   lookListeners.forEach((fn) => fn())
 }
@@ -462,14 +479,13 @@ const BASE: Record<ReactMood, BaseMood> = {
 
 const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, prime: Opstimus, warrior: Kratops, titan: Thanops, spider: Spidops, brute: Hulkops, ghost: Ghops }
 
-/** Ops' face. Moods animate in CSS; remount (change `key`) to replay a one-shot mood. */
-export function OpsFace({ look: forced, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {
-  const picked = useOpsLook()
-  const look = forced ?? picked
+/** A face: Ops' own unless `look` says which character. Moods animate in CSS; remount (change `key`) to replay a one-shot mood. */
+export function OpsFace({ look = OPS_LOOK, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {
   const Face = DRAW[look]
+  const name = look === OPS_LOOK ? 'Ops' : (OPS_STYLES.find((s) => s.id === look)?.name ?? 'Ops')
   if (!OWN_REACTIONS.has(look) && mood in BASE) mood = BASE[mood as ReactMood]
   return (
-    <svg className={`opsf opsf--${look} opsf--${mood}`} viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={`Ops, ${mood}`}>
+    <svg className={`opsf opsf--${look} opsf--${mood}`} viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={`${name}, ${mood}`}>
       <g className="opsf__body">
         <Face mood={mood} />
       </g>

@@ -12,7 +12,7 @@ import {
 import { db, playerId } from '../lib/firebase'
 import { load, save } from '../lib/storage'
 import type { Stake } from '../match/stakes'
-import { pickedOpsLook, type OpsStyle } from '../components/OpsFace'
+import { pickedCrewLook, type OpsStyle } from '../components/OpsFace'
 
 // Rooms live at matches/{game}/{code}. Each game gets its own namespace, so codes only
 // have to be unique per game. (The old site still uses rooms/, wh-rooms/ etc. — left untouched.)
@@ -35,7 +35,7 @@ export interface Player {
   seat: AnySeat
   online: boolean
   joinedAt: number
-  /** the Ops face they picked in Ops' room, shown on their score card (missing: they never picked) */
+  /** the Crew character they picked in the Locker, shown on their score card (missing: they never picked) */
   look?: OpsStyle
 }
 
@@ -101,9 +101,9 @@ export const CODE_LENGTH = 4
 /** Rooms older than this get cleaned up by the browser that created them. */
 const STALE_MS = 24 * 60 * 60 * 1000
 
-/** my Ops pick for my room entry, if I made one */
+/** my Crew character for my room entry, if I picked one */
 const myLook = (): { look?: OpsStyle } => {
-  const look = pickedOpsLook()
+  const look = pickedCrewLook()
   return look ? { look } : {}
 }
 

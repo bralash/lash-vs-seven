@@ -85,6 +85,46 @@
 }
 .games-head h2 { font-size: clamp(34px, 5vw, 52px); }
 
+/* one chip per category, each with its count: a row on wide screens, an even grid on phones */
+.filters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.filters__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--display);
+  font-size: 15px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: translate .12s var(--ease-out), box-shadow .12s var(--ease-out);
+}
+.filters__btn:not([aria-pressed="true"]):hover { background: var(--paper-2); }
+.filters__btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); translate: 2px 2px; box-shadow: none; }
+.filters__count {
+  min-width: 22px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+.filters__btn[aria-pressed="true"] .filters__count { background: var(--hit); color: var(--ink); }
+/* phones and small tablets: an even 3 × 2 grid under the heading */
+@media (width <= 760px) {
+  /* the heading on top; a grid, not a flex column (a flex column measures the chips as one column and stretches them) */
+  .games-head { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .filters { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .filters__btn { padding: 8px 6px; font-size: 14px; }
+}
+
 /* ── Game cards ─────────────────────────────────────────── */
 .games {
   list-style: none;
@@ -235,10 +275,6 @@
 }
 
 @media (width <= 640px) {
-  .games-head { align-items: stretch; flex-direction: column; }
-  /* scoped to the homepage so it beats the shared .seg styles, which load after this file */
-  .games-head .seg { width: 100%; }
-  .games-head .seg__btn { flex: 1; min-width: 0; justify-content: center; gap: 5px; padding: 8px 4px; font-size: 13px; }
   .hero__seven { text-shadow: 3px 3px 0 var(--ink); }
 }
 

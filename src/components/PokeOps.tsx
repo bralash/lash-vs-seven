@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useSound } from '../lib/sound'
 import { lineFor, linesFor, type LineKey } from '../match/opsLines'
-import { OpsFace, useOpsLook, useOpsPronouns, type BaseMood, type OpsMood } from './OpsFace'
+import { OPS_LOOK, OPS_PRONOUNS, OpsFace, type BaseMood, type OpsMood } from './OpsFace'
 import '../styles/pokeops.css'
 
 /**
@@ -46,9 +46,8 @@ const SULK_MS = 4000
 
 export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number }) {
   const { play } = useSound()
-  const { them } = useOpsPronouns()
-  // a character (Kratops, Thanops) says its own words; the face is the same
-  const lines = linesFor(useOpsLook())
+  const { them } = OPS_PRONOUNS
+  const lines = linesFor(OPS_LOOK)
   const own = ([mood, line]: Say, key: LineKey): Say => [mood, lineFor(lines, key, line)]
   const [say, setSay] = useState<{ mood: OpsMood; line: string; n: number } | null>(null)
   const pokes = useRef({ count: rest === 'lose' ? 2 : 0, at: 0, sulkUntil: 0, n: 0, first: true })

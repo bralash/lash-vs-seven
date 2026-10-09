@@ -410,7 +410,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         game={game}
         onEnter={enterRoom}
         onWatch={game.watch ? enterWatch : undefined}
-        onLocal={canLocal ? () => setSetup('local') : undefined}
+        onLocal={canLocal && game.modes !== 'vs Ops' ? () => setSetup('local') : undefined}
         onBot={canLocal && bot ? () => setSetup('bot') : undefined}
       />
     )
@@ -596,40 +596,55 @@ function StartScreen({
         {game.tagline && <p className="hint">{game.tagline}</p>}
       </div>
 
-      <form className="lobby__stack" onSubmit={onCreate}>
-        <NameField value={name} onChange={setName} autoFocus={!name} />
-        <button type="submit" className="btn btn--primary btn--lg btn--block" disabled={busy !== null}>
-          {busy === 'create' ? 'Creating…' : 'Create room'} <span className="keycap">↵</span>
-        </button>
-      </form>
+      {/* a game played only against Ops: no rooms, just her */}
+      {game.modes === 'vs Ops' && onBot && (
+        <div className="lobby__stack">
+          <button type="button" className="btn btn--primary btn--lg btn--block lobby__ops" onClick={onBot}>
+            <OpsFace size={34} /> Play {BOT_NAME} <span className="keycap">↵</span>
+          </button>
+          <p className="hint lobby__center">Against Ops for now · playing a friend online comes next</p>
+        </div>
+      )}
 
-      <div className="divider" role="separator"><span>or join a friend</span></div>
+      {game.modes !== 'vs Ops' && (
+        <>
+          <form className="lobby__stack" onSubmit={onCreate}>
+            <NameField value={name} onChange={setName} autoFocus={!name} />
+            <button type="submit" className="btn btn--primary btn--lg btn--block" disabled={busy !== null}>
+              {busy === 'create' ? 'Creating…' : 'Create room'} <span className="keycap">↵</span>
+            </button>
+          </form>
 
-      <form className="join-row" onSubmit={onJoin}>
-        <label className="code-field">
-          <span className="label">Room code</span>
-          <input
-            value={code}
-            onChange={(e) => setCode(normalizeCode(e.target.value))}
-            placeholder="ABCD"
-            inputMode="text"
-            autoCapitalize="characters"
-            autoComplete="off"
-            spellCheck={false}
-            aria-describedby="code-hint"
-          />
-        </label>
-        <button type="submit" className="btn" disabled={busy !== null}>
-          {busy === 'join' ? 'Joining…' : 'Join'}
-        </button>
-        <span id="code-hint" className="visually-hidden">{CODE_LENGTH} letters</span>
-      </form>
+          <div className="divider" role="separator"><span>or join a friend</span></div>
 
-      <p className="lobby__error error-text" role="alert">{error}</p>
-      {onWatch && watchable && watchable === code && (
-        <button type="button" className="btn btn--block" onClick={() => onWatch(watchable, commit())}>
-          <span aria-hidden="true">👁</span> Watch instead
-        </button>
+          <form className="join-row" onSubmit={onJoin}>
+            <label className="code-field">
+              <span className="label">Room code</span>
+              <input
+                value={code}
+                onChange={(e) => setCode(normalizeCode(e.target.value))}
+                placeholder="ABCD"
+                inputMode="text"
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                aria-describedby="code-hint"
+              />
+            </label>
+            <button type="submit" className="btn" disabled={busy !== null}>
+              {busy === 'join' ? 'Joining…' : 'Join'}
+            </button>
+            <span id="code-hint" className="visually-hidden">{CODE_LENGTH} letters</span>
+          </form>
+
+          <p className="lobby__error error-text" role="alert">{error}</p>
+          {onWatch && watchable && watchable === code && (
+            <button type="button" className="btn btn--block" onClick={() => onWatch(watchable, commit())}>
+              <span aria-hidden="true">👁</span> Watch instead
+            </button>
+          )}
+
+        </>
       )}
 
       {onLocal && (

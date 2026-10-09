@@ -3,7 +3,7 @@
 
 import { BATTLESHIP_FEATS } from './battleship/feats'
 
-export type Category = 'word' | 'board' | 'card' | 'puzzle'
+export type Category = 'word' | 'board' | 'card' | 'puzzle' | 'sport'
 
 export interface RuleStep {
   title: string
@@ -19,7 +19,8 @@ export interface GameMeta {
   category: Category
   /** e.g. "80 sec" — shown in the card meta line */
   length: string
-  modes: 'online' | 'online + local' | 'local'
+  /** 'vs Ops': only against the computer for now (no room, no pass & play) */
+  modes: 'online' | 'online + local' | 'local' | 'vs Ops'
   status: 'live' | 'soon'
   /** has a computer opponent (Ops) in the lobby — shown on the homepage card */
   ops?: boolean
@@ -350,6 +351,26 @@ export const GAMES: GameMeta[] = [
       { title: 'No peeking', body: 'Online, neither phone knows where the cards are: both shuffle the board, locked, and every card is turned over by the two phones together. At the end the shuffle and every card shown are checked.' },
     ],
   },
+  {
+    slug: 'pingpong',
+    fullscreen: true,
+    tiles: 'PONG',
+    name: 'Table Tennis',
+    blurb: 'A real-time rally against Ops. Move your bat like a trackpad, meet the ball and push up to hit: the angle aims it, speed adds pace, a curve puts spin on it. Smash the high ones.',
+    category: 'sport',
+    length: '~5 min',
+    modes: 'vs Ops',
+    status: 'live',
+    ops: true,
+    tagline: 'Move like a trackpad · meet the ball · games to 11',
+    rules: [
+      { title: 'Move', body: 'Put your thumb down anywhere low on the screen and slide: your bat moves by however far your thumb moves (a little further), like a trackpad. Lift and put it down again to reposition; the bat stays where you left it. It roams your whole half: left and right, and in toward the net or back off the table. On a computer it goes where the mouse points.' },
+      { title: 'Hit', body: 'Your bat has to meet the ball after it bounces on your side. Push up as it reaches the bat: a fast push is a drive, a slow one a block, and a still bat just blocks it back. Push up and to the left or right to aim; curve the push for spin. Catch it on the edge and it goes astray; miss it and it’s Ops’ point. A faint ring shows where each of Ops’ shots will bounce.' },
+      { title: 'Early or late', body: 'Step in toward the net and take it just after the bounce for a faster, sharper return (easier to misjudge). Hang back and take it late for more time, but a softer ball.' },
+      { title: 'Smash', body: 'When a ball sits up high off the bounce it glows yellow and you’ll see Smash it! Push up hard as it meets your bat: it goes back flat and fast, straighter than a normal drive, and Ops rarely gets it back. Careful: a weak block of yours floats up high too, and Ops will smash it.' },
+      { title: 'Scoring', body: 'Games to 11, win by 2. Two serves each, then one each from 10–10. Win a single game, or the best of 3 or 5.' },
+    ],
+  },
 ]
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -357,6 +378,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   board: 'Board',
   card: 'Cards',
   puzzle: 'Puzzle',
+  sport: 'Sport',
 }
 
 export function gameBySlug(slug: string) {
