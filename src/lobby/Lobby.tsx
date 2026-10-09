@@ -38,6 +38,7 @@ import { OpsFace } from '../components/OpsFace'
 import { StakePanel } from './StakePanel'
 import { LooksProvider, looksFor } from '../match/looks'
 import { ThrowLayer, throwsIn } from '../match/Throws'
+import { VoiceNotes, voiceIn } from '../match/Voice'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -405,6 +406,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         }
         right={
           <>
+            {guard?.kind === 'match' && inRoom && voiceIn(game.slug) && <VoiceNotes game={game.slug} code={inRoom} pid={playerId()} names={guard.names} />}
             {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
             {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
             {local && !local.bot && throwsIn(game.slug) && <ThrowLayer me={null} />}

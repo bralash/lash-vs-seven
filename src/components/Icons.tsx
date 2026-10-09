@@ -36,3 +36,6 @@ export const Exit = () => (
 export const Smile = () => (
   <svg {...base}><path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5" /><path d="M8.5 14.5c1 1.4 2.2 2 3.5 2s2.5-.6 3.5-2" /><path d="M9 9.5v.5M15 9.5v.5M19 2v6M16 5h6" /></svg>
 )
+export const Mic = () => (
+  <svg {...base}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+)

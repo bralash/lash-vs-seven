@@ -26,6 +26,8 @@ export const KEYS = {
   sound: 'lvs_sound',
   /** the face this player picked for Ops (/ops) */
   opsLook: 'lvs_ops_look',
+  /** 'off' when this player turned off auto-playing voice notes */
+  voice: 'lvs_voice',
 } as const
 
 

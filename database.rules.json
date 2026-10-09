@@ -150,6 +150,28 @@
               ".write": "auth != null && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)"
             }
           },
+          "voice": {
+            ".write": "auth != null && !newData.exists() && data.parent().child('hostId').val() === auth.uid",
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)",
+              ".validate": "newData.hasChildren(['a', 't', 'n', 'd'])",
+              "a": {
+                ".validate": "newData.isString() && newData.val().length <= 160000"
+              },
+              "t": {
+                ".validate": "newData.isString() && newData.val().beginsWith('audio/') && newData.val().length <= 48"
+              },
+              "n": {
+                ".validate": "newData.isNumber()"
+              },
+              "d": {
+                ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 11000"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
           "react": {
             "$uid": {
               ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code).child('players').hasChild(auth.uid)",

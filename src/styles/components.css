@@ -307,3 +307,72 @@
 /* Ops' stickers carry her face in place of the emoji */
 .react__face { grid-row: span 2; display: grid; place-items: center; }
 .react__pop--ops { padding-block: 8px; }
+
+/* ── Voice notes: hold the mic in the top bar, the note pops on the other phones ── */
+.voice__btn { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.voice__btn--on { background: var(--strike); color: var(--paper); transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.voice__pops {
+  position: fixed;
+  /* up top with the reaction stickers, clear of the hand of cards at the bottom */
+  top: 84px;
+  left: 50%;
+  z-index: 141;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+  translate: -50% 0;
+  pointer-events: none;
+}
+.voice__pop {
+  display: grid;
+  grid-template: auto auto / auto 1fr auto;
+  column-gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  animation: react-in .28s var(--ease-snap) both;
+}
+.voice__pop--note { display: block; width: auto; font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.voice__pop--rec { background: var(--paper); }
+.voice__pop--theirs { background: var(--hit); }
+.voice__dot { grid-row: span 2; width: 14px; height: 14px; border-radius: 50%; background: var(--strike); animation: voice-blink 1s steps(1) infinite; }
+@keyframes voice-blink { 50% { opacity: .2; } }
+.voice__who, .voice__hint { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.voice__said { font-family: var(--display); font-size: 20px; line-height: 1; text-transform: uppercase; }
+.voice__pop--rec .voice__said, .voice__pop--rec .voice__hint { grid-column: 2 / -1; }
+.voice__pop--theirs .voice__who { grid-column: 2; grid-row: 1; }
+.voice__pop--theirs .voice__said { grid-column: 2; grid-row: 2; }
+.voice__play {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper);
+  font-size: 18px;
+  cursor: pointer;
+}
+.voice__auto {
+  grid-column: 3;
+  grid-row: span 2;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font: 500 10px var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.voice__wave { display: flex; align-items: center; gap: 3px; height: 20px; }
+.voice__wave i { width: 4px; height: 100%; background: var(--ink); animation: voice-wave .7s ease-in-out infinite alternate; }
+.voice__wave i:nth-child(2) { animation-delay: .15s; }
+.voice__wave i:nth-child(3) { animation-delay: .3s; }
+.voice__wave i:nth-child(4) { animation-delay: .45s; }
+@keyframes voice-wave { from { scale: 1 .25; } }

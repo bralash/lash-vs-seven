@@ -6,6 +6,7 @@ import { featById, ordinal } from './feats'
 import { describe, flip, groupKey, groupLead, localKey, recordGroup, recordResult, standingLine, standings, type Outcome, type Rival } from './rivalry'
 import { useSession } from './session'
 import { stakeResult } from './stakes'
+import { clearVoice } from './Voice'
 import type { Seated } from './types'
 
 export interface RivalryView {
@@ -71,6 +72,7 @@ export function useRivalry(
     const outcome: Outcome = winner === -1 ? 'draw' : winner === me.seat ? 'win' : 'loss'
     const mine = feats && { me: feats[me.seat], them: feats[me.seat === 0 ? 1 : 0] }
     const stakes = stakeResult(room, seats.flatMap((p, s) => (p ? [{ id: p.id, score: winner === s ? 1 : 0 }] : [])), me.id)
+    clearVoice(room, me.id)
     const r = recordResult({ game, key: opp.id, name: opp.name, outcome, matchId, feats: mine })
     const bySeat: [number, number] = me.seat === 0 ? [r.total.w, r.total.l] : [r.total.l, r.total.w]
     const ordered = mine && ([mine.me, mine.them] as [string[], string[]])
@@ -119,6 +121,7 @@ export function useRivalryMulti(
   const [view] = useState<RivalryView | null>(() => {
     if (bot) return null
     const stakes = local ? null : stakeResult(room, finished.flatMap((s) => (players[s] ? [{ id: players[s]!.id, score: scores[s] }] : [])), me.id)
+    if (!local) clearVoice(room, me.id) // the match is over: its voice notes go
     const matchId = `${game}:${room.code}:${room.createdAt}:${matchNo}`
     const gameName = (slug: string) => gameBySlug(slug)?.name ?? slug
     const nameOf = (s: number) => players[s]?.name ?? `Player ${s + 1}`
