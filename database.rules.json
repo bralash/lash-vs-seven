@@ -190,6 +190,44 @@
               }
             }
           },
+          "noWatch": {
+            ".write": "auth != null && data.parent().child('hostId').val() === auth.uid && data.parent().child('status').val() === 'waiting'",
+            ".validate": "newData.val() === true"
+          },
+          "watchers": {
+            ".write": "auth != null && !newData.exists() && data.parent().child('hostId').val() === auth.uid",
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || (root.child('matches/' + $game + '/' + $code + '/status').exists() && root.child('matches/' + $game + '/' + $code + '/status').val() !== 'abandoned' && root.child('matches/' + $game + '/' + $code + '/noWatch').val() !== true && !root.child('matches/' + $game + '/' + $code + '/players').hasChild(auth.uid)))",
+              ".validate": "newData.hasChildren(['name', 'at'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+              },
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "look": {
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider)$/)"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "wreact": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('matches/' + $game + '/' + $code + '/watchers').hasChild(auth.uid)",
+              ".validate": "newData.hasChildren(['k', 'n'])",
+              "k": {
+                ".validate": "newData.isString() && newData.val().length <= 12"
+              },
+              "n": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
           "$other": {
             ".validate": false
           }

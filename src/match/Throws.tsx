@@ -47,6 +47,8 @@ interface Layer {
   /** whose card throws from this phone (null in pass & play: whoever's go it is) */
   me: string | null
   throwAt: (to: string) => void
+  /** a watcher's phone: shows what's thrown, throws nothing */
+  view?: boolean
 }
 
 /* ── one store for the page: the mounted layer, flights in the air, faces just hit ── */
@@ -119,7 +121,7 @@ function faceRect(id: string | null): DOMRect | null {
 /** For a score card: a way to throw at this player, if there's a layer and they aren't you. */
 export function useThrowAt(id: string | undefined, theirGo: boolean) {
   useVersion()
-  if (!layer || !id || id === layer.me || (layer.me === null && theirGo)) return null
+  if (!layer || layer.view || !id || id === layer.me || (layer.me === null && theirGo)) return null
   const l = layer
   return () => l.throwAt(id)
 }
@@ -134,7 +136,7 @@ export function useHit(id: string | undefined) {
  * Turns throwing on for the match it's mounted in. `deliver` hands your throw to the others
  * (online); `onHit` hears every landing, `mine` when it was thrown on this phone.
  */
-export function ThrowLayer({ me, deliver, onHit }: { me: string | null; deliver?: (to: string, item: Item) => void; onHit?: (f: Flight) => void }) {
+export function ThrowLayer({ me, deliver, onHit, view }: { me: string | null; deliver?: (to: string, item: Item) => void; onHit?: (f: Flight) => void; view?: boolean }) {
   useVersion()
   const { play } = useSound()
   const thrownAt = useRef(0)
@@ -144,6 +146,7 @@ export function ThrowLayer({ me, deliver, onHit }: { me: string | null; deliver?
   useEffect(() => {
     const mine: Layer = {
       me,
+      view,
       throwAt: (to) => {
         const now = Date.now()
         if (now - thrownAt.current < COOLDOWN_MS) return
@@ -170,7 +173,7 @@ export function ThrowLayer({ me, deliver, onHit }: { me: string | null; deliver?
       hits.clear()
       notify()
     }
-  }, [me])
+  }, [me, view])
 
   return (
     <Portal>

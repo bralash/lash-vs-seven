@@ -100,10 +100,12 @@ const matchKey = (room: Room) => `${room.game}:${room.code}:${room.startedAt}`
 export function stakeResult(room: Room, finished: { id: string; score: number }[], me: string, ended?: string): string[] | null {
   if (!room.stake) return null
   if (ended && (room.stakeDone === room.startedAt || settledHere.has(matchKey(room)))) return null
-  settledHere.add(matchKey(room))
-  if (!ended && room.startedAt) set(ref(db, `matches/${room.game}/${room.code}/stakeDone`), room.startedAt).catch(() => {})
+  // a watcher sees who owes whom, but only the players settle it
+  const player = !!room.players?.[me]
+  if (player) settledHere.add(matchKey(room))
+  if (player && !ended && room.startedAt) set(ref(db, `matches/${room.game}/${room.code}/stakeDone`), room.startedAt).catch(() => {})
   const owes = settle(room.stake, finished, leaversThisMatch(room))
-  recordDebts(room, owes).catch(() => {})
+  if (player) recordDebts(room, owes).catch(() => {})
   const off = ended
   if (owes.length) return oweLines(room, owes, me)
   if (off) return [off]

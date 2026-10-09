@@ -63,6 +63,17 @@ export function useSend(pop: (p: Omit<Pop, 'id'>) => void, deliver: (k: Reaction
   }
 }
 
+/** A watcher sends a reaction to the watchers' channel (see Spectators), where it shows when the room echoes it back. */
+export function useCheer(game: string, code: string, pid: string) {
+  const sentAt = useRef(0)
+  return (k: ReactionKey) => {
+    const now = Date.now()
+    if (now - sentAt.current < COOLDOWN_MS) return
+    sentAt.current = now
+    set(ref(db, `${roomPath(game, code)}/wreact/${pid}`), { k, n: now }).catch(() => {})
+  }
+}
+
 /** The top-bar button and its tray of reactions. */
 export function ReactionButton({ onPick }: { onPick: (k: ReactionKey) => void }) {
   const [open, setOpen] = useState(false)
@@ -142,9 +153,10 @@ export function Pops({ pops, other }: { pops: Pop[]; other: string | null }) {
 /**
  * Reactions in an online match. Each player writes only their latest reaction to
  * matches/{game}/{code}/react/{uid}; the other screen shows it when it changes. Something thrown at
- * a score card goes the same way, with `at` saying whose face it's for.
+ * a score card goes the same way, with `at` saying whose face it's for. A watcher (`watching`) sees all of
+ * it, but sends only to the watchers' channel (see Spectators) and throws nothing.
  */
-export function Reactions({ game, code, pid, other, names }: { game: string; code: string; pid: string; other: string | null; names?: Record<string, string> }) {
+export function Reactions({ game, code, pid, other, names, watching }: { game: string; code: string; pid: string; other: string | null; names?: Record<string, string>; watching?: boolean }) {
   const { pops, pop } = usePops()
   const namesRef = useRef(names)
   namesRef.current = names
@@ -186,6 +198,24 @@ export function Reactions({ game, code, pid, other, names }: { game: string; cod
   const send = useSend(pop, (k) => {
     set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now() }).catch(() => {})
   })
+
+  const cheer = useCheer(game, code, pid)
+
+  if (watching) {
+    return (
+      <div className="react">
+        <ReactionButton onPick={cheer} />
+        <Pops pops={pops} other={other} />
+        {throwsIn(game) && (
+          <>
+            <ThrowLayer me={pid} view />
+            <TauntLayer me={pid} />
+            <UltLayer me={pid} />
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="react">

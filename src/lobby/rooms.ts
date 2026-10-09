@@ -64,12 +64,32 @@ export interface Room {
   stakeDone?: number
   /** game-specific state lives under here */
   state?: Record<string, unknown>
+  /** people watching the match, by id (never players: they can't move, and nothing they do is recorded) */
+  watchers?: Record<string, Watcher>
+  /** the host turned watching off for this room */
+  noWatch?: boolean
   /** set when status is `abandoned` */
   leftBy?: string
   endReason?: EndReason
   /** server time the match was abandoned */
   endedAt?: number
 }
+
+export interface Watcher {
+  name: string
+  at: number
+  look?: OpsStyle
+}
+
+/** How many can watch one room at once. */
+export const MAX_WATCHERS = 10
+
+/** Someone who isn't playing could watch this room now: the host hasn't turned it off and there's space. */
+export const canWatch = (room: Room, pid = playerId()) =>
+  room.status !== 'abandoned' &&
+  !room.noWatch &&
+  !room.players?.[pid] &&
+  (!!room.watchers?.[pid] || Object.keys(room.watchers ?? {}).length < MAX_WATCHERS)
 
 /** `you*` / `opp*`: the match ended and this player was in it — they get wording about who ended it. */
 export type JoinFailure =
@@ -155,7 +175,7 @@ export async function createRoom(game: string, name: string, seats = 2): Promise
 }
 
 /** Read-only check used to validate an invite link before asking for a name. */
-export async function peekRoom(game: string, code: string): Promise<{ room: Room } | { error: JoinFailure }> {
+export async function peekRoom(game: string, code: string): Promise<{ room: Room } | { error: JoinFailure; room?: Room }> {
   try {
     const snap = await get(roomRef(game, code))
     const room = snap.val() as Room | null
@@ -170,8 +190,9 @@ export async function peekRoom(game: string, code: string): Promise<{ room: Room
     // the match carried on without me
     if (room.out?.[pid]) return { error: room.out[pid] === 'dropped' ? 'youDropped' : 'youLeft' }
     if (room.players?.[pid]) return { room } // rejoining my own seat
-    if (room.status !== 'waiting') return { error: 'started' }
-    if (!freeSeats(room).length) return { error: 'full' }
+    // the room comes back too, so the screen can offer to watch instead
+    if (room.status !== 'waiting') return { error: 'started', room }
+    if (!freeSeats(room).length) return { error: 'full', room }
     return { room }
   } catch {
     return { error: 'offline' }
@@ -182,7 +203,7 @@ export async function peekRoom(game: string, code: string): Promise<{ room: Room
  * Takes the first free guest seat (or reclaims ours after a refresh).
  * Claiming a seat is a transaction, so two people opening the same link can't both get the same one.
  */
-export async function joinRoom(game: string, code: string, name: string): Promise<{ ok: true } | { ok: false; error: JoinFailure }> {
+export async function joinRoom(game: string, code: string, name: string): Promise<{ ok: true } | { ok: false; error: JoinFailure; room?: Room }> {
   const pid = playerId()
   try {
     const snap = await get(roomRef(game, code))
@@ -195,7 +216,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
       await update(at(game, code, `players/${pid}`), { name, online: true, look: pickedOpsLook() })
       return { ok: true }
     }
-    if (room.status !== 'waiting') return { ok: false, error: 'started' }
+    if (room.status !== 'waiting') return { ok: false, error: 'started', room }
 
     // someone may take a seat between our read and our claim: then try the next one
     for (const seat of freeSeats(room)) {
@@ -204,7 +225,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
       await set(at(game, code, `players/${pid}`), { name, seat, online: true, joinedAt: serverTimestamp(), ...myLook() })
       return { ok: true }
     }
-    return { ok: false, error: 'full' }
+    return { ok: false, error: 'full', room }
   } catch {
     return { ok: false, error: 'offline' }
   }
@@ -248,6 +269,31 @@ export function trackPresence(game: string, code: string) {
       p ? { ...p, online: false } : null,
     ).catch(() => {})
   }
+}
+
+/**
+ * Puts us on the room's watcher list (name and look) for as long as we're watching: re-added whenever
+ * the connection comes back, removed when the tab drops or we stop. Returns the stop.
+ */
+export function watchRoom(game: string, code: string, name: string) {
+  const mine = at(game, code, `watchers/${playerId()}`)
+  const stop = onValue(ref(db, '.info/connected'), (snap) => {
+    if (snap.val() !== true) return
+    onDisconnect(mine)
+      .remove()
+      .then(() => set(mine, { name, at: serverTimestamp(), ...myLook() }))
+      .catch(() => {})
+  })
+  return () => {
+    stop()
+    onDisconnect(mine).cancel().catch(() => {})
+    remove(mine).catch(() => {})
+  }
+}
+
+/** The host lets people watch, or stops them (everyone watching is sent away). */
+export async function setNoWatch(game: string, code: string, off: boolean) {
+  await update(roomRef(game, code), off ? { noWatch: true, watchers: null } : { noWatch: null })
 }
 
 export async function startMatch(game: string, code: string, state: Record<string, unknown> = {}) {

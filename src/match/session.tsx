@@ -13,6 +13,8 @@ import type { Level } from './bot'
  */
 export interface Session {
   local: boolean
+  /** watching someone else's online match: every change is refused, and nothing is recorded */
+  watching?: boolean
   /** playing Ops on this device: worded like an online match (you vs Ops), but nothing is recorded */
   bot?: boolean
   /** how hard Ops plays, in a game against her */
@@ -28,6 +30,18 @@ export interface Session {
 const LocalSession = createContext<Session | null>(null)
 /** Wraps a pass-and-play match so its screens use the in-memory session. */
 export const LocalSessionProvider = LocalSession.Provider
+
+/** A watcher's session: the match plays out on screen, but this phone never changes it. */
+export const WATCH_SESSION: Session = {
+  local: false,
+  watching: true,
+  move: () => Promise.resolve(false),
+  ready: () => {},
+  start: () => {},
+}
+
+/** True while watching someone else's match. */
+export const useWatching = () => !!useContext(LocalSession)?.watching
 
 /** True inside a game against Ops. */
 export const useVsOps = () => !!useContext(LocalSession)?.bot

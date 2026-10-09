@@ -14,13 +14,26 @@ interface Props {
   oppGone: boolean
   onReady: () => void
   onLeave: () => void
+  /** a watcher shares the result but has no rematch to ask for */
+  watching?: boolean
 }
 
 /**
  * The one row of actions under every result: share (icon) beside the rematch button.
  * Leaving mid-series is the top bar's Leave; once the other player is gone the rematch button becomes the way out.
  */
-export function ResultActions({ card, message, again = 'Play again', oppName = 'Opponent', imReady, oppReady, oppGone, onReady, onLeave }: Props) {
+export function ResultActions({ card, message, again = 'Play again', oppName = 'Opponent', imReady, oppReady, oppGone, onReady, onLeave, watching }: Props) {
+  if (watching) {
+    return (
+      <div className="mt-result-actions" aria-live="polite">
+        <p className="hint mt-result-actions__note">{oppGone ? 'The match is over' : 'Stay to watch if they rematch'}</p>
+        <ShareResult card={card} message={message} />
+        <button type="button" className="btn btn--primary btn--lg" onClick={onLeave}>
+          Stop watching <span className="keycap">↵</span>
+        </button>
+      </div>
+    )
+  }
   // context goes in the note; the button keeps a short label so the row stays one line on a phone
   const note = oppGone
     ? `${oppName} left the room`

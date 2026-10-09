@@ -16,14 +16,17 @@ import {
   joinRoom,
   leaveRoom,
   abandonRoom,
+  canWatch,
   normalizeCode,
   peekRoom,
   seatedPlayers,
+  setNoWatch,
   startMatch,
   stakeAgreed,
   stillIn,
   takeOverHost,
   trackPresence,
+  watchRoom,
   type AnySeat,
   type JoinFailure,
   type Room,
@@ -37,6 +40,8 @@ import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
 import { StakePanel } from './StakePanel'
 import { LooksProvider, looksFor } from '../match/looks'
+import { LocalSessionProvider, WATCH_SESSION } from '../match/session'
+import { Spectators } from '../match/Spectators'
 import { TauntLayer } from '../match/Taunts'
 import { ThrowLayer, throwsIn } from '../match/Throws'
 import { UltEarn, UltLayer } from '../match/Ultimates'
@@ -126,7 +131,8 @@ const FAILURE_COPY: Record<JoinFailure, string> = {
 type Invite =
   | { state: 'checking' }
   | { state: 'ok'; hostName: string; rejoin: boolean }
-  | { state: 'bad'; error: JoinFailure }
+  /** `watch`: the match can be watched instead (it's started, or full), and who's hosting it */
+  | { state: 'bad'; error: JoinFailure; watch?: string }
 
 /** Set while leaving would cost someone something (a live match, or a guest waiting on the host). */
 interface LeaveGuard {
@@ -148,6 +154,10 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
   const [params, setParams] = useSearchParams()
   const urlCode = normalizeCode(params.get('room') ?? '')
   const [inRoom, setInRoom] = useState<string | null>(null)
+  // watching someone else's match: the room, and the name we watch under
+  const [watching, setWatching] = useState<{ code: string; name: string } | null>(null)
+  // the players' names, for a watcher's reactions and voice notes
+  const [watchNames, setWatchNames] = useState<Record<string, string> | undefined>(undefined)
   const [invite, setInvite] = useState<Invite | null>(null)
   const [showRules, setShowRules] = useState(false)
   const [guard, setGuard] = useState<LeaveGuard | null>(null)
@@ -228,12 +238,19 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
 
   // Validate an invite link up front — before asking for a name.
   useEffect(() => {
-    if (auth !== 'ready' || !urlCode || inRoom === urlCode) return
+    if (auth !== 'ready' || !urlCode || inRoom === urlCode || watching?.code === urlCode) return
     let alive = true
     setInvite({ state: 'checking' })
     peekRoom(game.slug, urlCode).then((res) => {
       if (!alive) return
-      if ('error' in res) return setInvite({ state: 'bad', error: res.error })
+      if ('error' in res) {
+        const room = res.room
+        const watchable = !!game.watch && !!room && canWatch(room)
+        // watching it before a refresh: straight back to watching
+        if (watchable && room.watchers?.[playerId()]) return setWatching({ code: urlCode, name: load(KEYS.name)?.trim() || room.watchers[playerId()].name })
+        const host = room && Object.values(room.players ?? {}).find((p) => p.seat === 0)
+        return setInvite({ state: 'bad', error: res.error, watch: watchable ? (host?.name ?? 'Someone') : undefined })
+      }
       const me = res.room.players?.[playerId()]
       // Already seated (e.g. page refresh) — go straight back in, unless they chose to leave.
       if (me && !hasLeft(game.slug, urlCode)) return setInRoom(urlCode)
@@ -243,7 +260,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
     return () => {
       alive = false
     }
-  }, [game.slug, urlCode, inRoom, auth])
+  }, [game.slug, game.watch, urlCode, inRoom, watching?.code, auth])
 
   const enterRoom = (code: string) => {
     markLeft(game.slug, null)
@@ -251,7 +268,14 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
     setInvite(null)
     setParams({ room: code }, { replace: true })
   }
+  const enterWatch = (code: string, name: string) => {
+    setWatching({ code, name })
+    setInvite(null)
+    setParams({ room: code }, { replace: true })
+  }
   const exitRoom = () => {
+    setWatching(null)
+    setWatchNames(undefined)
     setInRoom(null)
     setInvite(null)
     setChallengeFor(null)
@@ -376,13 +400,16 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         challengeFor={challengeFor}
       />
     )
+  } else if (watching) {
+    screen = <WatchRoom game={game} code={watching.code} name={watching.name} onExit={exitRoom} onNames={setWatchNames} renderGame={renderGame} sense={sense} />
   } else if (urlCode && invite) {
-    screen = <InviteScreen game={game} code={urlCode} invite={invite} onJoined={enterRoom} onDismiss={exitRoom} />
+    screen = <InviteScreen game={game} code={urlCode} invite={invite} onJoined={enterRoom} onWatch={enterWatch} onDismiss={exitRoom} />
   } else {
     screen = (
       <StartScreen
         game={game}
         onEnter={enterRoom}
+        onWatch={game.watch ? enterWatch : undefined}
         onLocal={canLocal ? () => setSetup('local') : undefined}
         onBot={canLocal && bot ? () => setSetup('bot') : undefined}
       />
@@ -404,7 +431,10 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
               <Link to="/" className="icon-btn" aria-label="All games">
                 <ArrowLeft />
               </Link>
-              <span className="topbar__title">{game.name}</span>
+              <span className="topbar__title">
+                {game.name}
+                {watching && <span className="hide-sm"> · Watching</span>}
+              </span>
             </>
           )
         }
@@ -412,6 +442,12 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
           <>
             {guard?.kind === 'match' && inRoom && <VoiceNotes game={game.slug} code={inRoom} pid={playerId()} names={guard.names} />}
             {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
+            {watching && watchNames && (
+              <>
+                <VoiceNotes game={game.slug} code={watching.code} pid={playerId()} names={watchNames} listen />
+                <Reactions game={game.slug} code={watching.code} pid={playerId()} other={null} names={watchNames} watching />
+              </>
+            )}
             {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
             {local && !local.bot && throwsIn(game.slug) && (
               <>
@@ -429,10 +465,17 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
           </>
         }
         end={
-          inMatch && (
+          inMatch ? (
             <button type="button" className="icon-btn icon-btn--leave" onClick={() => setAsking(true)} aria-label="Leave">
               <Exit /> <span className="hide-sm" aria-hidden="true">Leave</span>
             </button>
+          ) : (
+            // a watcher costs nobody anything by going, so there's no confirm
+            watching && (
+              <button type="button" className="icon-btn icon-btn--leave topbar__unwatch" onClick={exitRoom} aria-label="Stop watching">
+                <Exit /> <span className="hide-sm" aria-hidden="true">Stop watching</span>
+              </button>
+            )
           )
         }
       />
@@ -486,11 +529,26 @@ function NameField({
 
 /* ── Start: create a room or join with a code ───────────────────────────── */
 
-function StartScreen({ game, onEnter, onLocal, onBot }: { game: GameMeta; onEnter: (code: string) => void; onLocal?: () => void; onBot?: () => void }) {
+function StartScreen({
+  game,
+  onEnter,
+  onWatch,
+  onLocal,
+  onBot,
+}: {
+  game: GameMeta
+  onEnter: (code: string) => void
+  /** this game can be watched: a code for a match that's started (or full) offers to watch it */
+  onWatch?: (code: string, name: string) => void
+  onLocal?: () => void
+  onBot?: () => void
+}) {
   const { name, setName, commit } = useSavedName()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState<'create' | 'join' | null>(null)
   const [error, setError] = useState('')
+  // the room in the code can be watched instead
+  const [watchable, setWatchable] = useState<string | null>(null)
   const { play } = useSound()
 
   const fail = (msg: string) => {
@@ -521,8 +579,12 @@ function StartScreen({ game, onEnter, onLocal, onBot }: { game: GameMeta; onEnte
     if (code.length !== CODE_LENGTH) return fail(`Room codes are ${CODE_LENGTH} letters.`)
     setBusy('join')
     setError('')
+    setWatchable(null)
     const res = await joinRoom(game.slug, code, n)
-    if (!res.ok) return fail(FAILURE_COPY[res.error])
+    if (!res.ok) {
+      if (onWatch && res.room && canWatch(res.room)) setWatchable(code)
+      return fail(FAILURE_COPY[res.error])
+    }
     play('join')
     onEnter(code)
   }
@@ -564,6 +626,11 @@ function StartScreen({ game, onEnter, onLocal, onBot }: { game: GameMeta; onEnte
       </form>
 
       <p className="lobby__error error-text" role="alert">{error}</p>
+      {onWatch && watchable && watchable === code && (
+        <button type="button" className="btn btn--block" onClick={() => onWatch(watchable, commit())}>
+          <span aria-hidden="true">👁</span> Watch instead
+        </button>
+      )}
 
       {onLocal && (
         <>
@@ -591,12 +658,14 @@ function InviteScreen({
   code,
   invite,
   onJoined,
+  onWatch,
   onDismiss,
 }: {
   game: GameMeta
   code: string
   invite: Invite
   onJoined: (code: string) => void
+  onWatch: (code: string, name: string) => void
   onDismiss: () => void
 }) {
   const { name, setName, commit } = useSavedName()
@@ -628,6 +697,40 @@ function InviteScreen({
     return (
       <main className="lobby__main screen-in" aria-busy="true">
         <p className="hint">Checking room {code}…</p>
+      </main>
+    )
+  }
+
+  // the match has started (or the room is full) but can be watched
+  if (invite.state === 'bad' && invite.watch) {
+    const watch = (e: FormEvent) => {
+      e.preventDefault()
+      const n = commit()
+      if (!n) {
+        setError('name')
+        play('error')
+        return
+      }
+      play('join')
+      onWatch(code, n)
+    }
+    return (
+      <main className="lobby__main screen-in">
+        <div className="lobby__hero">
+          <p className="hint">{invite.error === 'full' ? `Room ${code} is full` : `${invite.watch}’s match in room ${code} has started`}</p>
+          <h1 className="lobby__title">Watch the match?</h1>
+        </div>
+        <form className="lobby__stack" onSubmit={watch}>
+          <NameField value={name} onChange={setName} autoFocus={!name} placeholder="Watcher" />
+          <p className="hint lobby__center">The players will see you’re watching</p>
+          <button type="submit" className="btn btn--primary btn--lg btn--block">
+            <span aria-hidden="true">👁</span> Watch <span className="keycap">↵</span>
+          </button>
+          <button type="button" className="link-btn" onClick={onDismiss}>
+            Start your own room
+          </button>
+        </form>
+        <p className="lobby__error error-text" role="alert">{error === 'name' ? 'Add your name first.' : ''}</p>
       </main>
     )
   }
@@ -823,6 +926,7 @@ function WaitingRoom({
           {renderGame(room, { id: pid, seat: (me.seat < 2 ? me.seat : 0) as 0 | 1, seatN: me.seat, isHost }, { request: onRequestLeave, now: leave })}
         </LooksProvider>
         {room.status === 'playing' && <SelfOffline />}
+        {game.watch && <Spectators game={game.slug} code={code} pid={pid} watchers={room.watchers} />}
       </>
     )
   }
@@ -919,6 +1023,18 @@ function WaitingRoom({
 
       <div className="lobby__stack" aria-live="polite">
         {isHost && <OptionPicker options={options} choices={choices} onChange={setChoices} />}
+        {isHost && game.watch && (
+          <div className="lobby-option">
+            <span className="label">Watchers</span>
+            <div className="seg" role="group" aria-label="Watchers">
+              {[false, true].map((off) => (
+                <button key={String(off)} type="button" className="seg__btn" aria-pressed={!!room.noWatch === off} onClick={() => setNoWatch(game.slug, code, off).catch(() => {})}>
+                  {off ? 'Off' : 'Can watch'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <StakePanel room={room} />
         {isHost ? (
           <button type="button" className="btn btn--primary btn--lg btn--block" disabled={!ready || !agreed || starting} onClick={start}>
@@ -935,6 +1051,87 @@ function WaitingRoom({
       </div>
 
       {toast && <div className="toast" role="status">{toast}</div>}
+      {game.watch && <Spectators game={game.slug} code={code} pid={pid} watchers={room.watchers} />}
     </main>
+  )
+}
+
+/* ── Watching someone else's match ──────────────────────────────────────── */
+
+function WatchRoom({
+  game,
+  code,
+  name,
+  onExit,
+  onNames,
+  renderGame,
+  sense,
+}: {
+  game: GameMeta
+  code: string
+  name: string
+  onExit: () => void
+  /** the players' names, for the top bar's reactions and voice notes */
+  onNames: (names: Record<string, string> | undefined) => void
+  renderGame: Props['renderGame']
+  sense?: OpsSense
+}) {
+  const live = useRoom(game.slug, code)
+  const pid = playerId()
+
+  useEffect(() => watchRoom(game.slug, code, name), [game.slug, code, name])
+
+  const room = live.status === 'ready' ? live.room : null
+  const namesKey = JSON.stringify(Object.entries(room?.players ?? {}).map(([id, p]) => [id, p.name]))
+  useEffect(() => {
+    onNames(room ? Object.fromEntries(JSON.parse(namesKey)) : undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [namesKey, onNames])
+  useEffect(() => () => onNames(undefined), [onNames])
+
+  if (live.status === 'loading') {
+    return <main className="lobby__main" aria-busy="true"><p className="hint">Opening room {code}…</p></main>
+  }
+  // gone, or the host turned watching off
+  if (!room || room.noWatch) {
+    return (
+      <main className="lobby__main screen-in">
+        <div className="lobby__hero">
+          <h1 className="lobby__title">{room ? 'Watching is off' : 'Room closed'}</h1>
+          <p>{room ? 'The host turned watching off for this room.' : live.status === 'error' ? FAILURE_COPY.offline : 'This room is gone.'}</p>
+        </div>
+        <button type="button" className="btn btn--primary" onClick={onExit}>Back to lobby</button>
+      </main>
+    )
+  }
+
+  const spectators = <Spectators game={game.slug} code={code} pid={pid} watchers={room.watchers} />
+
+  if (room.status === 'waiting') {
+    const seats = seatedPlayers(room).filter(Boolean)
+    return (
+      <main className="lobby__main screen-in">
+        <div className="lobby__hero">
+          <VsBlock mood="wait" eyes size={64} />
+          <p className="label">Watching room {code}</p>
+          <h1 className="lobby__title">{seats.map((p) => p!.name).join(' vs ')}</h1>
+          <p className="hint">Waiting for {seats[0]?.name ?? 'the host'} to start…</p>
+        </div>
+        <button type="button" className="link-btn" onClick={onExit}>Stop watching</button>
+        {spectators}
+      </main>
+    )
+  }
+
+  // the match plays out here exactly as on the players' phones, from player 1's side; every move is refused
+  const me: Me = { id: pid, seat: 0, seatN: 0, isHost: false }
+  return (
+    <>
+      <UltEarn room={room} sense={sense} />
+      <LocalSessionProvider value={WATCH_SESSION}>
+        <LooksProvider value={looksFor(room)}>{renderGame(room, me, { request: onExit, now: onExit })}</LooksProvider>
+      </LocalSessionProvider>
+      {spectators}
+    </>
   )
 }

@@ -64,7 +64,8 @@ export function clearVoice(room: Room, me: string) {
 
 type Heard = { id: number; who: string; clip: Clip; playing: boolean; blocked: boolean }
 
-export function VoiceNotes({ game, code, pid, names }: { game: string; code: string; pid: string; names?: Record<string, string> }) {
+/** `listen`: a watcher hears the players' notes but has no mic */
+export function VoiceNotes({ game, code, pid, names, listen }: { game: string; code: string; pid: string; names?: Record<string, string>; listen?: boolean }) {
   const base = `${roomPath(game, code)}/voice`
   const [rec, setRec] = useState<{ start: number } | null>(null)
   const [now, setNow] = useState(0)
@@ -240,20 +241,22 @@ export function VoiceNotes({ game, code, pid, names }: { game: string; code: str
 
   return (
     <>
-      <button
-        type="button"
-        className={`icon-btn voice__btn${rec ? ' voice__btn--on' : ''}`}
-        aria-label="Hold to send a voice note"
-        aria-pressed={!!rec}
-        onPointerDown={down}
-        onPointerUp={finish}
-        onPointerCancel={finish}
-        onContextMenu={(e) => e.preventDefault()}
-        onKeyDown={(e) => (e.key === ' ' || e.key === 'Enter') && !e.repeat && (e.preventDefault(), begin())}
-        onKeyUp={(e) => (e.key === ' ' || e.key === 'Enter') && finish()}
-      >
-        <Mic />
-      </button>
+      {!listen && (
+        <button
+          type="button"
+          className={`icon-btn voice__btn${rec ? ' voice__btn--on' : ''}`}
+          aria-label="Hold to send a voice note"
+          aria-pressed={!!rec}
+          onPointerDown={down}
+          onPointerUp={finish}
+          onPointerCancel={finish}
+          onContextMenu={(e) => e.preventDefault()}
+          onKeyDown={(e) => (e.key === ' ' || e.key === 'Enter') && !e.repeat && (e.preventDefault(), begin())}
+          onKeyUp={(e) => (e.key === ' ' || e.key === 'Enter') && finish()}
+        >
+          <Mic />
+        </button>
+      )}
       <Portal>
         <div className="voice__pops" aria-live="polite">
           {rec && (

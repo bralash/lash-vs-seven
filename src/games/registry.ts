@@ -29,6 +29,8 @@ export interface GameMeta {
   fullscreen?: boolean
   /** short tagline shown under the title in the game's lobby */
   tagline?: string
+  /** others can watch an online match with the room code (its match screen knows about watchers) */
+  watch?: boolean
   rules?: RuleStep[]
 }
 
@@ -180,6 +182,7 @@ export const GAMES: GameMeta[] = [
   {
     slug: 'connect4',
     fullscreen: true,
+    watch: true,
     tiles: 'FOUR',
     name: 'Connect Four',
     blurb: 'Drop discs into the grid and line up four — across, down or diagonal. Play a single game or a series.',

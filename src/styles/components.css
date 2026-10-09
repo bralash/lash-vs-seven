@@ -71,7 +71,8 @@
 .topbar__title { font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
 /* phones: the mic and reactions need the room, and fullscreen is for big boards on tablets and desktops */
 /* …and with the mic there too, the game's name gives up its space (the board says what game it is) */
-@media (width <= 480px) { .topbar__fullscreen, .topbar:has(.voice__btn) .topbar__title { display: none; } }
+/* (a watcher has no mic, but Stop watching takes the same room) */
+@media (width <= 480px) { .topbar__fullscreen, .topbar:has(.voice__btn) .topbar__title, .topbar:has(.topbar__unwatch) .topbar__title { display: none; } }
 
 /* ── Logo ────────────────────────────────────────────────── */
 .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
@@ -310,6 +311,70 @@
 /* Ops' stickers carry her face in place of the emoji */
 .react__face { grid-row: span 2; display: grid; place-items: center; }
 .react__pop--ops { padding-block: 8px; }
+
+/* ── Watchers: the eye chip bottom-left, their reactions stacked above it ── */
+.watch { display: contents; }
+.watch__chip {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 130;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 12px;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.watch__chip:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.watch__cheers {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 48px);
+  z-index: 140;
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  pointer-events: none;
+}
+.watch__cheer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 6px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  animation: react-in .32s var(--ease-snap) both, react-out .3s ease-in 2.1s both;
+}
+.watch__emoji { font-size: 22px; line-height: 1; }
+.watch__who { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.watch__list {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 48px);
+  z-index: 151;
+  width: min(260px, calc(100vw - 32px));
+  max-height: 60vh;
+  overflow: auto;
+  padding: 12px;
+  border: var(--edge) solid var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  animation: watch-up .18s var(--ease-out) both;
+}
+@keyframes watch-up { from { opacity: 0; translate: 0 8px; } }
+.watch__list ul { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.watch__list li { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 18px; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) {
+  .watch__cheer { animation: react-out .3s linear 2.1s both; }
+}
 
 /* ── Voice notes: hold the mic in the top bar, the note pops on the other phones ── */
 .voice__btn { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { abandonRoom, dropPlayer } from '../lobby/rooms'
+import { useWatching } from './session'
 import type { Seated } from './types'
 
 /** An opponent who drops offline mid-round has this long to come back before the match ends. */
@@ -12,7 +13,8 @@ export const RECONNECT_MS = 20_000
  * with the opponent gone, it doesn't) — the countdown used to sit frozen at 20s.
  */
 export function useOpponentAway(game: string, code: string, opp: Seated | null, active: boolean): number | null {
-  const away = active && !!opp && !opp.online
+  // a watcher never ends anyone's match: the players' own phones do that
+  const away = active && !useWatching() && !!opp && !opp.online
   const [since, setSince] = useState<number | null>(null)
   const [, tick] = useState(0)
   const oppId = opp?.id
@@ -42,7 +44,7 @@ export function useOpponentAway(game: string, code: string, opp: Seated | null, 
  * if two or more are left, otherwise it's over. Returns who's away and the seconds each has left.
  */
 export function useAwayPlayers(game: string, code: string, others: Seated[], active: boolean): { id: string; name: string; secs: number }[] {
-  const away = active ? others.filter((p) => !p.online) : []
+  const away = active && !useWatching() ? others.filter((p) => !p.online) : []
   const awayKey = away.map((p) => p.id).join(',')
   const since = useRef<Record<string, number>>({})
   const [, tick] = useState(0)
