@@ -112,3 +112,8 @@
 @media (prefers-reduced-motion: reduce) {
   .opsf *, .opsf__body { animation: none !important; }
 }
+
+/* Warrior: the brow lowers while she thinks, her eyes glare on a win */
+.opsf--warrior.opsf--think .opsf-warrior__brow { animation: opsf-glower 1.6s ease-in-out infinite; }
+@keyframes opsf-glower { 50% { translate: 0 2px; } }
+.opsf--warrior.opsf--win .opsf-warrior__eye { fill: #fff3b0; }

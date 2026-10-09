@@ -14,7 +14,7 @@ export type ReactMood =
   /** when you poke or pet her (PokeOps) */
   | 'love' | 'giggle' | 'angry'
 export type OpsMood = BaseMood | ReactMood
-export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'visor'
+export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'visor' | 'warrior'
 
 /** The face Ops wears until a player picks another. */
 export const OPS_LOOK: OpsStyle = 'screen'
@@ -25,6 +25,7 @@ export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string }[] = [
   { id: 'cyclops', name: 'Cyclops', blurb: 'One big camera eye that watches the board.' },
   { id: 'die', name: 'Die', blurb: 'A die whose pips are her eyes. Thinking rolls through the faces.' },
   { id: 'visor', name: 'Visor', blurb: 'Dark head with a yellow visor; a light sweeps across while she thinks.' },
+  { id: 'warrior', name: 'Kratops', blurb: 'Ash-grey god of war with a red stripe of war paint. She doesn’t throw tomatoes: she throws her axe, and it comes back.' },
 ]
 
 /* ── The player's pick ── */
@@ -258,6 +259,50 @@ function Visor({ mood }: { mood: OpsMood }) {
   )
 }
 
+/** Kratops: ash-grey head, a red war-paint stripe over her left eye, a scar, a heavy brow and a dark beard. */
+function Warrior({ mood }: { mood: OpsMood }) {
+  const paint = '#c4262e'
+  const brow = mood === 'lose' ? 'M24 33l13-4M70 33l-13-4' : mood === 'draw' ? 'M24 31h13M57 31h13' : mood === 'think' ? 'M24 32l13 3M57 27l13 1' : 'M24 28l14 6M70 28l-14 6'
+  return (
+    <Head fill="#d7d3cb">
+      <clipPath id="opsf-warrior-clip">
+        <rect x="9" y="10" width="76" height="84" />
+      </clipPath>
+      <g clipPath="url(#opsf-warrior-clip)">
+        {/* the stripe: over the scalp, down through her left eye, into the beard */}
+        <path d="M26 6h13l-2 58h-9z" fill={paint} />
+        {/* the beard, with a gap for the mouth */}
+        <path d="M27 58q20-5 40 0l-1 18q-6 14-19 18q-13-4-19-18z" fill="#2b2420" />
+        <path d="M33 56q14-4 28 0" stroke="#2b2420" strokeWidth="5" fill="none" />
+      </g>
+      <path className="opsf-warrior__brow" d={brow} stroke={INK} strokeWidth="5" strokeLinecap="square" fill="none" />
+      {/* a scar across the right brow */}
+      <path d="M66 22l-6 18" stroke="#9c948a" strokeWidth="2.5" />
+      <g className="opsf-eyes">
+        {mood === 'lose' ? (
+          <path d="M27 42q5 3 10 0M57 42q5 3 10 0" stroke={INK} strokeWidth="3.5" fill="none" />
+        ) : mood === 'draw' ? (
+          <path d="M27 40h10M57 40h10" stroke={INK} strokeWidth="4" />
+        ) : (
+          <>
+            <rect className="opsf-warrior__eye" x="28" y="37" width="8" height="6" fill="#f2c94c" stroke={INK} strokeWidth="2" />
+            <rect className="opsf-warrior__eye" x="58" y="37" width="8" height="6" fill="#f2c94c" stroke={INK} strokeWidth="2" />
+          </>
+        )}
+      </g>
+      {/* the mouth, in the beard: a roar when she wins */}
+      {mood === 'win' ? (
+        <>
+          <path d="M36 62h22l-3 13H39z" fill="#5a1515" stroke={INK} strokeWidth="3" />
+          <path d="M38 62h18v4H38z" fill="#fff" />
+        </>
+      ) : (
+        <path d={mood === 'lose' ? 'M38 70q9-6 18 0' : 'M38 67h18'} stroke="#d7d3cb" strokeWidth="4" fill="none" />
+      )}
+    </Head>
+  )
+}
+
 /* ── Reaction faces (Screen look) ───────────────────────────────────────── */
 
 const SCREEN = <rect x="15" y="16" width="64" height="50" fill="#25222c" />
@@ -474,7 +519,7 @@ const BASE: Record<ReactMood, BaseMood> = {
   love: 'win', giggle: 'win', angry: 'lose',
 }
 
-const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, visor: Visor }
+const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, visor: Visor, warrior: Warrior }
 
 /** Ops' face. Moods animate in CSS; remount (change `key`) to replay a one-shot mood. */
 export function OpsFace({ look: forced, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {

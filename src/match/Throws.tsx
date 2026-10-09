@@ -6,10 +6,13 @@ import { useSound } from '../lib/sound'
  * Tap someone's Ops on their score card and something flies at it: a tomato, a rock or a paper
  * ball, picked at random. It lands with a splat and the face winces for a moment. Online it goes
  * over the reactions channel so every phone sees it fly from the thrower's card; against Ops she
- * takes it personally. Race games leave it out (no pelting someone mid-sprint).
+ * takes it personally. Race games leave it out (no pelting someone mid-sprint). Whoever wears the
+ * Warrior look throws her axe instead, and it spins back to their card.
  */
 
-export const ITEMS = ['tomato', 'rock', 'paper'] as const
+export const ITEMS = ['tomato', 'rock', 'paper', 'axe'] as const
+/** what anyone but the Warrior picks from */
+const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
 export const isItem = (k: unknown): k is Item => ITEMS.includes(k as Item)
 
@@ -30,6 +33,8 @@ interface Flight {
   to: string
   /** thrown on this phone (only those answer to `onHit`) */
   mine: boolean
+  /** an axe on its way home: no hit when it lands */
+  back?: boolean
 }
 interface Hit {
   n: number
@@ -61,8 +66,10 @@ const useVersion = () => useSyncExternalStore(subscribe, () => version)
 const landers = new Set<(f: Flight) => void>()
 
 /** Send something flying from one card's Ops to another's (from null: the card whose go it is). */
-export function launch(from: string | null, to: string, item: Item, mine = false) {
-  const f: Flight = { id: nextId++, item, from, to, mine }
+export function launch(from: string | null, to: string, item: Item, mine = false, back = false) {
+  // pass & play: pin down whose go it is now, so an axe knows whose card to fly back to
+  from ??= (faceEl(null) as HTMLElement | null)?.dataset.opsFace ?? null
+  const f: Flight = { id: nextId++, item, from, to, mine, back }
   if (!faceRect(to) || matchMedia('(prefers-reduced-motion: reduce)').matches) land(f)
   else {
     flights = [...flights, f]
@@ -72,6 +79,9 @@ export function launch(from: string | null, to: string, item: Item, mine = false
 
 function land(f: Flight) {
   flights = flights.filter((x) => x.id !== f.id)
+  if (f.back) return notify()
+  // the axe comes back to whoever threw it
+  if (f.item === 'axe' && faceRect(f.from)) setTimeout(() => launch(f.to, f.from!, 'axe', false, true), 250)
   const n = nextId++
   hits.set(f.to, { n, item: f.item })
   notify()
@@ -82,14 +92,22 @@ function land(f: Flight) {
   landers.forEach((l) => l(f))
 }
 
+/** What this card throws: her axe if they wear the Warrior, otherwise whatever comes to hand. */
+export function itemFrom(id: string | null): Item {
+  const el = faceEl(id)
+  if (el instanceof HTMLElement && el.dataset.opsLook === 'warrior') return 'axe'
+  return JUNK[Math.floor(Math.random() * JUNK.length)]
+}
+
+function faceEl(id: string | null): Element | null {
+  const sel = id === null ? '[data-ops-face][data-ops-turn]' : `[data-ops-face="${CSS.escape(id)}"]`
+  for (const el of document.querySelectorAll(sel)) if (el.getBoundingClientRect().width > 0) return el
+  return null
+}
+
 /** the face on a visible score card (a match can draw its scoreboard twice: HUD and results) */
 function faceRect(id: string | null): DOMRect | null {
-  const sel = id === null ? '[data-ops-face][data-ops-turn]' : `[data-ops-face="${CSS.escape(id)}"]`
-  for (const el of document.querySelectorAll(sel)) {
-    const r = el.getBoundingClientRect()
-    if (r.width > 0) return r
-  }
-  return null
+  return faceEl(id)?.getBoundingClientRect() ?? null
 }
 
 /** For a score card: a way to throw at this player, if there's a layer and they aren't you. */
@@ -124,7 +142,7 @@ export function ThrowLayer({ me, deliver, onHit }: { me: string | null; deliver?
         const now = Date.now()
         if (now - thrownAt.current < COOLDOWN_MS) return
         thrownAt.current = now
-        const item = ITEMS[Math.floor(Math.random() * ITEMS.length)]
+        const item = itemFrom(props.current.me)
         props.current.play('whoosh')
         launch(props.current.me, to, item, true)
         props.current.deliver?.(to, item)
@@ -132,6 +150,7 @@ export function ThrowLayer({ me, deliver, onHit }: { me: string | null; deliver?
     }
     layer = mine
     const onLand = (f: Flight) => {
+      if (f.back) return
       props.current.play('splat')
       if (f.to === props.current.me && !f.mine) navigator.vibrate?.(60)
       props.current.onHit?.(f)
@@ -171,7 +190,7 @@ function Flying({ f }: { f: Flight }) {
     // a lob: up over the straight line, higher the further it goes
     // …but never off the top of the screen (the cards sit near it)
     const lift = Math.min(160, 50 + Math.hypot(x1 - x0, y1 - y0) * 0.35, Math.max(16, Math.min(y0, y1) - 20))
-    const spin = f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200
+    const spin = (f.item === 'axe' ? 1080 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
     const frames = Array.from({ length: 11 }, (_, i) => {
       const t = i / 10
       const x = x0 + (x1 - x0) * t
@@ -214,6 +233,14 @@ export function ItemArt({ item, size = 34 }: { item: Item; size?: number }) {
           <path d="M14 18l5 2M24 14l1 6M18 28l6-2" stroke={INK} strokeWidth="1.8" strokeLinecap="round" />
         </>
       )}
+      {item === 'axe' && (
+        <>
+          <path d="M9 33L29 13" stroke="#7a4a26" strokeWidth="4.5" strokeLinecap="round" />
+          <path d="M9 33L29 13" stroke={INK} strokeWidth="1.5" strokeDasharray="2 4" />
+          <path d="M23 9q9-4 14 2q-6 0-6 8q-6-1-8-10z" fill="#c9d6e3" stroke={INK} strokeWidth="2.2" strokeLinejoin="round" />
+          <path d="M34 10q2 3 0 7" stroke="#7fd3ff" strokeWidth="2" fill="none" />
+        </>
+      )}
       {item === 'paper' && (
         <>
           <path d="M7 20l5-10 9-3 10 4 3 10-4 10-10 3-9-4z" fill="#fbfaf5" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
@@ -240,6 +267,12 @@ export function Splat({ hit }: { hit: Hit }) {
           />
         )}
         {hit.item === 'rock' && <path d="M20 3l4 10 11-3-7 9 9 6-11 1 1 11-7-8-7 8 1-11-11-1 9-6-7-9 11 3z" fill="var(--hit)" stroke={INK} strokeWidth="2" strokeLinejoin="round" />}
+        {hit.item === 'axe' && (
+          <g stroke={INK} strokeWidth="2.5" strokeLinecap="round" fill="none">
+            <path d="M8 8l24 24" stroke="#c4262e" strokeWidth="4" />
+            <path d="M20 4l2 6M34 16l-6 2M6 22l6-2M18 34l2-6" />
+          </g>
+        )}
         {hit.item === 'paper' && (
           <g fill="#fbfaf5" stroke={INK} strokeWidth="1.8" strokeLinejoin="round">
             <path d="M4 10l7-3 2 6-6 2z" />

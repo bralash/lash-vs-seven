@@ -3,7 +3,7 @@ import type { OpsMood } from '../components/OpsFace'
 import { useSound } from '../lib/sound'
 import { BOT_NAME, type Level, type Moment, type OpsSense } from './bot'
 import { Pops, ReactionButton, usePops, useSend, type ReactionKey } from './Reactions'
-import { ITEMS, launch, ThrowLayer, type Item } from './Throws'
+import { itemFrom, launch, ThrowLayer, type Item } from './Throws'
 
 /*
  * Ops reacts the way a person does in an online match: a sticker pops up with her name and a
@@ -73,10 +73,11 @@ function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
  * the last row she throws one back.
  */
 const HITS: Record<Item, Say[]>[] = [
-  { tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }] },
-  { tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }] },
-  { tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }] },
+  { tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }], axe: [{ face: 'panic', said: 'AN AXE?!' }, { face: 'wow', said: 'Is that… mine?' }] },
+  { tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }], axe: [{ face: 'nervous', said: 'Not the axe' }, { face: 'salty', said: 'Overkill' }] },
+  { tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }], axe: [{ face: 'angry', said: 'ENOUGH' }] },
 ]
+const AXE_BACK: Say[] = [{ face: 'gotcha', said: 'BOY.' }, { face: 'smug', said: 'Catch' }, { face: 'gotcha', said: 'Axe time' }]
 const BACK: Say[] = [{ face: 'gotcha', said: 'Take that' }, { face: 'smug', said: 'Your turn' }, { face: 'gotcha', said: 'Ha!' }]
 /** every this long without a throw takes one off how fed up she is */
 const HIT_COOL_MS = 4000
@@ -186,8 +187,9 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     f.count = 0
     clearTimeout(backTimer.current)
     backTimer.current = setTimeout(() => {
-      launch('p1', 'p0', pick([...ITEMS]))
-      sayRef.current(pick(BACK))
+      const item = itemFrom('p1')
+      launch('p1', 'p0', item)
+      sayRef.current(item === 'axe' ? pick(AXE_BACK) : pick(BACK))
     }, 700)
   }
 
