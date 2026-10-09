@@ -412,7 +412,7 @@
 .debt__meta b { font-weight: 500; color: var(--ink); }
 .debt__btn { white-space: nowrap; }
 
-/* ── Phones: a one-line title and two columns of small cards, so the games show without scrolling ── */
+/* ── Phones: a one-line title, so the games start higher up ── */
 @media (width <= 640px) {
   .hero { gap: 0; padding: 8px 0 20px; }
   .hero__title { display: flex; justify-content: center; align-items: baseline; gap: .22em; font-size: clamp(32px, 11vw, 50px); }
@@ -421,19 +421,5 @@
   .games-head { margin-bottom: 16px; gap: 12px; }
   .games-head h2 { font-size: 28px; }
 
-  .games { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .card { gap: 6px; padding: 8px 8px 10px; box-shadow: var(--shadow-sm); }
-  .card__num, .card__cat, .card__blurb, .card__meta, .card__cta, .card__top .stamp--live { display: none; }
-  /* no top row: the vs Ops badge (and a Soon stamp) sit on the card's corner, so every card is the same height */
-  .card__top { position: absolute; top: -9px; right: -7px; z-index: 1; min-height: 0; gap: 4px; }
-  .card__ops { padding: 1px; font-size: 0; gap: 0; box-shadow: 2px 2px 0 var(--ink); }
-  .card { padding-top: 12px; }
-  .card__tiles { gap: 3px; padding: 6px; margin: 0; }
-  .card__tiles span { font-size: 13px; border-bottom-width: 2px; }
-  .card__name { font-size: 18px; line-height: 1.05; }
-  .card__players { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
   .corner__title { font-size: 17px; }
-}
-@media (width > 640px) {
-  .card__players { display: none; }
 }

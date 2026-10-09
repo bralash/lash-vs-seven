@@ -134,7 +134,6 @@ function GameCard({ game, index }: { game: GameMeta; index: number }) {
         ))}
       </div>
       <h3 className="card__name">{game.name}</h3>
-      {game.players && <span className="card__players">{game.players[0]}–{game.players[1]} players</span>}
       <p className="card__blurb">{game.blurb}</p>
       <p className="card__meta">
         {game.players ? `${game.players[0]}–${game.players[1]}` : 2} players · {game.length} · {game.modes}
