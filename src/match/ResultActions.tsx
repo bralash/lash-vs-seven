@@ -1,3 +1,4 @@
+import { FeedbackButton } from '../components/Feedback'
 import { ShareResult } from './ShareResult'
 import type { CardInput } from './shareCard'
 
@@ -31,6 +32,7 @@ export function ResultActions({ card, message, again = 'Play again', oppName = '
         <button type="button" className="btn btn--primary btn--lg" onClick={onLeave}>
           Stop watching <span className="keycap">↵</span>
         </button>
+        <FeedbackButton game={card.game} className="link-btn mt-result-actions__feedback" />
       </div>
     )
   }
@@ -56,6 +58,7 @@ export function ResultActions({ card, message, again = 'Play again', oppName = '
           <span className="keycap">↵</span>
         </button>
       )}
+      <FeedbackButton game={card.game} className="link-btn mt-result-actions__feedback" />
     </div>
   )
 }

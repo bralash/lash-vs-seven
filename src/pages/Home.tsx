@@ -1,3 +1,4 @@
+import { FeedbackButton } from '../components/Feedback'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../components/Logo'
@@ -89,6 +90,11 @@ export function Home() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section className="home-feedback" aria-label="Feedback">
+          <p>Found a bug? Got an idea?</p>
+          <FeedbackButton className="btn">Send feedback</FeedbackButton>
         </section>
       </div>
 

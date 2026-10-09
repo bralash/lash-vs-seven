@@ -444,3 +444,23 @@
 .voice__wave i:nth-child(3) { animation-delay: .3s; }
 .voice__wave i:nth-child(4) { animation-delay: .45s; }
 @keyframes voice-wave { from { scale: 1 .25; } }
+
+/* ── Feedback: Bug or Idea, a message, then off to WhatsApp ── */
+.feedback { display: grid; gap: 12px; }
+.feedback .seg { justify-self: start; }
+.feedback__text {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  font: 16px/1.45 var(--mono);
+  color: var(--ink);
+  resize: vertical;
+}
+.feedback__text:focus { outline: 3px solid var(--seven); outline-offset: 3px; }
+.btn--off { opacity: .45; pointer-events: none; box-shadow: none; }
+.home-feedback { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 18px; margin: 48px 0 8px; text-align: center; }
+.home-feedback p { font-family: var(--display); font-size: clamp(20px, 3vw, 28px); text-transform: uppercase; }
+.mt-result-actions__feedback { grid-column: 1 / -1; justify-self: center; }
