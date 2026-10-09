@@ -241,7 +241,7 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         <ScoreCard
           p={seats[0]}
           you={mine(0)}
-          active={local && inMatch && who === 0}
+          active={local && inMatch && who === 0} turn={inMatch && who === 0}
           value={`${homeCount(live, 0)}/${tokenTotal(live, 0)}`}
           meta={<Swatches colors={colorsOf(live, 0)} />}
         />
@@ -249,7 +249,7 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         <ScoreCard
           p={seats[1]}
           you={mine(1)}
-          active={local && inMatch && who === 1}
+          active={local && inMatch && who === 1} turn={inMatch && who === 1}
           value={`${homeCount(live, 1)}/${tokenTotal(live, 1)}`}
           meta={<Swatches colors={colorsOf(live, 1)} />}
         />

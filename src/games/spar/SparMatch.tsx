@@ -293,7 +293,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         key={s}
         p={p}
         you={mine(s)}
-        active={local && inMatch && canPlay.includes(s)}
+        active={local && inMatch && canPlay.includes(s)} turn={inMatch && canPlay.includes(s)}
         value={live.scores[s] ?? 0}
         meta={gone ? 'left' : meta}
       />

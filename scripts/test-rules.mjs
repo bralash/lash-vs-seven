@@ -150,6 +150,8 @@ try {
   await expect('host sends a reaction as the guest', false, call(host, 'PUT', `${ROOM}/react/${G}`, { k: 'gg', n: 2 }))
   await expect('guest sends a reaction with a junk field', false, call(guest, 'PUT', `${ROOM}/react/${G}`, { k: 'gg', n: 3, x: 1 }))
   await expect('guest sends an essay as a reaction', false, call(guest, 'PUT', `${ROOM}/react/${G}`, { k: 'x'.repeat(40), n: 4 }))
+  await expect('guest throws a tomato at the host', true, call(guest, 'PUT', `${ROOM}/react/${G}`, { k: 'tomato', n: 6, at: H }))
+  await expect('guest throws at someone not in the room', false, call(guest, 'PUT', `${ROOM}/react/${G}`, { k: 'rock', n: 7, at: 'nobody' }))
   await expect('stranger sends a reaction', false, call(stranger, 'PUT', `${ROOM}/react/${stranger.uid}`, { k: 'lol', n: 5 }))
   await expect('stranger readies up', false, call(stranger, 'PUT', `${ROOM}/state/ready/${stranger.uid}`, true))
   await expect('stranger ends the match', false, call(stranger, 'PATCH', ROOM, { status: 'abandoned' }))

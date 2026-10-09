@@ -90,9 +90,9 @@ export function OthelloMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
 
   const scoreboard = (
     <>
-      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · discs`} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · discs`} />
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · discs`} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · discs`} />
     </>
   )
 
@@ -124,12 +124,12 @@ export function OthelloMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   return (
     <main className="otm screen-in">
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · discs`} />
+        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · discs`} />
         <div className={`ot-turn${myTurn ? ' ot-turn--you' : ''}`} aria-live="polite">
           <span className="label">{over ? 'Done' : `${empty} left`}</span>
           <Disc seat={live.result ? (live.result.winner === -1 ? null : live.result.winner) : live.turn} />
         </div>
-        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · discs`} />
+        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · discs`} />
       </div>
 
       <p className={`ot-status${myTurn ? ' ot-status--you' : ''}${live.result ? ' ot-status--result' : ''}`} role="status">

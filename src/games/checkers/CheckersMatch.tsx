@@ -93,9 +93,9 @@ export function CheckersMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 
   const scoreboard = (
     <>
-      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={left(live.board, 0)} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={left(live.board, 0)} />
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={left(live.board, 1)} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={left(live.board, 1)} />
     </>
   )
 
@@ -129,12 +129,12 @@ export function CheckersMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   return (
     <main className="ckm screen-in">
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={left(live.board, 0)} />
+        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={left(live.board, 0)} />
         <div className={`ck-turn${myTurn ? ' ck-turn--you' : ''}`} aria-live="polite">
           <span className="label">{over ? 'Done' : quietLeft <= 20 ? `Draw in ${Math.ceil(quietLeft / 2)}` : 'Turn'}</span>
           <Piece seat={live.result ? (live.result.winner === -1 ? null : live.result.winner) : live.turn} />
         </div>
-        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={left(live.board, 1)} />
+        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={left(live.board, 1)} />
       </div>
 
       <p className={`ck-status${myTurn ? ' ck-status--you' : ''}${mustCapture ? ' ck-status--must' : ''}${live.result ? ' ck-status--result' : ''}`} role="status">

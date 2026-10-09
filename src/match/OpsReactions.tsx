@@ -3,6 +3,7 @@ import type { OpsMood } from '../components/OpsFace'
 import { useSound } from '../lib/sound'
 import { BOT_NAME, type Level, type Moment, type OpsSense } from './bot'
 import { Pops, ReactionButton, usePops, useSend, type ReactionKey } from './Reactions'
+import { ITEMS, launch, ThrowLayer, type Item } from './Throws'
 
 /*
  * Ops reacts the way a person does in an online match: a sticker pops up with her name and a
@@ -66,6 +67,20 @@ function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
       return herTurn ? { face: 'think', said: 'Patience' } : { face: 'wait', said: 'Your go!' }
   }
 }
+
+/**
+ * Something thrown at her card, by how fed up she is (the index; like a poke, it wears off). Past
+ * the last row she throws one back.
+ */
+const HITS: Record<Item, Say[]>[] = [
+  { tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }] },
+  { tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }] },
+  { tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }] },
+]
+const BACK: Say[] = [{ face: 'gotcha', said: 'Take that' }, { face: 'smug', said: 'Your turn' }, { face: 'gotcha', said: 'Ha!' }]
+/** every this long without a throw takes one off how fed up she is */
+const HIT_COOL_MS = 4000
+const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)]
 
 /** What she says when a game ends. */
 function endSay(winner: 0 | 1 | -1, final: boolean, level: Level): Say | null {
@@ -153,6 +168,29 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     }
   }, [yourTurn, key])
 
+  // you throw something at her card: a word back, and if you keep it up, something back
+  const fed = useRef({ count: 0, at: 0 })
+  const backTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(backTimer.current), [])
+  const onHit = ({ to, mine, item }: { to: string; mine: boolean; item: Item }) => {
+    if (to !== 'p1' || !mine) return
+    const f = fed.current
+    const now = Date.now()
+    f.count = Math.max(0, f.count - Math.floor((now - f.at) / HIT_COOL_MS)) + 1
+    f.at = now
+    const row = Math.ceil(f.count / 2) - 1
+    if (row < HITS.length) {
+      sayRef.current(pick(HITS[row][item]))
+      return
+    }
+    f.count = 0
+    clearTimeout(backTimer.current)
+    backTimer.current = setTimeout(() => {
+      launch('p1', 'p0', pick([...ITEMS]))
+      sayRef.current(pick(BACK))
+    }, 700)
+  }
+
   // you react, she answers a moment later
   const send = useSend(pop, (k) => {
     clearTimeout(replyTimer.current)
@@ -166,6 +204,7 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
     <div className="react">
       <ReactionButton onPick={send} />
       <Pops pops={pops} other={BOT_NAME} />
+      <ThrowLayer me="p0" onHit={onHit} />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { useSound } from '../lib/sound'
 import { roomPath } from '../lobby/rooms'
+import { isItem, launch, ThrowLayer, throwsIn } from './Throws'
 
 /** Tap-only reactions, sent during an online match. Keys are what goes over the wire. */
 export const REACTIONS = [
@@ -138,7 +139,8 @@ export function Pops({ pops, other }: { pops: Pop[]; other: string | null }) {
 
 /**
  * Reactions in an online match. Each player writes only their latest reaction to
- * matches/{game}/{code}/react/{uid}; the other screen shows it when it changes.
+ * matches/{game}/{code}/react/{uid}; the other screen shows it when it changes. Something thrown at
+ * a score card goes the same way, with `at` saying whose face it's for.
  */
 export function Reactions({ game, code, pid, other, names }: { game: string; code: string; pid: string; other: string | null; names?: Record<string, string> }) {
   const { pops, pop } = usePops()
@@ -150,13 +152,18 @@ export function Reactions({ game, code, pid, other, names }: { game: string; cod
   useEffect(
     () =>
       onValue(ref(db, `${roomPath(game, code)}/react`), (snap) => {
-        const all = (snap.val() ?? {}) as Record<string, { k: string; n: number }>
+        const all = (snap.val() ?? {}) as Record<string, { k: string; n: number; at?: string }>
         const before = seen.current
         seen.current = Object.fromEntries(Object.entries(all).map(([u, r]) => [u, r.n]))
         if (!before) return // what was already there when we arrived isn't news
         for (const [u, r] of Object.entries(all)) {
+          if (u === pid || r.n === before[u]) continue
+          if (isItem(r.k) && r.at) {
+            if (throwsIn(game)) launch(u, r.at, r.k) // something thrown at someone's Ops
+            continue
+          }
           const known = BY_KEY[r.k]
-          if (u === pid || r.n === before[u] || !known) continue
+          if (!known) continue
           pop({ mine: false, e: known.e, said: known.label, who: namesRef.current?.[u] })
           play('tap')
           navigator.vibrate?.(40)
@@ -174,6 +181,12 @@ export function Reactions({ game, code, pid, other, names }: { game: string; cod
     <div className="react">
       <ReactionButton onPick={send} />
       <Pops pops={pops} other={other} />
+      {throwsIn(game) && (
+        <ThrowLayer
+          me={pid}
+          deliver={(at, k) => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now(), at }).catch(() => {})}
+        />
+      )}
     </div>
   )
 }

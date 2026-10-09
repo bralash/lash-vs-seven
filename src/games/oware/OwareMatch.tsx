@@ -83,8 +83,8 @@ export function OwareMatch({ room, me, exit }: { room: Room; me: Me; exit: Match
     sound((session.local ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
   }, [live.result, me.seat, sound, session.local])
 
-  const card = (s: Seat, active: boolean) => (
-    <ScoreCard p={seats[s]} you={mine(s)} active={active} value={live.captured[s]} meta={`${COLOUR[s]} · captured`} />
+  const card = (s: Seat, active: boolean, turn = false) => (
+    <ScoreCard p={seats[s]} you={mine(s)} active={active} turn={turn} value={live.captured[s]} meta={`${COLOUR[s]} · captured`} />
   )
   const scoreboard = (
     <>
@@ -128,12 +128,12 @@ export function OwareMatch({ room, me, exit }: { room: Room; me: Me; exit: Match
   return (
     <main className="owm screen-in">
       <div className="mt-hud">
-        {card(0, session.local && inMatch && live.turn === 0)}
+        {card(0, session.local && inMatch && live.turn === 0, inMatch && live.turn === 0)}
         <div className={`ow-goal${myTurn ? ' ow-goal--you' : ''}`}>
           <span className="label">First to</span>
           <strong>{TO_WIN}</strong>
         </div>
-        {card(1, session.local && inMatch && live.turn === 1)}
+        {card(1, session.local && inMatch && live.turn === 1, inMatch && live.turn === 1)}
       </div>
 
       <p className={`ow-status${myTurn && !view.busy ? ' ow-status--you' : ''}${live.result ? ' ow-status--result' : ''}`} role="status">

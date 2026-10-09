@@ -312,7 +312,30 @@ html.scroll-locked .mt-banner.mt-banner--self {
 /* the player's Ops, beside their score in the empty side of the card (mirrored on the right-aligned seat-2 card) */
 .mt-score__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .mt-score--1 .mt-score__row { flex-direction: row-reverse; }
-.mt-score__ops { display: flex; flex: none; margin: -2px 0; pointer-events: none; }
+.mt-score__ops { position: relative; display: flex; flex: none; margin: -2px 0; }
+.mt-score__ops > span { display: flex; pointer-events: none; }
+/* tap someone's Ops to throw something at it */
+.mt-score__throw { display: flex; margin: -4px; border: 0; background: none; cursor: pointer; padding: 4px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.mt-score__throw:active svg { transform: scale(.92); }
+.mt-score__throw:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
+.mt-score__ops--hit svg { animation: ops-hit .4s ease-out; }
+@keyframes ops-hit {
+  20% { transform: translate(-3px, 2px) rotate(-8deg); }
+  50% { transform: translate(3px, -1px) rotate(6deg); }
+  80% { transform: translate(-1px, 0) rotate(-2deg); }
+}
+.throw { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.throw__item { position: absolute; top: 0; left: 0; display: flex; will-change: transform; }
+.throw__splat { position: absolute; inset: -6px; display: flex; pointer-events: none; animation: splat 1.4s ease-out forwards; }
+.throw__splat svg { width: 100%; height: 100%; }
+.throw__splat--paper { inset: -12px; }
+@keyframes splat {
+  0% { transform: scale(.3); opacity: 1; }
+  15% { transform: scale(1.1); }
+  25% { transform: scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(6px); }
+}
 @media (width <= 480px) {
   .mt-score__ops svg { width: 30px; height: 30px; }
 }

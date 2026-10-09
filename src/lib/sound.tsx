@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { KEYS, load, save } from './storage'
 
-export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end'
+export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat'
 
 // Short synthesized cues — no audio files to load.
 const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; len: number; vol: number }> = {
@@ -12,6 +12,8 @@ const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; le
   end: { type: 'triangle', notes: [784, 587.33, 392], gap: 0.12, len: 0.3, vol: 0.14 },
   join: { type: 'sine', notes: [523.25, 659.25, 783.99], gap: 0.08, len: 0.18, vol: 0.12 },
   start: { type: 'sine', notes: [392, 523.25, 659.25, 1046.5], gap: 0.07, len: 0.2, vol: 0.12 },
+  whoosh: { type: 'sine', notes: [420, 760], gap: 0.05, len: 0.08, vol: 0.05 },
+  splat: { type: 'sawtooth', notes: [150, 70], gap: 0.04, len: 0.12, vol: 0.08 },
   error: { type: 'sawtooth', notes: [180, 140], gap: 0.09, len: 0.14, vol: 0.06 },
 }
 

@@ -160,6 +160,9 @@
               "n": {
                 ".validate": "newData.isNumber()"
               },
+              "at": {
+                ".validate": "newData.isString() && root.child('matches/' + $game + '/' + $code).child('players').hasChild(newData.val())"
+              },
               "$other": {
                 ".validate": false
               }

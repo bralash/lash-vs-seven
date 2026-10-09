@@ -282,12 +282,12 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const meta = (s: Seat) => `${afloat(live.waters[s])} ship${afloat(live.waters[s]) === 1 ? '' : 's'} left`
   const hud = (
     <div className="mt-hud">
-      <ScoreCard p={seats[0]} you={mine(0)} active={local && inMatch && live.phase === 'firing' && live.turn === 0} value={live.best === 3 ? live.wins[0] : afloat(live.waters[0])} meta={live.best === 3 ? meta(0) : 'ships left'} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={local && inMatch && live.phase === 'firing' && live.turn === 0} turn={inMatch && live.phase === 'firing' && live.turn === 0} value={live.best === 3 ? live.wins[0] : afloat(live.waters[0])} meta={live.best === 3 ? meta(0) : 'ships left'} />
       <div className="bs-game">
         <span className="label">{live.best === 3 ? 'Game' : 'Battle'}</span>
         <strong>{live.best === 3 ? `${live.game + 1}/3` : 'VS'}</strong>
       </div>
-      <ScoreCard p={seats[1]} you={mine(1)} active={local && inMatch && live.phase === 'firing' && live.turn === 1} value={live.best === 3 ? live.wins[1] : afloat(live.waters[1])} meta={live.best === 3 ? meta(1) : 'ships left'} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={local && inMatch && live.phase === 'firing' && live.turn === 1} turn={inMatch && live.phase === 'firing' && live.turn === 1} value={live.best === 3 ? live.wins[1] : afloat(live.waters[1])} meta={live.best === 3 ? meta(1) : 'ships left'} />
     </div>
   )
   const away = awaySecs !== null && opp && <p className="mt-banner" role="status">{opp.name} disconnected · ending the match in {awaySecs}s unless they’re back</p>

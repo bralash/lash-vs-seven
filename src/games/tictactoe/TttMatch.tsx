@@ -90,9 +90,9 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
 
   const scoreboard = (
     <>
-      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={`${MARK[0]} · first to ${st.target}`} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={`${MARK[0]} · first to ${st.target}`} />
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={`${MARK[1]} · first to ${st.target}`} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={`${MARK[1]} · first to ${st.target}`} />
     </>
   )
 
@@ -119,12 +119,12 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   return (
     <main className="ttt screen-in">
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={`${MARK[0]} · first to ${st.target}`} />
+        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={`${MARK[0]} · first to ${st.target}`} />
         <div className={`ttt-turn ttt-turn--${live.result ? 'done' : live.turn}${myTurn ? ' ttt-turn--you' : ''}`} aria-live="polite">
           <span className="label">Game {live.game}</span>
           <Mark seat={live.result ? (live.result.winner === -1 ? null : live.result.winner) : live.turn} small />
         </div>
-        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={`${MARK[1]} · first to ${st.target}`} />
+        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={`${MARK[1]} · first to ${st.target}`} />
       </div>
 
       <p className={`ttt-status${myTurn ? ' ttt-status--you' : ''}${live.result ? ' ttt-status--result' : ''}`} role="status">

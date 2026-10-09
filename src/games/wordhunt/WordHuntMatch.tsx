@@ -166,9 +166,9 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         exit={exit}
         scoreboard={
           <>
-            <ScoreCard p={seats[0]} you={me.seat === 0} value={scoreOf(seats[0]).toLocaleString()} meta={wordsLabel(countOf(seats[0]))} />
+            <ScoreCard p={seats[0]} you={me.seat === 0} score={scoreOf(seats[0])} value={scoreOf(seats[0]).toLocaleString()} meta={wordsLabel(countOf(seats[0]))} />
             <span className="mt-ended__vs" aria-hidden="true">vs</span>
-            <ScoreCard p={seats[1]} you={me.seat === 1} value={scoreOf(seats[1]).toLocaleString()} meta={wordsLabel(countOf(seats[1]))} />
+            <ScoreCard p={seats[1]} you={me.seat === 1} score={scoreOf(seats[1])} value={scoreOf(seats[1]).toLocaleString()} meta={wordsLabel(countOf(seats[1]))} />
           </>
         }
       />
@@ -183,12 +183,12 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   return (
     <main className="wh screen-in">
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={me.seat === 0} value={scoreOf(seats[0]).toLocaleString()} meta={wordsLabel(countOf(seats[0]))} />
+        <ScoreCard p={seats[0]} you={me.seat === 0} score={scoreOf(seats[0])} value={scoreOf(seats[0]).toLocaleString()} meta={wordsLabel(countOf(seats[0]))} />
         <div className={`mt-clock${phase === 'play' && secsLeft <= 10 ? ' mt-clock--hot' : ''}`} role="timer" aria-live="off">
           <span className="label">Time</span>
           <span className="mt-clock__n">{phase === 'countdown' ? ROUND_MS / 1000 : secsLeft}</span>
         </div>
-        <ScoreCard p={seats[1]} you={me.seat === 1} value={scoreOf(seats[1]).toLocaleString()} meta={wordsLabel(countOf(seats[1]))} />
+        <ScoreCard p={seats[1]} you={me.seat === 1} score={scoreOf(seats[1])} value={scoreOf(seats[1]).toLocaleString()} meta={wordsLabel(countOf(seats[1]))} />
       </div>
 
       <div className="mt-timebar" aria-hidden="true">

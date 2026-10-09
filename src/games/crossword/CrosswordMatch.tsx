@@ -208,9 +208,9 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
 
   const scoreboard = (
     <>
-      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && inMatch && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · words`} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && inMatch && live.turn === 0} turn={inMatch && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · words`} />
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && inMatch && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · words`} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && inMatch && live.turn === 1} turn={inMatch && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · words`} />
     </>
   )
 
@@ -254,12 +254,12 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
   return (
     <main className="cwm screen-in">
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && inMatch && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · words`} />
+        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && inMatch && live.turn === 0} turn={inMatch && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · words`} />
         <div className={`cw-turn${myTurn ? ' cw-turn--you' : ''}`} aria-live="polite">
           <span className="label">{over ? 'Done' : `${left} left`}</span>
           <span className={`cw-mini cw-mini--${live.result ? (live.result.winner === -1 ? 'draw' : live.result.winner) : live.turn}`} aria-hidden="true" />
         </div>
-        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && inMatch && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · words`} />
+        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && inMatch && live.turn === 1} turn={inMatch && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · words`} />
       </div>
 
       <p className={`cw-status${myTurn ? ' cw-status--you' : ''}`} role="status">

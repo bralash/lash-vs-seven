@@ -91,9 +91,9 @@ export function DotsMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
   const scoreboard = (
     <>
-      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · boxes`} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · boxes`} />
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · boxes`} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · boxes`} />
     </>
   )
 
@@ -126,12 +126,12 @@ export function DotsMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   return (
     <main className="dbm screen-in">
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · boxes`} />
+        <ScoreCard p={seats[0]} you={mine(0)} active={session.local && !live.result && live.turn === 0} turn={!live.result && live.turn === 0} value={score(0)} meta={`${COLOUR[0]} · boxes`} />
         <div className={`db-turn${myTurn ? ' db-turn--you' : ''}`} aria-live="polite">
           <span className="label">{over ? 'Done' : `${left} left`}</span>
           <Swatch seat={live.result ? (live.result.winner === -1 ? null : live.result.winner) : live.turn} />
         </div>
-        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · boxes`} />
+        <ScoreCard p={seats[1]} you={mine(1)} active={session.local && !live.result && live.turn === 1} turn={!live.result && live.turn === 1} value={score(1)} meta={`${COLOUR[1]} · boxes`} />
       </div>
 
       <p className={`db-status${myTurn ? ' db-status--you' : ''}${live.result ? ' db-status--result' : ''}`} role="status">

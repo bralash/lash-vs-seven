@@ -208,14 +208,14 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   const role = (s: Seat) => (s === setter ? 'setting' : 'guessing')
   const hud = (
     <div className="mt-hud">
-      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && inMatch && live.turn === 0} value={w[0]} meta={role(0)} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && inMatch && live.turn === 0} turn={inMatch && live.turn === 0} value={w[0]} meta={role(0)} />
       <div className="hm-round">
         <span className="label">Round</span>
         <strong>
           {live.round + 1}/{ROUNDS}
         </strong>
       </div>
-      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && inMatch && live.turn === 1} value={w[1]} meta={role(1)} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && inMatch && live.turn === 1} turn={inMatch && live.turn === 1} value={w[1]} meta={role(1)} />
     </div>
   )
 

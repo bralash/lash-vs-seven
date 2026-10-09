@@ -37,6 +37,7 @@ import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
 import { StakePanel } from './StakePanel'
 import { LooksProvider, looksFor } from '../match/looks'
+import { ThrowLayer, throwsIn } from '../match/Throws'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
 
@@ -406,6 +407,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
           <>
             {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
             {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
+            {local && !local.bot && throwsIn(game.slug) && <ThrowLayer me={null} />}
             {inMatch && game.fullscreen && fullscreen.supported && (
               <button type="button" className="icon-btn" onClick={fullscreen.toggle} aria-label={fullscreen.on ? 'Exit full screen' : 'Full screen'} aria-pressed={fullscreen.on}>
                 {fullscreen.on ? <Minimize /> : <Maximize />}

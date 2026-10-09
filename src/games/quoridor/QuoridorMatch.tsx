@@ -85,8 +85,8 @@ export function QuoridorMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     seenRef.current = { key: lastKey, result: over }
   }, [lastKey, live.last, live.result, over, me.seat, sound, session.local])
 
-  const card = (s: Seat, active: boolean) => (
-    <ScoreCard p={seats[s]} you={mine(s)} active={active} value={live.left[s]} meta={`walls · ${toGo(pathLeft(live, s))}`} />
+  const card = (s: Seat, active: boolean, turn = false) => (
+    <ScoreCard p={seats[s]} you={mine(s)} active={active} turn={turn} score={-pathLeft(live, s)} value={live.left[s]} meta={`walls · ${toGo(pathLeft(live, s))}`} />
   )
   const scoreboard = (
     <>
@@ -115,12 +115,12 @@ export function QuoridorMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   return (
     <main className="qrm screen-in">
       <div className="mt-hud">
-        {card(0, session.local && inMatch && live.turn === 0)}
+        {card(0, session.local && inMatch && live.turn === 0, inMatch && live.turn === 0)}
         <div className={`qr-turn${myTurn ? ' qr-turn--you' : ''}`} aria-live="polite">
           <span className="label">{over ? 'Done' : 'Turn'}</span>
           <Pawn seat={live.result ? live.result.winner : live.turn} />
         </div>
-        {card(1, session.local && inMatch && live.turn === 1)}
+        {card(1, session.local && inMatch && live.turn === 1, inMatch && live.turn === 1)}
       </div>
 
       <p className={`qr-status${myTurn ? ' qr-status--you' : ''}${live.result ? ' qr-status--result' : ''}`} role="status">

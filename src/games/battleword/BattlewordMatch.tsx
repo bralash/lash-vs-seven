@@ -202,9 +202,9 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const round = Math.min(MAX_GUESSES, Math.min(triesOf(live, 0).length, triesOf(live, 1).length) + 1)
   const scoreboard = (
     <>
-      <ScoreCard p={seats[0]} you={mine(0)} value={triesOf(live, 0).length} meta="guesses" />
+      <ScoreCard p={seats[0]} you={mine(0)} score={null} value={triesOf(live, 0).length} meta="guesses" />
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={mine(1)} value={triesOf(live, 1).length} meta="guesses" />
+      <ScoreCard p={seats[1]} you={mine(1)} score={null} value={triesOf(live, 1).length} meta="guesses" />
     </>
   )
 
@@ -213,14 +213,14 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   const hud = (
     <div className="mt-hud">
-      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && live.phase === 'playing' && turn === 0} value={triesOf(live, 0).length} meta={used()} />
+      <ScoreCard p={seats[0]} you={mine(0)} active={session.local && live.phase === 'playing' && turn === 0} turn={live.phase === 'playing' && turn === 0} score={null} value={triesOf(live, 0).length} meta={used()} />
       <div className="bw-mid">
         <span className="label">Round</span>
         <strong>
           {round}/{MAX_GUESSES}
         </strong>
       </div>
-      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && live.phase === 'playing' && turn === 1} value={triesOf(live, 1).length} meta={used()} />
+      <ScoreCard p={seats[1]} you={mine(1)} active={session.local && live.phase === 'playing' && turn === 1} turn={live.phase === 'playing' && turn === 1} score={null} value={triesOf(live, 1).length} meta={used()} />
     </div>
   )
   const away = awaySecs !== null && opp && <p className="mt-banner" role="status">{opp.name} disconnected · ending the match in {awaySecs}s unless they’re back</p>
