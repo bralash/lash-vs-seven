@@ -478,3 +478,15 @@
 .corner__tile--collect .corner__line { color: var(--ink); }
 @keyframes tile-call { 0%, 80%, 100% { rotate: 0deg; } 85% { rotate: -1.5deg; } 92% { rotate: 1.5deg; } }
 @media (prefers-reduced-motion: reduce) { .corner__tile--collect { animation: none; } }
+
+/* ── Phones: the tiles as a 2-column grid (one row of four squashed them into slivers) ── */
+@media (width <= 640px) {
+  .corner { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .corner__tile, .corner__tile--chips { max-width: none; padding: 8px 10px; gap: 5px; }
+  .corner__tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .corner__title { font-size: 16px; gap: 6px; }
+  .corner__title .chip-stack { flex: none; }
+  .corner__line { font-size: 10px; line-height: 1.35; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .corner__bars { gap: 3px; }
+  .corner__bar { min-width: 0; height: 7px; }
+}
