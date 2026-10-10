@@ -142,7 +142,7 @@ pool per difficulty), so every phone shows the same three with no server code.
       Tennis; the full pool of ~30.
 - [x] **3. Tower core:** (done 2026-10-10) `/tower` page, hearts, checkpoints, rewards, floors 1–6 with the simple
       twists (moves first, best of N); homepage tile.
-- [ ] **4. Tower top:** clock and barrage twists, floors 7–10, the Ops boss match, champion title and
+- [x] **4. Tower top:** (done 2026-10-10) clock and barrage twists, floors 7–10, the Ops boss match, champion title and
       Tower crown, monthly seasons.
 
 Each step: test against Ops / two tabs as the change needs (the user watches session usage, so keep
@@ -195,3 +195,22 @@ doesn't cost a heart right before the boss. Anti-farming: a match ticks missions
 - Floors 3 (Hangman) and 4 (Dots) play without their twists (clock, barrage) until step 4.
 - Season = calendar month (UTC); the floors don't reshuffle between seasons yet (step 4).
 - Not tested end to end: the "next game" sheet of a first-to-2 floor (Uno, floor 6).
+
+### As built (step 4)
+
+- `floors.ts` now builds each season's floors: `floorsFor(season)`; season 681 (October 2026) is the
+  original line-up, later months shuffle floors 2–9 (games and guardians; Tic-tac-toe stays floor 1,
+  levels/rewards/checkpoints stay with the floor number). Twists are data on each game (`Twist`:
+  first, clock, barrage, colours, firstTo).
+- Clock: `clock.ts` (per game: whose move + a random legal move for you: Connect Four, Othello,
+  Quoridor, Hangman guesses) and `TowerClock.tsx` (ring, red for the last 3 s, bottom-right on phones).
+- Barrage: `barrage.ts` (per game "did the guardian score": Dots boxes, Battleship hits, Checkers
+  captures; the reactions' moments are too rare) → `unleash('p1')`, at most every 6 s, looks only.
+- Boss (floor 10): Connect Four → Othello → Quoridor, win 2, 20 s clock. `gameAt(floor, wins)`
+  picks the game; the "next" sheet navigates to the next game's page with `{ tower: { floor, wins } }`.
+- Champion: winning floor 10 sets `tower.champ` and gives `owned.towercrown` (a `prize` hat: not in
+  the shop, only owned once won; rules allow it only with `champ`). Shown as a banner on /tower, a
+  crown on the homepage tile, and the Tower crown in the Locker. The plan's "title on your score
+  card" isn't built: the crown is what others see in matches.
+- Not tested end to end: actually beating Hard Ops at two games (the champion save was called
+  directly); Quoridor's clock move and the Battleship/Checkers barrages (same code path as Dots).

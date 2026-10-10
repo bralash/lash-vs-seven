@@ -11,7 +11,10 @@ import { UltEarn } from '../match/Ultimates'
 import { OPS_LOOK, useCrewLook } from '../components/OpsFace'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
 import type { AnySeat, Room, Seat } from './rooms'
-import { floorOf } from '../tower/floors'
+import { floorOf, twistOf, winsNeeded } from '../tower/floors'
+import { TowerClock } from '../tower/TowerClock'
+import { SCORED } from '../tower/barrage'
+import { unleash } from '../match/Ultimates'
 import { settleFloor } from '../tower/tower'
 import { TowerSheet, type SheetState } from '../tower/TowerSheet'
 
@@ -167,6 +170,9 @@ function LocalName({ seat, value, onChange, autoFocus, label }: { seat: AnySeat;
 
 /* ── The match itself, driven by an in-memory session ───────────────────── */
 
+/** the barrage twist fires at most this often (an Ultimate runs about three seconds) */
+const BARRAGE_GAP_MS = 6000
+
 export function LocalGame({
   game,
   match,
@@ -221,7 +227,7 @@ export function LocalGame({
     }
     const end = sense.ended(state)
     if (!end?.final || tower.done) return
-    const need = floorOf(tower.floor)?.firstTo ?? 1
+    const need = winsNeeded(floorOf(tower.floor))
     if (end.winner === -1) {
       setTower({ ...tower, counted: key })
       setSheet({ kind: 'draw' })
@@ -271,6 +277,22 @@ export function LocalGame({
     return () => clearTimeout(t)
   }, [state, brain, level])
 
+  // the barrage twist: the guardian fires its Ultimate when it scores (a box, a ship, a piece), at most every few seconds; looks only
+  const floor = tower ? floorOf(tower.floor) : undefined
+  const barrage = !!twistOf(floor, 'barrage')
+  const prevState = useRef(state)
+  const firedAt = useRef(0)
+  useEffect(() => {
+    const prev = prevState.current
+    prevState.current = state
+    const scored = SCORED[game.slug]
+    if (!barrage || !scored || prev === state || !scored(prev, state)) return
+    if (Date.now() - firedAt.current < BARRAGE_GAP_MS) return
+    firedAt.current = Date.now()
+    setTimeout(() => unleash('p1', false), 350)
+  }, [state, barrage, game.slug])
+  const clockSecs = twistOf(floor, 'clock')?.secs
+
   const room: Room = {
     game: game.slug,
     code: 'LOCAL',
@@ -299,6 +321,7 @@ export function LocalGame({
       <LooksProvider value={looks}>
         <WearsProvider value={wears}>{renderGame(room, me, exit)}</WearsProvider>
       </LooksProvider>
+      {tower && clockSecs && !sheet && <TowerClock game={game.slug} state={state} secs={clockSecs} onOut={(m) => session.move(m as (live: unknown) => unknown)} />}
       {tower && sheet && (
         <TowerSheet
           floor={tower.floor}

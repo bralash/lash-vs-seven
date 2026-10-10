@@ -1,6 +1,6 @@
 import { KEYS, load } from '../lib/storage'
 import type { LocalMatch } from '../lobby/LocalGame'
-import { floorOf } from './floors'
+import { floorOf, twistOf } from './floors'
 
 type InitialState = (choice?: string, all?: string[], seats?: number[]) => Record<string, unknown>
 
@@ -11,14 +11,16 @@ type InitialState = (choice?: string, all?: string[], seats?: number[]) => Recor
 export function towerMatch(n: number, initialState: InitialState | undefined, wins: [number, number] = [0, 0]): LocalMatch {
   const f = floorOf(n)!
   const name = load(KEYS.name)?.trim().slice(0, 16) || 'You'
-  const state = structuredClone(initialState?.(f.choices?.[0], f.choices, [0, 1]) ?? {})
+  // the boss floor's games take their own default options
+  const choices = f.games ? undefined : f.choices
+  const state = structuredClone(initialState?.(choices?.[0], choices, [0, 1]) ?? {})
   const live = state.live as Record<string, unknown> | undefined
-  if (live && f.oppFirst) {
+  if (live && twistOf(f, 'first')) {
     // she opens: every game keeps who opens in `starter` and whose move it is in `turn`
     if ('starter' in live) live.starter = 1
     if ('turn' in live) live.turn = 1
   }
-  if (live && f.twoColours) {
+  if (live && twistOf(f, 'colours')) {
     // Ludo dealt with two colours each: you give up your second one
     const colors = live.colors as string[][]
     const tokens = live.tokens as Record<string, number[]>

@@ -34,7 +34,7 @@ import {
 import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
 import { towerMatch } from '../tower/start'
-import { floorOf } from '../tower/floors'
+import { floorOf, gameAt } from '../tower/floors'
 import { settleFloor } from '../tower/tower'
 import { OpsReactions } from '../match/OpsReactions'
 import { Reactions } from '../match/Reactions'
@@ -173,12 +173,17 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
   // a rival's Challenge opens a room even if a pass & play match is saved here (it stays saved for next time)
   const challenging = !!(useLocation().state as { challenge?: string } | null)?.challenge
   // a Tower floor (opened from /tower): its match against the guardian, or the one already under way
-  const towerAsk = (useLocation().state as { tower?: number } | null)?.tower
+  // (the boss floor's later games arrive with the score so far)
+  const asked = (useLocation().state as { tower?: number | { floor: number; wins: [number, number] } } | null)?.tower
+  const towerAsk = typeof asked === 'number' ? { floor: asked, wins: [0, 0] as [number, number] } : asked
   const [local, setLocal] = useState<LocalMatch | null>(() => {
     if (!canLocal || challenging) return null
     const saved = loadLocal(game.slug)
-    if (towerAsk && bot && !(saved?.tower?.floor === towerAsk && !saved.tower.done)) {
-      const m = towerMatch(towerAsk, initialState)
+    const askedFloor = towerAsk && floorOf(towerAsk.floor)
+    // only the floor's own game (on the boss floor, the one that's next) starts it
+    const fits = askedFloor && gameAt(askedFloor, towerAsk.wins) === game.slug
+    if (towerAsk && fits && bot && !(saved?.tower?.floor === towerAsk.floor && !saved.tower.done)) {
+      const m = towerMatch(towerAsk.floor, initialState, towerAsk.wins)
       saveLocal(game.slug, m)
       return m
     }
@@ -373,6 +378,17 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         key={local.startedAt}
         onTowerAgain={(wins) => {
           if (!local.tower) return
+          const f = floorOf(local.tower.floor)
+          const next = f && gameAt(f, wins)
+          if (next && next !== game.slug) {
+            // the boss floor's next game is on another page: take the score there (this one's decided, so no loss)
+            const floor = local.tower.floor
+            saveLocal(game.slug, null)
+            setLocal(null)
+            leaving.current = true
+            navigate(`/${next}`, { state: { tower: { floor, wins } } })
+            return
+          }
           const m = towerMatch(local.tower.floor, initialState, wins)
           saveLocal(game.slug, m)
           setLocal(m)

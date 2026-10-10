@@ -172,3 +172,55 @@
 .tw-sheet__chips .cchip { filter: drop-shadow(2px 2px 0 var(--ink)); animation: chip-drop .5s var(--ease-snap) .2s both; }
 .tw-sheet__actions { grid-column: 1 / -1; display: grid; justify-items: center; gap: 6px; }
 .tw-sheet__actions:empty { display: none; }
+
+/* ── the move clock (clock floors): a ring running down under the top bar ── */
+.tw-clock {
+  position: fixed;
+  z-index: 45;
+  top: 74px;
+  right: 12px;
+  display: grid;
+  grid-template-columns: 44px auto;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 12px 6px 6px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.tw-clock svg { grid-row: 1 / 3; rotate: -90deg; }
+.tw-clock__track { fill: none; stroke: color-mix(in srgb, var(--ink) 12%, transparent); stroke-width: 6; }
+.tw-clock__run { fill: none; stroke: var(--seven); stroke-width: 6; transition: stroke-dasharray .25s linear; }
+.tw-clock b { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+.tw-clock span { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.tw-clock--late { background: var(--strike); color: var(--paper); animation: tw-shake .3s ease-in-out infinite; }
+.tw-clock--late span { color: var(--paper); }
+.tw-clock--late .tw-clock__run { stroke: var(--paper); }
+@keyframes tw-shake { 25% { translate: -2px 0; } 75% { translate: 2px 0; } }
+@media (width <= 520px) {
+  .tw-clock { top: auto; bottom: 12px; right: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .tw-clock--late { animation: none; } }
+
+/* ── the champion: the crown, and a gold banner on the Tower ── */
+.tw-crown { display: inline-grid; place-items: center; filter: drop-shadow(2px 2px 0 var(--ink)); vertical-align: middle; }
+.tower__champ {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 8px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--display);
+  font-size: 18px;
+  text-transform: uppercase;
+}
+.tw-sheet__chips .tw-crown { animation: chip-drop .6s var(--ease-snap) .2s both; }
+.tw-floor--boss .tw-floor__lock { fill: var(--paper); stroke: var(--paper); }
+/* the boss floor when it's yours to take: keep it dark, with a gold glow */
+.tw-floor--boss.tw-floor--current { background: var(--board); }
+.tw-floor--boss.tw-floor--current .tw-floor__n { background: var(--hit); color: var(--ink); }
+.tw-floor--boss .tw-floor__go { background: var(--hit); color: var(--ink); }

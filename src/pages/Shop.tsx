@@ -240,7 +240,7 @@ export function Shop() {
     <div key={slot.id} className="shop__slot">
       <h3 className="shop__slot-h">{slot.name}</h3>
       <ul className="shop__grid">
-        {ITEMS.filter((it) => it.slot === slot.id).map((it) => {
+        {ITEMS.filter((it) => it.slot === slot.id && !it.prize).map((it) => {
           const on = wear.includes(it.id)
           const mine = ownsItem(wallet?.owned, it.id) || on
           const toggle = (id: ItemId, v: boolean) => (play('tap'), setWorn(id, v))

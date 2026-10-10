@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react'
 import { db, signIn } from '../lib/firebase'
 import { checkpointBelow, floorOf, HEARTS, seasonOf, TOP } from './floors'
 
+/** the champion's prize, a hat in the wardrobe that can't be bought */
+export const CROWN_ID = 'towercrown'
+
 /*
  * Your climb, in the wallet: wallets/{uid}/tower = { s: season, at: the floor you're on, hearts,
  * best: the highest floor reached, got: {floor: true} for floors already paid this season }.
@@ -20,10 +23,13 @@ export interface Climb {
   got?: Record<string, true>
   /** the last match counted (so saving the same result again changes nothing) */
   k?: string
+  /** beat Ops at the top this season: Tower champion */
+  champ?: boolean
 }
 interface WalletLike {
   chips?: number
   tower?: Climb
+  owned?: Record<string, true>
   [k: string]: unknown
 }
 
@@ -62,6 +68,8 @@ export interface Outcome {
   climb: Climb
   /** out of hearts: dropped back to this floor */
   fell?: number
+  /** won the Tower crown just now (the first time ever) */
+  crown?: boolean
 }
 
 /**
@@ -89,19 +97,24 @@ export async function settleFloor(floor: number, won: boolean, key: string): Pro
         let next: Climb
         let paid = 0
         let fell: number | undefined
+        let crown = false
         if (won) {
           const first = !c.got?.[floor]
           paid = first ? (floorOf(floor)?.reward ?? 0) : 0
           const up = Math.min(TOP, floor + 1)
           next = { ...c, at: floor === TOP ? TOP : up, best: Math.max(c.best, up), got: { ...c.got, [floor]: true } }
+          if (floor === TOP) {
+            next.champ = true
+            crown = !cur.owned?.[CROWN_ID]
+          }
         } else if (c.hearts > 1) next = { ...c, hearts: c.hearts - 1 }
         else {
           fell = checkpointBelow(floor)
           next = { ...c, at: fell, hearts: HEARTS }
         }
         next.k = key.slice(0, 40)
-        out = { won, paid, climb: next, fell }
-        return { ...cur, chips: (cur.chips ?? 0) + paid, tower: next }
+        out = { won, paid, climb: next, fell, crown }
+        return { ...cur, chips: (cur.chips ?? 0) + paid, tower: next, ...(crown ? { owned: { ...cur.owned, [CROWN_ID]: true } } : {}) }
       },
       { applyLocally: false },
     )

@@ -252,7 +252,7 @@ export function useWallet(): { chips: number; owned: Owned } | null {
 /** Free, or mine. */
 export const ownsLook = (owned: Owned | undefined, look: OpsStyle) => !priceOf(look) || !!owned?.[look]
 /** A wardrobe item: free (the starter hat), or mine. */
-export const ownsItem = (owned: Owned | undefined, id: ItemId) => !itemOf(id)?.price || !!owned?.[id]
+export const ownsItem = (owned: Owned | undefined, id: ItemId) => (!itemOf(id)?.price && !itemOf(id)?.prize) || !!owned?.[id]
 
 /** Buys a face with chips. 'short': not enough chips. */
 export const buyLook = (look: OpsStyle) => buy(look, priceOf(look))

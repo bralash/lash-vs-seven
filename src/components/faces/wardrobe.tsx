@@ -12,7 +12,7 @@ import { INK, star } from './parts'
  */
 
 export type Slot = 'hat' | 'neck' | 'paint'
-export type ItemId = 'party' | 'snapback' | 'kufi' | 'crown' | 'kente' | 'jersey' | 'tux' | 'fugu' | 'gold'
+export type ItemId = 'party' | 'snapback' | 'kufi' | 'crown' | 'towercrown' | 'kente' | 'jersey' | 'tux' | 'fugu' | 'gold'
 
 export interface Item {
   id: ItemId
@@ -20,6 +20,8 @@ export interface Item {
   name: string
   /** chips; 0 is free for everyone (the starter hat) */
   price: number
+  /** won, never sold (the Tower crown): not in the shop, and only yours once you've won it */
+  prize?: boolean
   blurb: string
 }
 
@@ -28,6 +30,7 @@ export const ITEMS: Item[] = [
   { id: 'snapback', slot: 'hat', name: 'Snapback', price: 200, blurb: 'Peak to the side, always.' },
   { id: 'kufi', slot: 'hat', name: 'Kufi', price: 200, blurb: 'A white cap, stitched in gold.' },
   { id: 'crown', slot: 'hat', name: 'Crown', price: 600, blurb: 'Gold, three points, three stones.' },
+  { id: 'towercrown', slot: 'hat', name: 'Tower crown', price: 0, prize: true, blurb: 'For beating Ops at the top of her Tower. Can’t be bought.' },
   { id: 'kente', slot: 'neck', name: 'Kente scarf', price: 400, blurb: 'Gold, green and red, woven in blocks.' },
   { id: 'jersey', slot: 'neck', name: 'Black Stars jersey', price: 500, blurb: 'Red, gold and green trim and the black star.' },
   { id: 'tux', slot: 'neck', name: 'Tux', price: 500, blurb: 'Black lapels and a bow tie, for the big matches.' },
@@ -139,9 +142,37 @@ function Hat({ id, t }: { id: ItemId; t: number }) {
           <circle cx="47" cy={t - 21} r="3" fill={K.red} stroke={INK} strokeWidth="2" />
         </g>
       )
+    case 'towercrown':
+      // Ops' Tower in miniature: dark battlements on a gold band, her screen face set in the middle
+      return (
+        <g className="opsw-hat">
+          <path
+            d={`M25 ${t + 7}V${t - 12}H31V${t - 19}H37V${t - 12}H43V${t - 19}H51V${t - 12}H57V${t - 19}H63V${t - 12}H69V${t + 7}Z`}
+            fill="#25222c"
+            stroke={INK}
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <rect x="23" y={t} width="48" height="7" fill={K.goldHi} stroke={INK} strokeWidth="2.5" />
+          <rect x="40" y={t - 11} width="14" height="9" rx="1.5" fill="#17151c" stroke={K.goldHi} strokeWidth="2" />
+          <rect x="43" y={t - 8.5} width="2.6" height="2.6" fill={K.goldHi} />
+          <rect x="48.4" y={t - 8.5} width="2.6" height="2.6" fill={K.goldHi} />
+          <circle cx="31" cy={t + 3.5} r="2" fill={K.red} />
+          <circle cx="63" cy={t + 3.5} r="2" fill={K.green} />
+        </g>
+      )
     default:
       return null
   }
+}
+
+/** A hat on its own (no head), for showing it off: the Tower crown on the champion's sheet. */
+export function HatArt({ id, size = 40 }: { id: ItemId; size?: number }) {
+  return (
+    <svg viewBox="19 -15 56 32" width={size} height={(size * 32) / 56} aria-hidden="true">
+      <Hat id={id} t={8} />
+    </svg>
+  )
 }
 
 function Neck({ id }: { id: ItemId }) {

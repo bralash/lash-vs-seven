@@ -3,7 +3,9 @@ import { Chip } from '../components/Chip'
 import { OpsFace } from '../components/OpsFace'
 import { Portal } from '../components/Portal'
 import { useSound } from '../lib/sound'
-import { floorOf, HEARTS } from './floors'
+import { gameBySlug } from '../games/registry'
+import { floorOf, gameAt, HEARTS, winsNeeded } from './floors'
+import { TowerCrown } from './TowerCrown'
 import type { Outcome } from './tower'
 import '../styles/tower.css'
 
@@ -51,10 +53,11 @@ export function TowerSheet({ floor, sheet, onAgain, onTower, onRetry }: { floor:
 
   if (sheet.kind === 'next') {
     title = `${sheet.wins[0]} – ${sheet.wins[1]}`
-    line = `First to ${f.firstTo} against ${f.guardianName}. Next game!`
+    const next = gameAt(f, sheet.wins)
+    line = f.games ? `Win ${winsNeeded(f)} of ${f.games.length} against ${f.guardianName}. Next up: ${gameBySlug(next)?.name ?? next}.` : `First to ${winsNeeded(f)} against ${f.guardianName}. Next game!`
     actions = (
       <button type="button" className="btn btn--primary btn--block" onClick={onAgain}>
-        Next game
+        {f.games ? `On to ${gameBySlug(next)?.name ?? next}` : 'Next game'}
       </button>
     )
   } else if (sheet.kind === 'draw') {
@@ -80,9 +83,21 @@ export function TowerSheet({ floor, sheet, onAgain, onTower, onRetry }: { floor:
     const { out } = sheet
     if (out.won) {
       face = 'lose'
-      title = floor === 10 ? 'Ops is beaten!' : `Floor ${floor} cleared!`
-      line = out.paid ? `${f.guardianName} steps aside.` : `${f.guardianName} steps aside. (Chips for this floor were paid earlier this season.)`
-      body = out.paid ? (
+      title = floor === 10 ? 'Tower champion!' : `Floor ${floor} cleared!`
+      line =
+        floor === 10
+          ? out.crown
+            ? 'Ops is beaten. The Tower crown is yours: find it in the Locker.'
+            : 'Ops is beaten again. Champion for another season.'
+          : out.paid
+            ? `${f.guardianName} steps aside.`
+            : `${f.guardianName} steps aside. (Chips for this floor were paid earlier this season.)`
+      body = floor === 10 ? (
+        <p className="tw-sheet__chips">
+          <TowerCrown size={46} />
+          {out.paid ? `+${out.paid} chips` : null}
+        </p>
+      ) : out.paid ? (
         <p className="tw-sheet__chips">
           <Chip v={out.paid >= 100 ? 100 : out.paid >= 25 ? 25 : 5} size={34} /> +{out.paid} chips
         </p>

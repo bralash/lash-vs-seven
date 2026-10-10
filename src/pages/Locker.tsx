@@ -40,7 +40,8 @@ export function Locker() {
   const shown = look ?? looks[0]?.id ?? CREW_STYLES[0].id
   const current = CREW_STYLES.find((s) => s.id === shown) ?? CREW_STYLES[0]
   const moreLooks = CREW_STYLES.length - looks.length
-  const moreItems = ITEMS.length - items.length
+  // prizes (the Tower crown) are won, not bought, so they don't count as more in the shop
+  const moreItems = ITEMS.filter((it) => !it.prize).length - items.filter((it) => !it.prize).length
   const throwPick = useThrowPick()
   const throws = SHOP_THROWS.filter((t) => ownsExtra(wallet?.owned, t.id) || t.id === throwPick)
   const packs = PACKS.filter((pk) => ownsExtra(wallet?.owned, pk.id))
