@@ -472,7 +472,7 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .ult__chip b { font-weight: 500; }
 .ult__chip button { flex: none; padding: 4px 8px; border: 2px solid var(--ink); background: var(--hit); font: 500 11px/1.2 var(--mono); cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
-  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks, .ult__fist, .ult__ring, .ult__reticle, .ult__blast, .ult__threads, .ult__pot, .ult__gold, .ult__tro, .ult__skid, .ult__dust, .ult__stop, .ult__beam, .ult__bats { display: none; }
+  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks, .ult__fist, .ult__ring, .ult__reticle, .ult__blast, .ult__threads, .ult__pot, .ult__gold, .ult__tro, .ult__skid, .ult__dust, .ult__stop, .ult__beam, .ult__bats, .ult__drum, .ult__warrior { display: none; }
   .ult__web { animation: none; }
   .ult-dust { animation-duration: .01s !important; }
 }
@@ -606,3 +606,33 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .ult__bat path { animation: ult-flap .12s steps(2) infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes ult-bat { 0% { opacity: 1; translate: 60vw calc(var(--by) + 30px); } 50% { translate: 0 var(--by); } 100% { opacity: 1; translate: -70vw calc(var(--by) - 40px); } }
 @keyframes ult-flap { 50% { scale: 1 .4; } }
+
+/* Yaa Asantewops' stool: it lands on top of the head and sits there, stars going round; the face is pressed down */
+.mt-score__ops--stool svg { animation: ops-flat 1s var(--ease-snap, ease-out); transform-origin: bottom center; }
+.throw__splat--stool { inset: -8px; overflow: visible; }
+.throw__splat--stool svg { overflow: visible; }
+.throw__perch { animation: perch .9s var(--ease-snap, ease-out) both; }
+@keyframes perch { 0% { translate: 0 -14px; } 40% { translate: 0 1px; } 60%, 100% { translate: 0 0; } }
+.throw__stars { transform-box: view-box; transform-origin: 20px 14px; animation: stars-round 1s linear infinite; }
+@keyframes stars-round { to { rotate: 360deg; } }
+
+/* Yaa Asantewops' taunt: she rallies her warriors, bouncing on her toes in a blaze of gold */
+.taunt__ops--rally > svg { animation: taunt-rally .32s ease-in-out infinite alternate; transform-origin: bottom center; }
+@keyframes taunt-rally { from { translate: 0 0; rotate: -3deg; } to { translate: 0 -8px; rotate: 3deg; } }
+.taunt__ops--rally::before { content: ''; position: absolute; inset: -30%; z-index: -1; background: repeating-conic-gradient(rgb(242 201 76 / .7) 0 10deg, transparent 10deg 30deg); mask: radial-gradient(circle, #000 30%, transparent 70%); animation: taunt-rays 4s linear infinite; }
+@keyframes taunt-rays { to { rotate: 360deg; } }
+
+/* War of the Golden Stool (Yaa Asantewops): the drums pulse, the stool rises over the board in a
+   blaze of gold, and a line of warriors charges across beneath it */
+.ult--asante .ult__said { animation-delay: 1.6s; }
+.ult--asante .ult__said strong { background: #f2c94c; font-size: clamp(20px, 6.5vw, 34px); }
+.mt-score__ops--ult-asante svg { filter: drop-shadow(0 0 5px #f2c94c); }
+.ult__drum { position: absolute; left: var(--x); top: var(--y); width: 60px; height: 60px; border: 6px solid #c9971c; border-radius: 50%; translate: -50% -50%; opacity: 0; animation: ult-drum .32s ease-out 3, ult-drum .16s ease-out .96s 3; }
+@keyframes ult-drum { 0% { opacity: .9; scale: .4; } 100% { opacity: 0; scale: 5; } }
+.ult__goldstool { position: absolute; left: var(--x); top: var(--y); display: flex; translate: -50% -50%; filter: drop-shadow(0 0 18px rgb(242 201 76 / .9)) drop-shadow(4px 4px 0 var(--ink)); opacity: 0; animation: ult-goldstool 3.4s cubic-bezier(.3,.7,.4,1) both; }
+@keyframes ult-goldstool { 0%, 25% { opacity: 0; translate: -50% 60vh; } 33% { opacity: 1; translate: -50% -60%; } 38%, 85% { opacity: 1; translate: -50% -50%; } 100% { opacity: 0; translate: -50% -50%; scale: 1.2; } }
+.ult__rays { transform-box: view-box; transform-origin: 20px 21px; animation: taunt-rays 3s linear infinite; }
+.ult__warrior { position: absolute; left: 0; top: calc(var(--y) + 10px + var(--row) * 16px); display: flex; translate: -120% 0; animation: ult-charge 1.3s linear both; animation-delay: calc(1.5s + var(--i) * 90ms); }
+.ult__warrior svg { animation: ult-stride .2s steps(2) infinite; }
+@keyframes ult-charge { from { translate: -120% 0; } to { translate: calc(100vw + 20%) 0; } }
+@keyframes ult-stride { 50% { translate: 0 -4px; } }

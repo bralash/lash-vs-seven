@@ -174,3 +174,8 @@
 .opsf--bat { overflow: visible; }
 .opsf-signal { animation: opsf-signal .5s steps(3) both; }
 @keyframes opsf-signal { 0% { opacity: 0; } 33% { opacity: .9; } 66% { opacity: .3; } 100% { opacity: 1; } }
+/* Yaa Asantewops: the headwrap rises past the head; her hoops sway; the Golden Stool shines */
+.opsf--queen { overflow: visible; }
+.opsf-sway { transform-box: fill-box; transform-origin: top center; animation: opsf-sway 1.1s ease-in-out infinite alternate; }
+@keyframes opsf-sway { from { rotate: -14deg; } to { rotate: 14deg; } }
+.opsf-shine { animation: opsf-signal .5s steps(3) both; }

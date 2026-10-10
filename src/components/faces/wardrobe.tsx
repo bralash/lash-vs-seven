@@ -98,7 +98,7 @@ export function setWorn(id: ItemId, on: boolean) {
 /* ── Drawing ───────────────────────────────────────────────────────── */
 
 /** where the top edge of each head is (most are at 8) */
-const TOP: Partial<Record<OpsStyle, number>> = { bot: 26, prime: 15 }
+const TOP: Partial<Record<OpsStyle, number>> = { bot: 26, prime: 15, queen: -22 }
 const K = { gold: '#f5b800', goldHi: '#ffd23f', red: '#e8291c', green: '#1f9d55', ink: INK, white: '#fbf7ee' }
 
 function Hat({ id, t }: { id: ItemId; t: number }) {
