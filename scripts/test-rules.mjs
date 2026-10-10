@@ -85,6 +85,7 @@ try {
   await expect('guest wears four things', false, call(guest, 'PATCH', `${ROOM}/players/${G}`, { wear: 'crown,kente,gold,tux' }))
   await expect('guest wears something odd', false, call(guest, 'PATCH', `${ROOM}/players/${G}`, { wear: '<script>' }))
   await expect('guest owns a crown in their wallet', true, call(guest, 'PUT', `wallets/${G}`, { chips: 0, owned: { crown: true, warrior: true } }))
+  await expect('guest owns a slipper and the Ghana pack', true, call(guest, 'PUT', `wallets/${G}`, { chips: 0, owned: { slipper: true, ghana: true } }))
   await expect('guest owns something that isn’t sold', false, call(guest, 'PUT', `wallets/${G}`, { chips: 0, owned: { cheat: true } }))
   await expect('host gives the guest a crown', false, call(host, 'PUT', `wallets/${G}/owned/crown`, true))
   await expect('stranger deletes a waiting room', false, call(stranger, 'DELETE', ROOM))

@@ -1,8 +1,8 @@
 /*
  * The shop's catalogue (store plan, promo/store-plan.html). Chips only buy looks: nothing here helps
- * anyone win. Characters and the wardrobe are on sale (their prices live with the faces, OpsFace.tsx,
- * and the items, faces/wardrobe.tsx); every other shelf is listed with its planned prices and marked
- * Soon until it's built.
+ * anyone win. Characters, the wardrobe, throwables and sticker packs are on sale (their prices live
+ * with them: OpsFace.tsx, faces/wardrobe.tsx, Throws.tsx, Reactions.tsx); every other shelf is
+ * listed with its planned prices and marked Soon until it's built.
  */
 
 export type ShelfId = 'characters' | 'wardrobe' | 'throws' | 'stickers' | 'wins' | 'flair' | 'skins'
@@ -25,27 +25,8 @@ export interface Shelf {
 export const SHELVES: Shelf[] = [
   { id: 'characters', name: 'Characters', blurb: 'The face you wear on your score card, with their own throw, taunt and ultimate. The four robots are free.' },
   { id: 'wardrobe', name: 'Wardrobe', blurb: 'Hats, something round the neck, and paint for your character. One of each at a time; everyone gets the party hat.' },
-  {
-    id: 'throws',
-    name: 'Throwables',
-    blurb: 'New things to throw at faces, each with its own splat.',
-    soon: [
-      { name: 'Chalewote slipper', price: 250 },
-      { name: 'Water balloon', price: 250 },
-      { name: 'Custard pie', price: 250 },
-      { name: 'Fan Ice', price: 250 },
-      { name: 'Kenkey ball', price: 250 },
-    ],
-  },
-  {
-    id: 'stickers',
-    name: 'Stickers',
-    blurb: 'Six extra reactions in the tray.',
-    soon: [
-      { name: 'Ghana pack', price: 200, note: 'Chale, Herh!, Ei!, Ayekoo, Sharp, Small small' },
-      { name: 'Football pack', price: 200, note: 'Goal!, Offside!, Red card, VAR' },
-    ],
-  },
+  { id: 'throws', name: 'Throwables', blurb: 'New things to throw at faces, each with its own splat. Characters throw their own until you pick one here.' },
+  { id: 'stickers', name: 'Stickers', blurb: 'Six extra reactions in the tray, a pack at a time. Everyone sees them, whether they own the pack or not.' },
   {
     id: 'wins',
     name: 'Wins',

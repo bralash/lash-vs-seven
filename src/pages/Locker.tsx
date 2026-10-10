@@ -6,15 +6,17 @@ import { CREW_STYLES, OpsFace, hasOwnReactions, setCrewLook, useCrewLook, type B
 import { ITEMS, SLOTS, setWorn, useWear, type ItemId } from '../components/faces/wardrobe'
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
-import { keepWornLook, ownsItem, ownsLook, useWallet } from '../match/chips'
+import { keepWornLook, ownsExtra, ownsItem, ownsLook, useWallet } from '../match/chips'
+import { PACKS } from '../match/Reactions'
+import { ItemArt, ownThrow, setThrowPick, SHOP_THROWS, useThrowPick } from '../match/Throws'
 import '../styles/lobby.css'
 import '../styles/opsroom.css'
 
 /**
  * The Locker (/locker): what you own, and what you put on. Your Crew character (the face on your score
- * card in every game on this device) and what it wears from the wardrobe. Only things you own are
- * here: the robots and the party hat are everyone's, the rest comes from the shop (/shop). Screen
- * isn't here: it's Ops' own face.
+ * card in every game on this device), what it wears from the wardrobe, what you throw and your sticker
+ * packs. Only things you own are here: the robots, the party hat and your own throw are everyone's,
+ * the rest comes from the shop (/shop). Screen isn't here: it's Ops' own face.
  */
 
 const MOODS: { id: BaseMood; label: string }[] = [
@@ -39,6 +41,10 @@ export function Locker() {
   const current = CREW_STYLES.find((s) => s.id === shown) ?? CREW_STYLES[0]
   const moreLooks = CREW_STYLES.length - looks.length
   const moreItems = ITEMS.length - items.length
+  const throwPick = useThrowPick()
+  const throws = SHOP_THROWS.filter((t) => ownsExtra(wallet?.owned, t.id) || t.id === throwPick)
+  const packs = PACKS.filter((pk) => ownsExtra(wallet?.owned, pk.id))
+  const own = ownThrow(look)
 
   // anyone already wearing a character when they went on sale keeps it
   useEffect(() => {
@@ -145,6 +151,55 @@ export function Locker() {
               {moreItems} more in the <Link to="/shop">shop</Link>: hats, scarves, jerseys, gold paint.
             </p>
           )}
+        </section>
+
+        <section className="opsroom__section" aria-labelledby="throw-title">
+          <h2 id="throw-title" className="opsroom__h">What you throw</h2>
+          <div className="opsroom__items" role="radiogroup" aria-labelledby="throw-title">
+            {[{ id: null, name: own ? 'Your own' : 'Whatever’s to hand' }, ...throws].map((t) => {
+              const on = throwPick === t.id
+              return (
+                <button
+                  key={t.id ?? 'own'}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className="opsroom__look opsroom__item"
+                  onClick={() => {
+                    if (on) return
+                    play('tap')
+                    setThrowPick(t.id)
+                  }}
+                >
+                  {on && <span className="stamp stamp--live opsroom__picked">On</span>}
+                  <ItemArt item={t.id ?? own ?? 'tomato'} size={52} />
+                  <span className="opsroom__item-name">{t.name}</span>
+                </button>
+              )
+            })}
+          </div>
+          {throws.length < SHOP_THROWS.length && (
+            <p className="hint opsroom__note">
+              {SHOP_THROWS.length - throws.length} more in the <Link to="/shop">shop</Link>: a chalewote slipper, a custard pie, a kenkey ball…
+            </p>
+          )}
+        </section>
+
+        <section className="opsroom__section" aria-labelledby="stickers-title">
+          <h2 id="stickers-title" className="opsroom__h">Sticker packs</h2>
+          {packs.map((pk) => (
+            <p key={pk.id} className="opsroom__pack">
+              <b>{pk.name}</b> {pk.stickers.map((x) => x.e).join(' ')}
+            </p>
+          ))}
+          <p className="hint opsroom__note">
+            {packs.length ? 'Each pack has its own tab in the reactions tray. ' : 'The six classic reactions are everyone’s. '}
+            {packs.length < PACKS.length && (
+              <>
+                More in the <Link to="/shop">shop</Link>.
+              </>
+            )}
+          </p>
         </section>
 
         <section className="opsroom__section" aria-labelledby="moods-title">

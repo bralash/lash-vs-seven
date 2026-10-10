@@ -6,9 +6,16 @@ import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { useSound } from '../lib/sound'
 import { roomPath } from '../lobby/rooms'
+import { useWallet } from './chips'
 import { TauntLayer, visit } from './Taunts'
 import { isItem, launch, ThrowLayer, throwsIn } from './Throws'
 import { UltLayer, unleash } from './Ultimates'
+
+interface Sticker {
+  k: string
+  e: string
+  label: string
+}
 
 /** Tap-only reactions, sent during an online match. Keys are what goes over the wire. */
 export const REACTIONS = [
@@ -19,8 +26,45 @@ export const REACTIONS = [
   { k: 'gg', e: '🤝', label: 'GG' },
   { k: 'hurry', e: '⏳', label: 'Hurry up' },
 ] as const
-export type ReactionKey = (typeof REACTIONS)[number]['k']
-const BY_KEY = Object.fromEntries(REACTIONS.map((r) => [r.k, r])) as Record<string, (typeof REACTIONS)[number]>
+
+/** Sticker packs from the shop: six more in the tray each. Every phone knows them all, so anyone can receive one. */
+export const PACKS = [
+  {
+    id: 'ghana',
+    name: 'Ghana pack',
+    price: 200,
+    stickers: [
+      { k: 'chale', e: '🤙', label: 'Chale' },
+      { k: 'herh', e: '🫵', label: 'Herh!' },
+      { k: 'ei', e: '😳', label: 'Ei!' },
+      { k: 'ayekoo', e: '👏', label: 'Ayekoo' },
+      { k: 'sharp', e: '👌', label: 'Sharp' },
+      { k: 'smallsmall', e: '🤏', label: 'Small small' },
+    ],
+  },
+  {
+    id: 'football',
+    name: 'Football pack',
+    price: 200,
+    stickers: [
+      { k: 'goal', e: '⚽', label: 'Goal!' },
+      { k: 'offside', e: '🚩', label: 'Offside!' },
+      { k: 'redcard', e: '🟥', label: 'Red card' },
+      { k: 'var', e: '📺', label: 'VAR' },
+      { k: 'owngoal', e: '🙈', label: 'Own goal' },
+      { k: 'fulltime', e: '⏱️', label: 'Full time' },
+    ],
+  },
+] as const
+export type PackId = (typeof PACKS)[number]['id']
+export const isPack = (v: unknown): v is PackId => PACKS.some((p) => p.id === v)
+export type ReactionKey = (typeof REACTIONS)[number]['k'] | (typeof PACKS)[number]['stickers'][number]['k']
+const BY_KEY: Record<string, Sticker> = Object.fromEntries(([...REACTIONS, ...PACKS.flatMap((p): readonly Sticker[] => p.stickers)] as Sticker[]).map((r) => [r.k, r]))
+/** a reaction by its key (any pack), if it's one we know */
+export const reactionOf = (k: string): Sticker | undefined => BY_KEY[k]
+
+/** the tray's last tab, kept for the page */
+let lastTab: 'base' | PackId = 'base'
 
 /** a reaction stays on screen this long */
 const SHOW_MS = 2400
@@ -74,10 +118,18 @@ export function useCheer(game: string, code: string, pid: string) {
   }
 }
 
-/** The top-bar button and its tray of reactions. */
+/** The top-bar button and its tray of reactions, with a tab per sticker pack you own. */
 export function ReactionButton({ onPick }: { onPick: (k: ReactionKey) => void }) {
   const [open, setOpen] = useState(false)
   const [top, setTop] = useState(80)
+  const wallet = useWallet()
+  const packs = PACKS.filter((p) => wallet?.owned?.[p.id])
+  const [tab, setTab] = useState(lastTab)
+  const shown: readonly Sticker[] = packs.find((p) => p.id === tab)?.stickers ?? REACTIONS
+  const pickTab = (t: typeof tab) => {
+    lastTab = t
+    setTab(t)
+  }
 
   // Escape closes the tray
   useEffect(() => {
@@ -105,7 +157,16 @@ export function ReactionButton({ onPick }: { onPick: (k: ReactionKey) => void })
         <Portal>
           <button type="button" className="react__scrim" aria-label="Close reactions" onClick={() => setOpen(false)} />
           <div className="react__tray" role="menu" aria-label="Reactions" style={{ top }}>
-            {REACTIONS.map((r) => (
+            {packs.length > 0 && (
+              <div className="react__tabs" role="group" aria-label="Sticker packs">
+                {[{ id: 'base' as const, name: 'Classic' }, ...packs].map((p) => (
+                  <button key={p.id} type="button" aria-pressed={shown === (p.id === 'base' ? REACTIONS : packs.find((x) => x.id === p.id)?.stickers)} className="react__tab" onClick={() => pickTab(p.id)}>
+                    {p.name.replace(' pack', '')}
+                  </button>
+                ))}
+              </div>
+            )}
+            {shown.map((r) => (
               <button
                 key={r.k}
                 type="button"
@@ -113,7 +174,7 @@ export function ReactionButton({ onPick }: { onPick: (k: ReactionKey) => void })
                 className="react__pick"
                 onClick={() => {
                   setOpen(false)
-                  onPick(r.k)
+                  onPick(r.k as ReactionKey)
                 }}
               >
                 <span className="react__emoji" aria-hidden="true">{r.e}</span>

@@ -6,7 +6,7 @@ import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { useSound } from '../lib/sound'
 import { roomPath, type Watcher } from '../lobby/rooms'
-import { REACTIONS } from './Reactions'
+import { reactionOf } from './Reactions'
 
 /*
  * People watching an online match. Everyone in a watched room (players and watchers) sees an eye
@@ -15,7 +15,6 @@ import { REACTIONS } from './Reactions'
  * matches/{game}/{code}/wreact/{uid}, the way players use react/.
  */
 
-const BY_KEY = Object.fromEntries(REACTIONS.map((r) => [r.k, r])) as Record<string, (typeof REACTIONS)[number]>
 const SHOW_MS = 2400
 
 interface Cheer {
@@ -43,7 +42,7 @@ export function Spectators({ game, code, pid, watchers }: { game: string; code: 
         seen.current = Object.fromEntries(Object.entries(all).map(([u, r]) => [u, r.n]))
         if (!before) return // what was already there when we arrived isn't news
         for (const [u, r] of Object.entries(all)) {
-          const known = BY_KEY[r.k]
+          const known = reactionOf(r.k)
           if (r.n === before[u] || !known) continue
           const id = nextId.current++
           const who = u === pid ? 'You' : (namesRef.current?.[u]?.name ?? 'Someone watching')

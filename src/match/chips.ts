@@ -242,6 +242,10 @@ export const ownsItem = (owned: Owned | undefined, id: ItemId) => !itemOf(id)?.p
 export const buyLook = (look: OpsStyle) => buy(look, priceOf(look))
 /** Buys a wardrobe item with chips. */
 export const buyItem = (id: ItemId) => buy(id, itemOf(id)?.price ?? 0)
+/** Buys a throwable or a sticker pack (bought outright: no free ones). */
+export const buyExtra = (id: string, price: number) => buy(id, price)
+/** A throwable or a sticker pack: mine. */
+export const ownsExtra = (owned: Owned | undefined, id: string) => !!owned?.[id]
 
 async function buy(id: string, price: number): Promise<'ok' | 'short' | 'error'> {
   try {

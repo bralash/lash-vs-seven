@@ -2,8 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSPrope
 import { FlashArt } from '../components/faces/ghops'
 import { RubbleArt } from '../components/faces/hulkops'
 import { WebArt, webPath } from '../components/faces/spidops'
+import type { OpsStyle } from '../components/OpsFace'
 import { Portal } from '../components/Portal'
 import { useSound } from '../lib/sound'
+import { load, save } from '../lib/storage'
 
 /*
  * Tap someone's Ops on their score card and something flies at it: a tomato, a rock or a paper
@@ -14,13 +16,56 @@ import { useSound } from '../lib/sound'
  * a stone from his gauntlet, and whoever it hits turns to dust for a moment; Spidops shoots a ball
  * of web that wraps whoever it hits; Opstimus throws a glowing Energon cube that zaps the face pink; Hulkops hurls a chunk of rubble that
  * squashes the face flat for a moment; Ghops lobs a flashbang that blinds the face white.
+ *
+ * The shop sells throwables (SHOP_THROWS) that anyone can throw instead: a chalewote slipper that
+ * slaps the face round, a water balloon that soaks it, a custard pie that covers it, a Fan Ice that
+ * freezes it and a kenkey ball that lands with a thud. Which one you throw is picked on this device
+ * (useThrowPick); the thrower's phone decides, so the others just see what comes flying.
  */
 
-export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble', 'flash'] as const
+export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble', 'flash', 'slipper', 'balloon', 'pie', 'fanice', 'kenkey'] as const
 /** what anyone but the characters picks from */
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
 export const isItem = (k: unknown): k is Item => ITEMS.includes(k as Item)
+
+/* ── Throwables on sale, and which one this device throws ── */
+
+export type ShopThrow = 'slipper' | 'balloon' | 'pie' | 'fanice' | 'kenkey'
+export const SHOP_THROWS: { id: ShopThrow; name: string; price: number; blurb: string }[] = [
+  { id: 'slipper', name: 'Chalewote slipper', price: 250, blurb: 'Spins in flat and slaps the face round.' },
+  { id: 'balloon', name: 'Water balloon', price: 250, blurb: 'Bursts on impact. Soaked, dripping, blue.' },
+  { id: 'pie', name: 'Custard pie', price: 250, blurb: 'Straight in the face, then it slides off slowly.' },
+  { id: 'fanice', name: 'Fan Ice', price: 250, blurb: 'A cold sachet of ice cream. Brain freeze included.' },
+  { id: 'kenkey', name: 'Kenkey ball', price: 250, blurb: 'Wrapped in husk, heavy, lands with a thud.' },
+]
+const SHOP_IDS = new Set<string>(SHOP_THROWS.map((t) => t.id))
+export const isShopThrow = (v: unknown): v is ShopThrow => typeof v === 'string' && SHOP_IDS.has(v)
+
+/** each character's own throw (anyone else grabs a tomato, a rock or a paper ball) */
+const OWN: Partial<Record<OpsStyle, Item>> = { warrior: 'axe', titan: 'stone', spider: 'web', prime: 'cube', brute: 'rubble', ghost: 'flash' }
+export const ownThrow = (look: OpsStyle | null | undefined): Item | null => (look && OWN[look]) || null
+
+const PICK_KEY = 'lvs_throw'
+const pickers = new Set<() => void>()
+const readPick = (): ShopThrow | null => {
+  const v = load(PICK_KEY)
+  return isShopThrow(v) ? v : null
+}
+const subscribePick = (f: () => void) => {
+  pickers.add(f)
+  window.addEventListener('storage', f)
+  return () => {
+    pickers.delete(f)
+    window.removeEventListener('storage', f)
+  }
+}
+/** What this device throws: a bought throwable, or null for your character's own throw. */
+export const useThrowPick = () => useSyncExternalStore(subscribePick, readPick, () => null)
+export function setThrowPick(id: ShopThrow | null) {
+  save(PICK_KEY, id)
+  pickers.forEach((f) => f())
+}
 
 /** games played as a race against the clock: nothing to throw */
 const RACES = new Set(['wordhunt', 'anagram', 'sudoku'])
@@ -103,13 +148,8 @@ function land(f: Flight) {
 /** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, Hulkops rubble, Ghops a flashbang, anyone else whatever comes to hand. */
 export function itemFrom(id: string | null): Item {
   const el = faceEl(id)
-  if (el instanceof HTMLElement && el.dataset.opsLook === 'warrior') return 'axe'
-  if (el instanceof HTMLElement && el.dataset.opsLook === 'titan') return 'stone'
-  if (el instanceof HTMLElement && el.dataset.opsLook === 'spider') return 'web'
-  if (el instanceof HTMLElement && el.dataset.opsLook === 'prime') return 'cube'
-  if (el instanceof HTMLElement && el.dataset.opsLook === 'brute') return 'rubble'
-  if (el instanceof HTMLElement && el.dataset.opsLook === 'ghost') return 'flash'
-  return JUNK[Math.floor(Math.random() * JUNK.length)]
+  const own = el instanceof HTMLElement ? ownThrow(el.dataset.opsLook as OpsStyle) : null
+  return own ?? JUNK[Math.floor(Math.random() * JUNK.length)]
 }
 
 function faceEl(id: string | null): Element | null {
@@ -156,7 +196,8 @@ export function ThrowLayer({ me, deliver, onHit, view }: { me: string | null; de
         const now = Date.now()
         if (now - thrownAt.current < COOLDOWN_MS) return
         thrownAt.current = now
-        const item = itemFrom(props.current.me)
+        // a throwable picked in the shop, thrown from your own card (pass & play: what each card has)
+        const item = (props.current.me !== null && readPick()) || itemFrom(props.current.me)
         props.current.play('whoosh')
         launch(props.current.me, to, item, true)
         props.current.deliver?.(to, item)
@@ -204,7 +245,7 @@ function Flying({ f }: { f: Flight }) {
     // a lob: up over the straight line, higher the further it goes
     // …but never off the top of the screen (the cards sit near it)
     const lift = Math.min(160, 50 + Math.hypot(x1 - x0, y1 - y0) * 0.35, Math.max(16, Math.min(y0, y1) - 20))
-    const spin = (f.item === 'axe' ? 1080 : f.item === 'stone' ? 720 : f.item === 'web' ? 160 : f.item === 'cube' ? 450 : f.item === 'rubble' ? 380 : f.item === 'flash' ? 600 : f.item === 'paper' ? 300 : f.item === 'rock' ? 540 : 200) * (f.back ? -1 : 1)
+    const spin = (SPIN[f.item] ?? 200) * (f.back ? -1 : 1)
     const frames = Array.from({ length: 11 }, (_, i) => {
       const t = i / 10
       const x = x0 + (x1 - x0) * t
@@ -228,6 +269,9 @@ function Flying({ f }: { f: Flight }) {
     </span>
   )
 }
+
+/** how far each thing turns on its way (degrees) */
+const SPIN: Partial<Record<Item, number>> = { axe: 1080, stone: 720, web: 160, cube: 450, rubble: 380, flash: 600, paper: 300, rock: 540, slipper: 900, balloon: 40, pie: 0, fanice: 420, kenkey: 300 }
 
 const INK = 'var(--ink)'
 
@@ -290,6 +334,51 @@ export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id
           <path d="M12 10l6 9-8 4M21 7l-3 12 10 4M31 11l-3 12M20 19l-4 14" stroke={INK} strokeWidth="1.5" fill="none" strokeLinejoin="round" />
         </>
       )}
+      {item === 'slipper' && (
+        <>
+          {/* a chalewote: a flat rubber sole and a blue thong strap */}
+          <path d="M14 6q8-3 12 4q3 8 0 16q-2 9-8 10q-7 0-8-9q-1-8 1-14q1-5 3-7z" fill="#ff5a1f" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M15 9q5-2 8 3q2 6 0 13q-1 7-5 8" stroke="#ffb08a" strokeWidth="2" fill="none" opacity=".8" />
+          <path d="M19 12L12 20M19 12l7 7" stroke="#2d5bff" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="19" cy="12" r="2.2" fill="#2d5bff" stroke={INK} strokeWidth="1.5" />
+        </>
+      )}
+      {item === 'balloon' && (
+        <>
+          <path d="M20 4q12 0 12 13q0 11-12 15q-12-4-12-15q0-13 12-13z" fill="#4ab3ff" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M17 32l3 4 3-4z" fill="#2d8fe0" stroke={INK} strokeWidth="2" strokeLinejoin="round" />
+          <path d="M13 13q2-5 7-6" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity=".8" />
+        </>
+      )}
+      {item === 'pie' && (
+        <>
+          {/* a foil tin piled with custard under a cream top */}
+          <path d="M5 24h30l-4 9H9z" fill="#c9d0d8" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M11 24l1 9M17 24v9M23 24v9M29 24l-1 9" stroke={INK} strokeWidth="1" opacity=".35" />
+          <path d="M5 24q0-7 7-8q2-5 8-5q6 0 8 5q7 1 7 8z" fill="#ffe7a3" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M11 19q3-3 6 0q3-3 6 0q3-3 6 0" stroke="#fffaf0" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <circle cx="20" cy="12" r="2.6" fill="#e5333b" stroke={INK} strokeWidth="1.5" />
+        </>
+      )}
+      {item === 'fanice' && (
+        <>
+          {/* a sachet of ice cream: a white pouch, sealed ends, a stripe across */}
+          <path d="M9 8h22l-1 26H10z" fill="#fbfaf5" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M10 11h20M10.5 31h19" stroke={INK} strokeWidth="1.2" strokeDasharray="2 2" />
+          <path d="M9.6 17h20.8l-.3 8H9.9z" fill="#e5333b" stroke={INK} strokeWidth="1.5" />
+          <path d="M14 21h12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M34 10l3-2M35 15h3M33 5l2-3" stroke="#7fd3ff" strokeWidth="2" strokeLinecap="round" />
+        </>
+      )}
+      {item === 'kenkey' && (
+        <>
+          {/* a ball of kenkey in dried corn husk, tied at the top */}
+          <path d="M20 9q11 1 12 13q0 11-12 12q-12-1-12-12q1-12 12-13z" fill="#d9c08a" stroke={INK} strokeWidth="2.5" strokeLinejoin="round" />
+          <path d="M13 14q-2 8 1 17M20 10q-3 11 0 23M27 14q2 8-1 17" stroke="#a88a4e" strokeWidth="1.6" fill="none" />
+          <path d="M17 9q3-6 6 0" stroke={INK} strokeWidth="2.2" fill="#d9c08a" strokeLinejoin="round" />
+          <path d="M16 4l4 5 4-5" stroke="#a88a4e" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        </>
+      )}
     </svg>
   )
 }
@@ -341,6 +430,42 @@ export function Splat({ hit }: { hit: Hit }) {
           <g fill="none" stroke="#ff5fc8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 2l-3 8 5 2-3 8M38 18l-8 1 1 5-8 1M4 24l8-2 0 5 7-1M24 38l-2-8-5 1-1-7" />
             <circle cx="20" cy="20" r="6" fill="#ffb3e6" stroke={INK} strokeWidth="2" />
+          </g>
+        )}
+        {hit.item === 'slipper' && (
+          <g>
+            {/* the print of the sole, and slap lines */}
+            <path d="M17 9q7-2 9 5q2 8-1 14q-2 6-6 6q-5-1-5-8q-1-7 1-12q1-4 2-5z" fill="#ff5a1f" opacity=".6" stroke={INK} strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M3 12l7 3M2 21h8M4 30l6-3M37 12l-7 3M38 21h-8M36 30l-6-3" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
+          </g>
+        )}
+        {hit.item === 'balloon' && (
+          <g fill="#4ab3ff" stroke={INK} strokeWidth="1.8" strokeLinejoin="round">
+            <path d="M20 4l3 8 8-5-3 9 9 1-8 5 6 7-9-2 0 9-6-7-6 7 0-9-9 2 6-7-8-5 9-1-3-9 8 5z" opacity=".85" />
+            <g className="throw__drips" strokeWidth="1.2">
+              <path d="M10 30q2 4 0 6q-2-2 0-6z" />
+              <path d="M20 32q2 4 0 6q-2-2 0-6z" />
+              <path d="M30 29q2 4 0 6q-2-2 0-6z" />
+            </g>
+          </g>
+        )}
+        {hit.item === 'pie' && (
+          <g stroke={INK} strokeWidth="1.8" strokeLinejoin="round">
+            <path d="M5 16q0-10 9-10q3-4 7-2q5-3 9 1q7 0 7 9q4 5 0 10q1 8-6 9q-2 5-6 1q-4 4-8 0q-6 3-8-3q-6-2-4-8q-4-4 0-7z" fill="#fff4cf" />
+            <path d="M11 14q4-3 7 0q3-3 7 0q3-3 6 1" stroke="#ffe7a3" strokeWidth="3" fill="none" strokeLinecap="round" />
+            <circle cx="21" cy="21" r="2.6" fill="#e5333b" />
+          </g>
+        )}
+        {hit.item === 'fanice' && (
+          <g stroke={INK} strokeWidth="1.6" strokeLinejoin="round">
+            <path d="M9 12q4-7 11-6q8-1 11 6q5 4 1 9q-2 5-6 3l-1 7q-2 3-3-1l-1-5q-3 3-6 0l-1 8q-2 3-3 0l-1-8q-5 0-5-5q-3-5 4-8z" fill="#ffd9e8" />
+            <path d="M2 6l4 3M38 6l-4 3M3 34l4-3M37 34l-4-3" stroke="#7fd3ff" strokeWidth="2.2" strokeLinecap="round" />
+          </g>
+        )}
+        {hit.item === 'kenkey' && (
+          <g stroke={INK} strokeWidth="1.6" strokeLinejoin="round">
+            <path d="M6 8l5-1 1 5-5 1zM29 5l6 2-2 5-5-2zM31 29l5 2-2 5-5-2zM5 30l5-1 1 5-5 1zM17 33h5v5h-5z" fill="#f2e6c9" />
+            <path d="M14 3q3 4 1 9M28 34q-4-2-6 2" stroke="#a88a4e" strokeWidth="2.2" fill="none" strokeLinecap="round" />
           </g>
         )}
         {hit.item === 'paper' && (

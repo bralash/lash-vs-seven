@@ -74,6 +74,17 @@
   rotate: -5deg;
 }
 .shop__owned { padding: 2px 8px; background: var(--good); color: var(--paper); letter-spacing: .08em; text-transform: uppercase; }
+/* throwables: the thing, and a face to try it on */
+.shop__throw-face { display: flex; align-items: center; gap: 6px; }
+.shop__try { position: relative; display: grid; justify-items: center; gap: 2px; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.shop__try:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.shop__try-tag { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+/* a sticker pack's six */
+.shop__grid--packs { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+@media (width < 420px) { .shop__grid--packs { grid-template-columns: 1fr; } }
+.shop__pack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
+.shop__sticker { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; border: 2px solid var(--ink); background: var(--paper); font-size: 24px; line-height: 1; }
+.shop__sticker small { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
 .shop__name { font-family: var(--display); font-size: 20px; line-height: 1; text-transform: uppercase; }
 .shop__desc { font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
 .shop__act { display: grid; justify-items: center; min-height: 44px; align-content: end; width: 100%; }

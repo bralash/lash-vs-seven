@@ -250,7 +250,7 @@
         },
         "owned": {
           "$look": {
-            ".validate": "newData.val() === true && $look.matches(/^(prime|warrior|titan|spider|brute|ghost|snapback|kufi|crown|kente|jersey|tux|fugu|gold)$/)"
+            ".validate": "newData.val() === true && $look.matches(/^(prime|warrior|titan|spider|brute|ghost|snapback|kufi|crown|kente|jersey|tux|fugu|gold|slipper|balloon|pie|fanice|kenkey|ghana|football)$/)"
           }
         },
         "paid": {

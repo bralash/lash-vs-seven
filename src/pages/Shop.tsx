@@ -6,21 +6,52 @@ import { CREW_STYLES, OpsFace, priceOf, setCrewLook, useCrewLook, type OpsStyle 
 import { ITEMS, SLOTS, setWorn, useWear, type ItemId } from '../components/faces/wardrobe'
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
-import { buyItem, buyLook, chipsFor, keepWornLook, ownsItem, ownsLook, useWallet, type ChipValue } from '../match/chips'
+import { buyExtra, buyItem, buyLook, chipsFor, keepWornLook, ownsExtra, ownsItem, ownsLook, useWallet, type ChipValue } from '../match/chips'
+import { PACKS } from '../match/Reactions'
 import { SHELVES, type ShelfId } from '../match/shop'
+import { ItemArt, launch, ownThrow, setThrowPick, SHOP_THROWS, Splat, ThrowLayer, useHit, useThrowPick, type Item } from '../match/Throws'
 import '../styles/lobby.css'
+import '../styles/match.css'
 import '../styles/shop.css'
 
 /**
  * The shop (/shop): spend chips on looks. Your pile sits at the top; each shelf is a tab. Characters
  * and the wardrobe are on sale: Buy (with a check first), and paying sends chips flying from your pile
- * onto the item, which goes straight on. Then Wear / Put on / Take off. The other shelves show
- * what's coming and what it will cost. What you own is also in the Locker.
+ * onto the item, which goes straight on. Then Wear / Put on / Take off. Throwables can be tried for
+ * free (tap the face and one comes flying at it); sticker packs show their six. The other shelves
+ * show what's coming and what it will cost. What you own is also in the Locker.
  */
 
 /** the first sentence of a character's blurb */
 const short = (s: string) => s.split(/(?<=\.)\s/)[0]
 const SHELF_KEY = 'lvs_shop_shelf'
+/** what each character throws, for the "your own throw" card */
+const OWN_NAME: Partial<Record<Item, string>> = { axe: 'his axe', stone: 'a stone', web: 'a ball of web', cube: 'an Energon cube', rubble: 'rubble', flash: 'a flashbang' }
+const JUNK: Item[] = ['tomato', 'rock', 'paper']
+
+/** a face to throw at, on a throwable's card: tap it and one comes flying from the bottom of the screen */
+function Target({ id, item, look, wear, onThrow }: { id: string; item: () => Item; look: OpsStyle; wear: ItemId[]; onThrow: () => void }) {
+  const hit = useHit(id)
+  return (
+    <button
+      type="button"
+      className="shop__try"
+      aria-label="Try it: throw one at this face"
+      onClick={() => {
+        onThrow()
+        launch(null, id, item())
+      }}
+    >
+      <span className={`mt-score__ops${hit ? ` mt-score__ops--hit mt-score__ops--${hit.item}` : ''}`} data-ops-face={id}>
+        <span>
+          <OpsFace look={look} mood={hit ? 'ouch' : 'idle'} size={64} wear={wear} />
+        </span>
+        {hit && <Splat key={hit.n} hit={hit} />}
+      </span>
+      <span className="shop__try-tag">Tap to try</span>
+    </button>
+  )
+}
 
 interface Flight {
   id: number
@@ -37,6 +68,7 @@ export function Shop() {
   const wallet = useWallet()
   const look = useCrewLook()
   const wear = useWear()
+  const throwPick = useThrowPick()
   const [shelf, setShelf] = useState<ShelfId>(() => {
     try {
       return (sessionStorage.getItem(SHELF_KEY) as ShelfId | null) ?? 'characters'
@@ -237,6 +269,84 @@ export function Shop() {
     </div>
   ))
 
+  const lookName = CREW_STYLES.find((s) => s.id === look)?.name
+  const own = ownThrow(look)
+  const throws = (
+    <ul className="shop__grid">
+      {card('own', {
+        price: 0,
+        mine: true,
+        on: throwPick === null,
+        onLabel: 'Throwing',
+        face: <Target id="try-own" item={() => own ?? JUNK[Math.floor(Math.random() * JUNK.length)]} look={model} wear={wear} onThrow={() => play('whoosh')} />,
+        name: 'Your own throw',
+        desc: own && lookName ? `${lookName} throws ${OWN_NAME[own]}.` : 'A tomato, a rock or a paper ball: whatever’s to hand.',
+        act:
+          throwPick === null ? (
+            <span className="shop__note">What you throw now</span>
+          ) : (
+            <button type="button" className="btn" onClick={() => (play('tap'), setThrowPick(null))}>
+              Throw this
+            </button>
+          ),
+      })}
+      {SHOP_THROWS.map((t) => {
+        const on = throwPick === t.id
+        const mine = ownsExtra(wallet?.owned, t.id) || on
+        return card(t.id, {
+          price: t.price,
+          mine,
+          on,
+          onLabel: 'Throwing',
+          face: (
+            <span className="shop__throw-face">
+              <ItemArt item={t.id} size={40} />
+              <Target id={`try-${t.id}`} item={() => t.id} look={model} wear={wear} onThrow={() => play('whoosh')} />
+            </span>
+          ),
+          name: t.name,
+          desc: t.blurb,
+          act: on ? (
+            <span className="shop__note">What you throw now</span>
+          ) : mine ? (
+            <button type="button" className="btn" onClick={() => (play('tap'), setThrowPick(t.id))}>
+              Throw this
+            </button>
+          ) : (
+            buyArea(t.id, t.price, () => buy(t.id, t.price, () => buyExtra(t.id, t.price), () => setThrowPick(t.id)))
+          ),
+        })
+      })}
+    </ul>
+  )
+
+  const stickers = (
+    <ul className="shop__grid shop__grid--packs">
+      {PACKS.map((pk) => {
+        const mine = ownsExtra(wallet?.owned, pk.id)
+        return card(pk.id, {
+          price: pk.price,
+          mine,
+          on: false,
+          onLabel: '',
+          face: (
+            <span className="shop__pack" aria-label={pk.stickers.map((x) => x.label).join(', ')}>
+              {pk.stickers.map((x) => (
+                <span key={x.k} className="shop__sticker">
+                  <span aria-hidden="true">{x.e}</span>
+                  <small>{x.label}</small>
+                </span>
+              ))}
+            </span>
+          ),
+          name: pk.name,
+          desc: mine ? 'In your reactions tray, on its own tab.' : 'Six reactions for the tray.',
+          act: mine ? <span className="shop__note">In your tray</span> : buyArea(pk.id, pk.price, () => buy(pk.id, pk.price, () => buyExtra(pk.id, pk.price), () => {})),
+        })
+      })}
+    </ul>
+  )
+
   return (
     <div className="page screen-in">
       <TopBar
@@ -288,6 +398,10 @@ export function Shop() {
             characters
           ) : current.id === 'wardrobe' ? (
             wardrobe
+          ) : current.id === 'throws' ? (
+            throws
+          ) : current.id === 'stickers' ? (
+            stickers
           ) : (
             <ul className="shop__grid">
               {(current.soon ?? []).map((it) => (
@@ -303,7 +417,7 @@ export function Shop() {
             </ul>
           )}
 
-          {current.id === 'characters' || current.id === 'wardrobe' ? (
+          {!current.soon ? (
             <p className="hint shop__foot">
               {current.id === 'wardrobe' && !look ? 'Pick a character in the Locker to wear these in games · ' : ''}
               Everything you own is in your <Link to="/locker">Locker</Link> · win matches for chips
@@ -314,6 +428,7 @@ export function Shop() {
         </section>
       </main>
 
+      <ThrowLayer me="shop" view />
       {flights.map((f) => (
         <span
           key={f.id}

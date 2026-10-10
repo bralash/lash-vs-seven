@@ -351,6 +351,22 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .throw__splat--flash { inset: -10px; }
 .mt-score__ops--rubble svg { animation: ops-flat 1.2s var(--ease-snap, ease-out); transform-origin: bottom center; }
 @keyframes ops-flat { 0% { scale: 1 1; } 12%, 60% { scale: 1.25 .55; } 100% { scale: 1 1; } }
+/* shop throwables: the slipper slaps the face round, the balloon soaks it blue, the pie covers it
+   and slides off, Fan Ice freezes it, kenkey knocks it down */
+.mt-score__ops--slipper svg { animation: ops-slap .7s ease-out; }
+@keyframes ops-slap { 15% { rotate: 22deg; translate: 5px 0; } 45% { rotate: -6deg; } 70% { rotate: 3deg; } }
+.mt-score__ops--balloon svg { animation: ops-soak 1.4s ease-out; }
+@keyframes ops-soak { 0%, 55% { filter: saturate(.55) brightness(.92) drop-shadow(0 0 3px #4ab3ff); } 10% { scale: 1.06 .94; } 100% { filter: none; } }
+.throw__drips path { animation: drip 1.2s ease-in both; }
+.throw__drips path:nth-child(2) { animation-delay: .15s; }
+.throw__drips path:nth-child(3) { animation-delay: .3s; }
+@keyframes drip { from { translate: 0 -6px; opacity: 0; } 30% { opacity: 1; } to { translate: 0 6px; opacity: 0; } }
+.throw__splat--pie { inset: -4px; animation: pie-slide 1.4s ease-in forwards; }
+@keyframes pie-slide { 0% { scale: .4; opacity: 1; } 12% { scale: 1.08; } 20% { scale: 1; } 55% { translate: 0 0; opacity: 1; } 100% { translate: 0 18px; opacity: 0; } }
+.mt-score__ops--fanice svg { animation: ops-freeze 1.4s steps(14); }
+@keyframes ops-freeze { 0%, 70% { filter: saturate(.15) brightness(1.45) drop-shadow(0 0 4px #7fd3ff); translate: 1px 0; } 35% { translate: -1px 0; } 100% { filter: none; translate: 0 0; } }
+.mt-score__ops--kenkey svg { animation: ops-thud .9s var(--ease-snap, ease-out); transform-origin: bottom center; }
+@keyframes ops-thud { 15% { translate: 0 5px; scale: 1.08 .86; } 40% { translate: 0 -2px; scale: .97 1.04; } 100% { translate: 0 0; scale: 1 1; } }
 @keyframes splat {
   0% { transform: scale(.3); opacity: 1; }
   15% { transform: scale(1.1); }

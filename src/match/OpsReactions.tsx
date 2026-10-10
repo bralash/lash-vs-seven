@@ -77,6 +77,32 @@ function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
       return { face: 'gg', said: 'GG', line: 'gg' }
     case 'hurry':
       return herTurn ? { face: 'think', said: 'Patience', line: 'hurry_mine' } : { face: 'wait', said: 'Your go!', line: 'hurry_yours' }
+    // the Ghana pack
+    case 'chale':
+      return { face: 'hello', said: 'Chale!' }
+    case 'herh':
+      return s >= 0.25 ? { face: 'smug', said: 'Calm down' } : { face: 'nervous', said: 'Wetin?' }
+    case 'ei':
+      return s >= 0.25 ? { face: 'smug', said: 'Ei, indeed' } : { face: 'wow', said: 'Ei!' }
+    case 'ayekoo':
+      return { face: 'love', said: 'Yaa ayeeko' }
+    case 'sharp':
+      return { face: 'smug', said: 'Sharp sharp' }
+    case 'smallsmall':
+      return s >= 0.25 ? { face: 'smug', said: 'Big big, rather' } : { face: 'think', said: 'Small small…' }
+    // the Football pack
+    case 'goal':
+      return s <= -0.25 ? { face: 'salty', said: 'Offside!' } : { face: 'smug', said: 'Not yet' }
+    case 'offside':
+      return { face: 'salty', said: 'Never!' }
+    case 'redcard':
+      return { face: 'panic', said: 'Me?!' }
+    case 'var':
+      return s >= 0.25 ? { face: 'smug', said: 'Check all you like' } : { face: 'nervous', said: 'Don’t check' }
+    case 'owngoal':
+      return s <= -0.25 ? { face: 'ouch', said: 'Not funny' } : { face: 'giggle', said: 'That was you' }
+    case 'fulltime':
+      return s >= 0.25 ? { face: 'smug', said: 'Yes please' } : { face: 'panic', said: 'Extra time!' }
   }
 }
 
@@ -85,9 +111,9 @@ function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
  * the last row she throws one back.
  */
 const HIT_ROWS: Record<Item, Say[]>[] = [
-  { flash: [{ face: 'wow', said: 'My eyes!' }, { face: 'ouch', said: 'Can’t see!' }], rubble: [{ face: 'wow', said: 'Rubble?!' }, { face: 'ouch', said: 'Flattened' }], cube: [{ face: 'wow', said: 'Energon?!' }, { face: 'ouch', said: 'Zzzt!' }], web: [{ face: 'panic', said: 'Sticky!' }, { face: 'ouch', said: 'I’m all webbed' }], stone: [{ face: 'wow', said: 'Is that… a stone?' }, { face: 'ouch', said: 'Ow, shiny' }], tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }], axe: [{ face: 'panic', said: 'AN AXE?!' }, { face: 'wow', said: 'Is that… mine?' }] },
-  { flash: [{ face: 'salty', said: 'Still seeing spots' }, { face: 'nervous', said: 'Ears ringing' }], rubble: [{ face: 'salty', said: 'I’m a pancake' }, { face: 'nervous', said: 'That was a wall' }], cube: [{ face: 'salty', said: 'I’m all tingly' }, { face: 'nervous', said: 'Too much energy' }], web: [{ face: 'salty', said: 'Get it off!' }, { face: 'nervous', said: 'So sticky' }], stone: [{ face: 'nervous', said: 'I felt that' }, { face: 'salty', said: 'Put it back' }], tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }], axe: [{ face: 'nervous', said: 'Not the axe' }, { face: 'salty', said: 'Overkill' }] },
-  { flash: [{ face: 'angry', said: 'NO MORE FLASHES' }], rubble: [{ face: 'angry', said: 'NO MORE WALLS' }], cube: [{ face: 'angry', said: 'OVERLOAD' }], web: [{ face: 'angry', said: 'UNWEB ME' }], stone: [{ face: 'angry', said: 'ENOUGH' }], tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }], axe: [{ face: 'angry', said: 'ENOUGH' }] },
+  { slipper: [{ face: 'wow', said: 'A SLIPPER?!' }, { face: 'ouch', said: 'Like my mother' }], balloon: [{ face: 'wow', said: 'I’m soaked!' }, { face: 'ouch', said: 'Cold!' }], pie: [{ face: 'wow', said: 'Mmf!' }, { face: 'giggle', said: 'Tasty, actually' }], fanice: [{ face: 'wow', said: 'Brain freeze!' }, { face: 'giggle', said: 'Vanilla?' }], kenkey: [{ face: 'ouch', said: 'Oof, heavy' }, { face: 'wow', said: 'Where’s the fish?' }], flash: [{ face: 'wow', said: 'My eyes!' }, { face: 'ouch', said: 'Can’t see!' }], rubble: [{ face: 'wow', said: 'Rubble?!' }, { face: 'ouch', said: 'Flattened' }], cube: [{ face: 'wow', said: 'Energon?!' }, { face: 'ouch', said: 'Zzzt!' }], web: [{ face: 'panic', said: 'Sticky!' }, { face: 'ouch', said: 'I’m all webbed' }], stone: [{ face: 'wow', said: 'Is that… a stone?' }, { face: 'ouch', said: 'Ow, shiny' }], tomato: [{ face: 'ouch', said: 'Eww' }, { face: 'wow', said: 'A tomato?!' }], rock: [{ face: 'ouch', said: 'Ow!' }, { face: 'ouch', said: 'Bonk' }], paper: [{ face: 'giggle', said: 'Missed… no wait' }, { face: 'smug', said: 'That tickled' }], axe: [{ face: 'panic', said: 'AN AXE?!' }, { face: 'wow', said: 'Is that… mine?' }] },
+  { slipper: [{ face: 'salty', said: 'Not the chalewote' }, { face: 'nervous', said: 'My cheek!' }], balloon: [{ face: 'salty', said: 'Dripping here' }, { face: 'nervous', said: 'My circuits!' }], pie: [{ face: 'salty', said: 'Custard everywhere' }, { face: 'nervous', said: 'In my eyes' }], fanice: [{ face: 'salty', said: 'Waste of Fan Ice' }, { face: 'nervous', said: 'So cold' }], kenkey: [{ face: 'salty', said: 'Eat it, don’t throw it' }, { face: 'nervous', said: 'That’s lunch' }], flash: [{ face: 'salty', said: 'Still seeing spots' }, { face: 'nervous', said: 'Ears ringing' }], rubble: [{ face: 'salty', said: 'I’m a pancake' }, { face: 'nervous', said: 'That was a wall' }], cube: [{ face: 'salty', said: 'I’m all tingly' }, { face: 'nervous', said: 'Too much energy' }], web: [{ face: 'salty', said: 'Get it off!' }, { face: 'nervous', said: 'So sticky' }], stone: [{ face: 'nervous', said: 'I felt that' }, { face: 'salty', said: 'Put it back' }], tomato: [{ face: 'salty', said: 'My face!' }, { face: 'salty', said: 'Rude' }], rock: [{ face: 'salty', said: 'Hey!' }, { face: 'nervous', said: 'That hurt' }], paper: [{ face: 'salty', said: 'Really?' }, { face: 'nervous', said: 'Okay, okay' }], axe: [{ face: 'nervous', said: 'Not the axe' }, { face: 'salty', said: 'Overkill' }] },
+  { slipper: [{ face: 'angry', said: 'PUT IT ON' }], balloon: [{ face: 'angry', said: 'I’M WET' }], pie: [{ face: 'angry', said: 'NO MORE PIE' }], fanice: [{ face: 'angry', said: 'STOP' }], kenkey: [{ face: 'angry', said: 'ENOUGH KENKEY' }], flash: [{ face: 'angry', said: 'NO MORE FLASHES' }], rubble: [{ face: 'angry', said: 'NO MORE WALLS' }], cube: [{ face: 'angry', said: 'OVERLOAD' }], web: [{ face: 'angry', said: 'UNWEB ME' }], stone: [{ face: 'angry', said: 'ENOUGH' }], tomato: [{ face: 'angry', said: 'Stop that' }], rock: [{ face: 'angry', said: 'Seriously?' }], paper: [{ face: 'angry', said: 'Quit it' }], axe: [{ face: 'angry', said: 'ENOUGH' }] },
 ]
 /** each row's line key: a character says its own words for how fed up it is, whatever it was hit with */
 const HITS = HIT_ROWS.map(
