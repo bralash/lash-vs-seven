@@ -155,3 +155,18 @@
 
 /* ── The wardrobe (faces/wardrobe.tsx): hats and neck pieces reach past the box; paint tints the face only ── */
 .opsf--worn { overflow: visible; }
+/* Anansops: his front legs rub together while he schemes; the little eyes glint */
+.opsf-scheme { animation: opsf-scheme .3s ease-in-out infinite alternate; transform-box: view-box; transform-origin: 50% 36%; }
+@keyframes opsf-scheme { from { scale: 1 1; } to { scale: .9 1; translate: 0 -2px; } }
+.opsf-glint circle:nth-child(1) { animation: opsf-glint 1.2s steps(1) infinite; }
+@keyframes opsf-glint { 50% { fill: #f2c94c; } }
+/* his legs reach out past the head */
+.opsf--anansi { overflow: visible; }
+/* Trotrops: shout lines pulse while he calls the stops; smoke puffs rise off his broken-down tro */
+.opsf--trotro { overflow: visible; }
+.opsf-call { animation: opsf-call .4s steps(2) infinite; }
+@keyframes opsf-call { 50% { opacity: .3; translate: 2px 0; } }
+.opsf-smoke circle { animation: opsf-smoke 1.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.opsf-smoke circle:nth-child(2) { animation-delay: .45s; }
+.opsf-smoke circle:nth-child(3) { animation-delay: .9s; }
+@keyframes opsf-smoke { from { translate: 0 6px; opacity: 0; scale: .5; } 30% { opacity: 1; } to { translate: 0 -6px; opacity: 0; scale: 1.3; } }

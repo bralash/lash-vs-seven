@@ -472,7 +472,7 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .ult__chip b { font-weight: 500; }
 .ult__chip button { flex: none; padding: 4px 8px; border: 2px solid var(--ink); background: var(--hit); font: 500 11px/1.2 var(--mono); cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
-  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks, .ult__fist, .ult__ring, .ult__reticle, .ult__blast { display: none; }
+  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks, .ult__fist, .ult__ring, .ult__reticle, .ult__blast, .ult__threads, .ult__pot, .ult__gold, .ult__tro, .ult__skid, .ult__dust, .ult__stop { display: none; }
   .ult__web { animation: none; }
   .ult-dust { animation-duration: .01s !important; }
 }
@@ -513,3 +513,66 @@ html.scroll-locked .mt-banner.mt-banner--self {
 @media (prefers-reduced-motion: reduce) {
   .taunt__ops > svg { animation: none !important; }
 }
+
+/* Anansops' gum: the face is gummed up and stretched, then springs back */
+.mt-score__ops--gum svg { animation: ops-gum 1.4s var(--ease-snap, ease-out); transform-origin: top center; }
+@keyframes ops-gum { 10% { scale: .92 1.12; } 35% { scale: .96 1.22; filter: sepia(.6) saturate(1.4); } 55% { scale: 1.06 .94; } 75% { scale: .98 1.03; filter: sepia(.3); } 100% { scale: 1 1; filter: none; } }
+.throw__splat--gum { inset: -6px; animation: web-stick 1.4s ease-out forwards; }
+
+/* Web of Tales (Anansops): threads shoot in from the board's corners, the pot of wisdom drops in,
+   tips over and pours gold onto the board */
+.ult--tales .ult__said { animation-delay: 1.7s; }
+.ult--tales .ult__said strong { background: #f2c94c; }
+.mt-score__ops--ult-tales svg { filter: drop-shadow(0 0 5px #f2c94c); }
+.ult__threads { position: absolute; inset: 0; overflow: visible; }
+.ult__threads path { fill: none; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: ult-thread .4s cubic-bezier(.3,.7,.4,1) both, ult-thread-go .35s ease-in 2.7s both; }
+.ult__threads g path { animation-delay: calc(var(--i) * .12s), 2.7s; }
+@keyframes ult-thread { to { stroke-dashoffset: 0; } }
+@keyframes ult-thread-go { to { opacity: 0; } }
+.ult__pot { position: absolute; left: var(--x); top: calc(var(--y) - 120px); display: flex; translate: -50% -50%; filter: drop-shadow(4px 4px 0 var(--ink)); animation: ult-pot 2.9s cubic-bezier(.3,.7,.4,1) .75s both; }
+@keyframes ult-pot {
+  0% { scale: .3; opacity: 0; translate: -50% -140%; rotate: 0deg; }
+  15% { scale: 1; opacity: 1; translate: -50% -50%; rotate: 0deg; }
+  22% { rotate: -12deg; }
+  32%, 75% { rotate: 115deg; translate: -20% -40%; }
+  100% { rotate: 115deg; translate: -20% -40%; opacity: 0; }
+}
+.ult__gold { position: absolute; left: calc(var(--x) + 30px); top: calc(var(--y) - 90px); width: 12px; height: 12px; border: 2px solid var(--ink); border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff6c9, #f2c94c 55%, #c9971c); opacity: 0; animation: ult-gold .9s cubic-bezier(.5,0,.8,.6) both; animation-delay: calc(1.5s + var(--i) * 45ms); }
+@keyframes ult-gold { 0% { opacity: 1; translate: 0 0; scale: .6; } 85% { opacity: 1; } 100% { opacity: 0; translate: calc(var(--gx) * 220px - 30px) 150px; scale: 1; } }
+
+/* Anansops' taunt: he sways by their card as if telling a long tale */
+.taunt__ops--tale > svg { animation: taunt-tale 1s ease-in-out infinite alternate; transform-origin: bottom center; }
+@keyframes taunt-tale { from { rotate: -9deg; translate: -3px 0; } to { rotate: 9deg; translate: 3px 0; } }
+
+/* Trotrops' coins: the face jangles, the coins bounce off it */
+.mt-score__ops--coins svg { animation: ops-jangle .8s steps(8); }
+@keyframes ops-jangle { 0%, 100% { translate: 0 0; } 25% { translate: -2px 1px; rotate: -4deg; } 50% { translate: 2px -1px; rotate: 4deg; } 75% { translate: -1px 0; rotate: -2deg; } }
+.throw__splat--coins { inset: -10px; }
+.throw__coins ellipse { animation: coin-bounce .9s ease-out both; animation-delay: calc(var(--i) * 40ms); }
+@keyframes coin-bounce { 0% { translate: 0 0; opacity: 1; } 40% { translate: 0 -6px; } 100% { translate: 0 8px; opacity: 0; } }
+
+/* Trotrops' taunt: he bangs the side of the tro (their card) */
+.taunt__ops--bang > svg { animation: taunt-bang .24s ease-in infinite alternate; transform-origin: bottom center; }
+@keyframes taunt-bang { from { rotate: 0deg; translate: 0 0; } to { rotate: 10deg; translate: 4px 0; } }
+
+/* Kwaaa! (Trotrops): his trotro screeches onto the board, skids to a stop, the mate calls the stops,
+   and it pulls off leaving dust */
+.ult--kwaa .ult__said { animation-delay: 1.2s; }
+.ult--kwaa .ult__said strong { background: #f2c94c; }
+.mt-score__ops--ult-kwaa svg { filter: drop-shadow(0 0 5px #f2c94c); animation: ult-rage-face .2s steps(2) infinite; }
+.ult__tro { position: absolute; left: var(--x); top: var(--y); display: flex; filter: drop-shadow(4px 4px 0 var(--ink)); animation: ult-tro 3.2s linear both; }
+@keyframes ult-tro {
+  0% { translate: calc(-50% - 100vw) -50%; rotate: 0deg; animation-timing-function: cubic-bezier(.2,.7,.4,1); }
+  22% { translate: -50% -50%; rotate: -4deg; }
+  27% { rotate: 2deg; }
+  31%, 70% { translate: -50% -50%; rotate: 0deg; animation-timing-function: cubic-bezier(.6,0,.9,.5); }
+  100% { translate: calc(-50% + 100vw) -50%; rotate: 0deg; }
+}
+.ult__mate { animation: ult-mate .35s ease-in-out .9s 4 alternate both; transform-box: fill-box; transform-origin: left bottom; }
+@keyframes ult-mate { from { rotate: 0deg; } to { rotate: -14deg; translate: 2px -1px; } }
+.ult__skid { position: absolute; left: calc(var(--x) - 200px); top: calc(var(--y) + 40px); width: 170px; height: 12px; background: repeating-linear-gradient(90deg, rgb(26 22 18 / .5) 0 14px, transparent 14px 20px); transform-origin: right center; scale: 0 1; opacity: 0; animation: ult-skid 3.2s ease-out both; }
+@keyframes ult-skid { 10% { opacity: 1; scale: 0 1; } 22% { scale: 1 1; opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; scale: 1 1; } }
+.ult__dust { position: absolute; left: var(--x); top: calc(var(--y) + 30px); width: 160px; height: 70px; border-radius: 50%; background: radial-gradient(ellipse, rgb(190 160 120 / .85), rgb(190 160 120 / 0) 70%); translate: -50% -50%; opacity: 0; animation: ult-dust .9s ease-out 2.25s both; }
+@keyframes ult-dust { 0% { opacity: 1; scale: .4; } 100% { opacity: 0; scale: 2.2 1.4; } }
+.ult__stop { position: absolute; left: calc(var(--x) + (var(--i) - 1) * 70px); top: calc(var(--y) - 85px - var(--i) * 6px); translate: -50% -50%; padding: 4px 10px; border: var(--edge, 3px) solid var(--ink); background: #fff; font: 800 clamp(14px, 4vw, 20px) / 1 var(--font-display, system-ui); text-transform: uppercase; box-shadow: 3px 3px 0 var(--ink); opacity: 0; animation: ult-stop .9s var(--ease-snap, ease-out) both; animation-delay: calc(.95s + var(--i) * .4s); }
+@keyframes ult-stop { 0% { opacity: 0; scale: .3; } 20% { opacity: 1; scale: 1.1; } 35% { scale: 1; } 80% { opacity: 1; } 100% { opacity: 0; translate: -50% -80%; } }

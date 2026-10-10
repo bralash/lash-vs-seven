@@ -1,10 +1,12 @@
 import type { OpsStyle } from '../components/OpsFace'
+import { ANANSOPS_LINES } from '../components/faces/anansops'
 import { GHOPS_LINES } from '../components/faces/ghops'
 import { HULKOPS_LINES } from '../components/faces/hulkops'
 import { KRATOPS_LINES } from '../components/faces/kratops'
 import { OPSTIMUS_LINES } from '../components/faces/opstimus'
 import { SPIDOPS_LINES } from '../components/faces/spidops'
 import { THANOPS_LINES } from '../components/faces/thanops'
+import { TROTROPS_LINES } from '../components/faces/trotrops'
 
 /*
  * What Ops says, per character. Every moment she speaks has a key; a character can give its own
@@ -40,7 +42,7 @@ export type LineKey =
 
 export type Lines = Partial<Record<LineKey, string[]>>
 
-const BY_LOOK: Partial<Record<OpsStyle, Lines>> = { warrior: KRATOPS_LINES, titan: THANOPS_LINES, spider: SPIDOPS_LINES, prime: OPSTIMUS_LINES, brute: HULKOPS_LINES, ghost: GHOPS_LINES }
+const BY_LOOK: Partial<Record<OpsStyle, Lines>> = { warrior: KRATOPS_LINES, titan: THANOPS_LINES, spider: SPIDOPS_LINES, prime: OPSTIMUS_LINES, brute: HULKOPS_LINES, ghost: GHOPS_LINES, anansi: ANANSOPS_LINES, trotro: TROTROPS_LINES }
 
 export const linesFor = (look: OpsStyle): Lines => BY_LOOK[look] ?? {}
 

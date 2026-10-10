@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } from 'react'
+import { GumArt } from '../components/faces/anansops'
+import { CoinsArt } from '../components/faces/trotrops'
 import { FlashArt } from '../components/faces/ghops'
 import { RubbleArt } from '../components/faces/hulkops'
 import { WebArt, webPath } from '../components/faces/spidops'
@@ -15,7 +17,8 @@ import { load, save } from '../lib/storage'
  * Kratops look throws his axe instead, and it spins back to their card; Thanops snaps and throws
  * a stone from his gauntlet, and whoever it hits turns to dust for a moment; Spidops shoots a ball
  * of web that wraps whoever it hits; Opstimus throws a glowing Energon cube that zaps the face pink; Hulkops hurls a chunk of rubble that
- * squashes the face flat for a moment; Ghops lobs a flashbang that blinds the face white.
+ * squashes the face flat for a moment; Ghops lobs a flashbang that blinds the face white; Anansops flings a
+ * ball of sticky gum that gums the face up and stretches it; Trotrops pelts it with small-small coins.
  *
  * The shop sells throwables (SHOP_THROWS) that anyone can throw instead: a chalewote slipper that
  * slaps the face round, a water balloon that soaks it, a custard pie that covers it, a Fan Ice that
@@ -23,7 +26,7 @@ import { load, save } from '../lib/storage'
  * (useThrowPick); the thrower's phone decides, so the others just see what comes flying.
  */
 
-export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble', 'flash', 'slipper', 'balloon', 'pie', 'fanice', 'kenkey'] as const
+export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble', 'flash', 'gum', 'coins', 'slipper', 'balloon', 'pie', 'fanice', 'kenkey'] as const
 /** what anyone but the characters picks from */
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
@@ -43,7 +46,7 @@ const SHOP_IDS = new Set<string>(SHOP_THROWS.map((t) => t.id))
 export const isShopThrow = (v: unknown): v is ShopThrow => typeof v === 'string' && SHOP_IDS.has(v)
 
 /** each character's own throw (anyone else grabs a tomato, a rock or a paper ball) */
-const OWN: Partial<Record<OpsStyle, Item>> = { warrior: 'axe', titan: 'stone', spider: 'web', prime: 'cube', brute: 'rubble', ghost: 'flash' }
+const OWN: Partial<Record<OpsStyle, Item>> = { warrior: 'axe', titan: 'stone', spider: 'web', prime: 'cube', brute: 'rubble', ghost: 'flash', anansi: 'gum', trotro: 'coins' }
 export const ownThrow = (look: OpsStyle | null | undefined): Item | null => (look && OWN[look]) || null
 
 const PICK_KEY = 'lvs_throw'
@@ -145,7 +148,7 @@ function land(f: Flight) {
   landers.forEach((l) => l(f))
 }
 
-/** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, Hulkops rubble, Ghops a flashbang, anyone else whatever comes to hand. */
+/** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, Hulkops rubble, Ghops a flashbang, Anansops gum, Trotrops coins, anyone else whatever comes to hand. */
 export function itemFrom(id: string | null): Item {
   const el = faceEl(id)
   const own = el instanceof HTMLElement ? ownThrow(el.dataset.opsLook as OpsStyle) : null
@@ -271,7 +274,7 @@ function Flying({ f }: { f: Flight }) {
 }
 
 /** how far each thing turns on its way (degrees) */
-const SPIN: Partial<Record<Item, number>> = { axe: 1080, stone: 720, web: 160, cube: 450, rubble: 380, flash: 600, paper: 300, rock: 540, slipper: 900, balloon: 40, pie: 0, fanice: 420, kenkey: 300 }
+const SPIN: Partial<Record<Item, number>> = { axe: 1080, stone: 720, web: 160, cube: 450, rubble: 380, flash: 600, gum: 260, coins: 700, paper: 300, rock: 540, slipper: 900, balloon: 40, pie: 0, fanice: 420, kenkey: 300 }
 
 const INK = 'var(--ink)'
 
@@ -320,6 +323,8 @@ export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id
       )}
       {item === 'rubble' && <RubbleArt />}
       {item === 'flash' && <FlashArt />}
+      {item === 'gum' && <GumArt />}
+      {item === 'coins' && <CoinsArt />}
       {item === 'axe' && (
         <>
           <path d="M9 33L29 13" stroke="#7a4a26" strokeWidth="4.5" strokeLinecap="round" />
@@ -423,6 +428,22 @@ export function Splat({ hit }: { hit: Hit }) {
             <path d="M20 20l-8-10-4 2M20 20l10-12M20 20l14 4 3 6M20 20l-4 14M20 20l-14 3" />
             <rect x="6" y="30" width="5" height="5" fill="#a39a8c" />
             <rect x="29" y="31" width="4" height="4" fill="#a39a8c" />
+          </g>
+        )}
+        {hit.item === 'coins' && (
+          <g className="throw__coins" stroke={INK} strokeWidth="1.6">
+            {/* coins bouncing off the face every which way, with a glint */}
+            {[[6, 10], [30, 6], [34, 26], [8, 30], [20, 34]].map(([x, y], i) => (
+              <ellipse key={i} cx={x} cy={y} rx="4.5" ry={i % 2 ? 2.2 : 4.5} fill="#d9a62a" style={{ '--i': i } as CSSProperties} />
+            ))}
+            <path d="M20 8l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z" fill="#fff6c9" />
+          </g>
+        )}
+        {hit.item === 'gum' && (
+          <g fill="#d9902a" stroke={INK} strokeWidth="1.6" strokeLinejoin="round" opacity=".88">
+            {/* a gob of gum stuck on the face, with strings dripping off it */}
+            <path d="M8 14q2-9 12-8q11-1 13 8q4 6-1 11q-1 6-5 4l-1 9q-2 3-3-1l-1-7q-3 2-6 0l-1 6q-2 3-3 0l0-7q-6-1-5-8q-3-4 1-7z" />
+            <path className="throw__drips" d="M14 18q3-3 6-1M24 14q3 0 4 3" stroke="#ffe0a3" strokeWidth="2" fill="none" strokeLinecap="round" />
           </g>
         )}
         {hit.item === 'flash' && <path d="M20 1l4 12 12-5-7 11 10 6-12 2 2 12-9-8-9 8 2-12-12-2 10-6-7-11 12 5z" fill="#fff" stroke="#ffd23f" strokeWidth="2" strokeLinejoin="round" />}

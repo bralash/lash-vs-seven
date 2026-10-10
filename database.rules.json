@@ -96,7 +96,7 @@
                 ".validate": "newData.isNumber()"
               },
               "look": {
-                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost)$/)"
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost|anansi|trotro)$/)"
               },
               "wear": {
                 ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[a-z]+(,[a-z]+){0,2}$/)"
@@ -209,7 +209,7 @@
                 ".validate": "newData.isNumber()"
               },
               "look": {
-                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost)$/)"
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost|anansi|trotro)$/)"
               },
               "wear": {
                 ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[a-z]+(,[a-z]+){0,2}$/)"
@@ -250,7 +250,7 @@
         },
         "owned": {
           "$look": {
-            ".validate": "newData.val() === true && $look.matches(/^(prime|warrior|titan|spider|brute|ghost|snapback|kufi|crown|kente|jersey|tux|fugu|gold|slipper|balloon|pie|fanice|kenkey|ghana|football)$/)"
+            ".validate": "newData.val() === true && $look.matches(/^(prime|warrior|titan|spider|brute|ghost|anansi|trotro|snapback|kufi|crown|kente|jersey|tux|fugu|gold|slipper|balloon|pie|fanice|kenkey|ghana|football)$/)"
           }
         },
         "paid": {
