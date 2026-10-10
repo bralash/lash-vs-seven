@@ -14,7 +14,9 @@ export const RECONNECT_MS = 20_000
  */
 export function useOpponentAway(game: string, code: string, opp: Seated | null, active: boolean): number | null {
   // a watcher never ends anyone's match: the players' own phones do that
-  const away = active && !useWatching() && !!opp && !opp.online
+  // (the hook is called every render, before the &&, so React's hook order never shifts)
+  const watching = useWatching()
+  const away = active && !watching && !!opp && !opp.online
   const [since, setSince] = useState<number | null>(null)
   const [, tick] = useState(0)
   const oppId = opp?.id
