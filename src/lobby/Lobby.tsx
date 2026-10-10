@@ -33,6 +33,9 @@ import {
 } from './rooms'
 import { ConfirmLeave, type LeaveKind } from './ConfirmLeave'
 import { LocalGame, LocalSetup, loadLocal, saveLocal, type LocalMatch } from './LocalGame'
+import { towerMatch } from '../tower/start'
+import { floorOf } from '../tower/floors'
+import { settleFloor } from '../tower/tower'
 import { OpsReactions } from '../match/OpsReactions'
 import { Reactions } from '../match/Reactions'
 import { SelfOffline } from '../match/SelfOffline'
@@ -169,10 +172,24 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
   const canLocal = game.modes !== 'online'
   // a rival's Challenge opens a room even if a pass & play match is saved here (it stays saved for next time)
   const challenging = !!(useLocation().state as { challenge?: string } | null)?.challenge
-  const [local, setLocal] = useState<LocalMatch | null>(() => (canLocal && !challenging ? loadLocal(game.slug) : null))
+  // a Tower floor (opened from /tower): its match against the guardian, or the one already under way
+  const towerAsk = (useLocation().state as { tower?: number } | null)?.tower
+  const [local, setLocal] = useState<LocalMatch | null>(() => {
+    if (!canLocal || challenging) return null
+    const saved = loadLocal(game.slug)
+    if (towerAsk && bot && !(saved?.tower?.floor === towerAsk && !saved.tower.done)) {
+      const m = towerMatch(towerAsk, initialState)
+      saveLocal(game.slug, m)
+      return m
+    }
+    return saved
+  })
   // which one-device setup is open: two people, or you against Ops
   const [setup, setSetup] = useState<false | 'local' | 'bot'>(false)
   const endLocal = useCallback(() => {
+    // leaving a Tower floor before it's decided counts as losing it
+    const t = loadLocal(game.slug)
+    if (t?.tower && !t.tower.done) settleFloor(t.tower.floor, false, `${t.startedAt ?? 0}:left`)
     saveLocal(game.slug, null)
     setLocal(null)
     setSetup(false)
@@ -314,7 +331,14 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
     if (!guard) return
     leaving.current = true
     setAsking(false)
+    // a Tower floor: back to the Tower
+    const toTower = guard.kind === 'local' && !!loadLocal(game.slug)?.tower
     guard.leave()
+    if (toTower) {
+      if (blocker.state === 'blocked') blocker.reset()
+      navigate('/tower')
+      return
+    }
     // Heading somewhere else (link, logo): let that navigation through.
     // Leave button, or Back onto our same-URL buffer: stay on this game and drop the room from the URL.
     if (blocker.state === 'blocked' && blocker.location.pathname !== location.pathname) {
@@ -346,6 +370,18 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         renderGame={renderGame}
         brain={local.bot ? bot : undefined}
         sense={sense}
+        key={local.startedAt}
+        onTowerAgain={(wins) => {
+          if (!local.tower) return
+          const m = towerMatch(local.tower.floor, initialState, wins)
+          saveLocal(game.slug, m)
+          setLocal(m)
+        }}
+        onTowerExit={() => {
+          leaving.current = true
+          endLocal()
+          navigate('/tower')
+        }}
       />
     )
   } else if (setup) {
@@ -424,7 +460,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
             // mid-match the only way out is the Leave button, so there's no back arrow to mis-tap
             <span className="topbar__title">
               {game.name}
-              <span className="hide-sm">{local ? (local.bot ? ` · vs ${BOT_NAME}` : ' · Pass & play') : ` · Room ${inRoom}`}</span>
+              <span className="hide-sm">{local ? (local.tower ? ` · Tower floor ${local.tower.floor}` : local.bot ? ` · vs ${BOT_NAME}` : ' · Pass & play') : ` · Room ${inRoom}`}</span>
             </span>
           ) : (
             <>
@@ -448,7 +484,9 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
                 <Reactions game={game.slug} code={watching.code} pid={playerId()} other={null} names={watchNames} watching />
               </>
             )}
-            {local?.bot && sense && opsState && <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} />}
+            {local?.bot && sense && opsState && (
+              <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} as={local.tower ? { look: floorOf(local.tower.floor)!.guardian, name: floorOf(local.tower.floor)!.guardianName } : undefined} />
+            )}
             {local && !local.bot && throwsIn(game.slug) && (
               <>
                 <ThrowLayer me={null} />
@@ -481,7 +519,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
       />
       {screen}
       {showRules && game.rules && <HowToPlay rules={game.rules} demo={rulesDemo} onClose={() => setShowRules(false)} />}
-      {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} carryOn={guard.carryOn} stake={guard.stake} onStay={stay} onLeave={confirmLeave} />}
+      {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} carryOn={guard.carryOn} stake={guard.stake} tower={guard.kind === 'local' && !!loadLocal(game.slug)?.tower && !loadLocal(game.slug)?.tower?.done} onStay={stay} onLeave={confirmLeave} />}
     </div>
   )
 }

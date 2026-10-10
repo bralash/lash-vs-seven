@@ -280,6 +280,18 @@
           },
           "$other": { ".validate": false }
         },
+        "tower": {
+          ".validate": "newData.hasChildren(['s', 'at', 'hearts', 'best'])",
+          "s": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+          "at": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10" },
+          "hearts": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3" },
+          "best": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10" },
+          "k": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "got": {
+            "$floor": { ".validate": "$floor.matches(/^([1-9]|10)$/) && newData.val() === true && (data.exists() || newData.parent().parent().parent().child('chips').val() <= (data.parent().parent().parent().child('chips').exists() ? data.parent().parent().parent().child('chips').val() : 0) + 300)" }
+          },
+          "$other": { ".validate": false }
+        },
         "$other": {
           ".validate": false
         }

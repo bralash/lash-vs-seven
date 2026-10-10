@@ -1,0 +1,174 @@
+/* ── Ops' Tower: /tower ── */
+.tower { display: grid; gap: 20px; width: min(640px, 100%); margin: 0 auto; padding-bottom: 48px; }
+
+.tower__head { display: grid; gap: 4px; }
+.tower__kicker { margin: 0; font: 500 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.tower__title { margin: 0; font-family: var(--display); font-size: clamp(40px, 10vw, 66px); line-height: .95; text-transform: uppercase; text-shadow: 3px 3px 0 var(--seven); }
+.tower__sub { margin: 4px 0 0; font: 14px var(--mono); color: var(--ink-soft); }
+.tower__status { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 8px 14px; border: var(--edge) solid var(--ink); background: var(--slot); box-shadow: var(--shadow-sm); }
+.tower__floor { font: 500 13px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.tower__floor b { font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 0; }
+
+/* hearts */
+.tw-hearts { display: inline-flex; gap: 4px; vertical-align: middle; }
+.tw-heart { fill: var(--strike); stroke: var(--ink); stroke-width: 2.2; overflow: visible; }
+.tw-heart--gone { fill: var(--paper-2); stroke: color-mix(in srgb, var(--ink) 35%, transparent); }
+
+/* the building: a brick wall with the floors in it */
+.tw-building { --wall: 14px; position: relative; display: grid; margin-top: 46px; padding: 0 var(--wall); }
+.tw-roof {
+  position: relative;
+  height: 64px;
+  margin: 0 calc(var(--wall) * -1);
+  background: var(--board);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.tw-roof__flag {
+  /* Ops's face on a pennant, flying from the pole */
+  position: absolute;
+  z-index: 1;
+  left: calc(50% + 2px);
+  top: -46px;
+  display: grid;
+  place-items: center;
+  padding: 2px 10px 2px 4px;
+  border: 2px solid var(--ink);
+  background: var(--hit);
+  clip-path: polygon(0 0, 100% 0, 82% 50%, 100% 100%, 0 100%);
+  animation: tw-wave 2.4s ease-in-out infinite;
+  transform-origin: left center;
+}
+@keyframes tw-wave { 50% { transform: skewY(-4deg) scaleX(.94); } }
+.tw-building::before {
+  /* the flagpole above the roof */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -44px;
+  width: 3px;
+  height: 46px;
+  background: var(--ink);
+}
+.tw-floors {
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  border: var(--edge) solid var(--ink);
+  border-top: 0;
+  background:
+    linear-gradient(var(--paper-2) 1px, transparent 1px) 0 0 / 100% 18px,
+    repeating-linear-gradient(90deg, transparent 0 36px, color-mix(in srgb, var(--ink) 12%, transparent) 36px 37px),
+    #d9c7a3;
+  box-shadow: var(--shadow);
+}
+.tw-ground { height: 14px; margin: 0 calc(var(--wall) * -1); border: var(--edge) solid var(--ink); border-top: 0; background: var(--good); }
+
+/* one floor */
+.tw-floor {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 8px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.tw-floor__n { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid var(--ink); background: var(--paper); font-family: var(--display); font-size: 16px; }
+.tw-floor__window { display: grid; place-items: center; width: 64px; height: 64px; border: var(--edge) solid var(--ink); background: #fff6d6; overflow: hidden; }
+.tw-floor__mystery { font-family: var(--display); font-size: 30px; color: var(--paper); }
+.tw-floor__main { display: grid; gap: 2px; min-width: 0; }
+.tw-floor__who { display: flex; align-items: center; gap: 8px; margin: 0; font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.tw-floor__flag { padding: 1px 6px; background: var(--seven); color: var(--paper); letter-spacing: .08em; }
+.tw-floor__game { margin: 0; font-family: var(--display); font-size: clamp(18px, 4.6vw, 23px); line-height: 1.05; text-transform: uppercase; }
+.tw-floor__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 0; font: 12px var(--mono); color: var(--ink-soft); }
+.tw-floor__twist { padding: 1px 6px; border: 1.5px solid var(--ink); background: var(--hit); color: var(--ink); font-size: 11px; }
+.tw-floor__side { display: grid; justify-items: end; gap: 6px; }
+.tw-floor__reward { display: flex; align-items: center; gap: 3px; font-family: var(--display); font-size: 15px; }
+.tw-floor__reward--paid { opacity: .4; text-decoration: line-through; text-decoration-thickness: 2px; }
+.tw-floor__done { display: grid; place-items: center; width: 34px; height: 34px; border: var(--edge) solid var(--ink); background: var(--good); color: var(--paper); font: 700 18px var(--mono); }
+.tw-floor__lock { fill: var(--ink-soft); stroke: var(--ink-soft); stroke-width: 2.4; }
+.tw-floor__soon { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; }
+.tw-floor__go { padding: 8px 16px; font-size: 17px; }
+
+.tw-floor--cleared { background: color-mix(in srgb, var(--good) 14%, var(--slot)); }
+.tw-floor--cleared .tw-floor__window { background: color-mix(in srgb, var(--good) 22%, #fff6d6); }
+.tw-floor--locked, .tw-floor--soon { background: color-mix(in srgb, var(--ink) 8%, var(--slot)); box-shadow: none; }
+.tw-floor--locked .tw-floor__window, .tw-floor--soon .tw-floor__window { background: var(--tile); }
+.tw-floor--locked .tw-floor__window svg { filter: grayscale(1) brightness(.55); }
+.tw-floor--soon { border-style: dashed; }
+.tw-floor--soon .tw-floor__main { opacity: .55; }
+
+/* the floor you're on: lit up, your face at the door */
+.tw-floor--current { background: var(--hit); box-shadow: var(--shadow); animation: tw-glow 2.2s ease-in-out infinite; }
+.tw-floor--current .tw-floor__n { background: var(--ink); color: var(--hit); }
+.tw-floor--current .tw-floor__go { background: var(--paper); }
+.tw-floor__me { position: absolute; left: -22px; bottom: -10px; filter: drop-shadow(2px 2px 0 var(--ink)); animation: tw-bob 1.4s ease-in-out infinite; }
+@keyframes tw-glow { 50% { box-shadow: 6px 6px 0 var(--ink), 0 0 0 5px color-mix(in srgb, var(--hit) 55%, transparent); } }
+@keyframes tw-bob { 50% { translate: 0 -4px; } }
+
+/* the boss floor: Ops's own, at the top */
+.tw-floor--boss { background: var(--board); color: var(--paper); border-color: var(--ink); }
+.tw-floor--boss .tw-floor__who, .tw-floor--boss .tw-floor__meta, .tw-floor--boss .tw-floor__soon { color: color-mix(in srgb, var(--paper) 70%, transparent); }
+.tw-floor--boss .tw-floor__main { opacity: 1; }
+.tw-floor--boss .tw-floor__game { color: var(--hit); }
+.tw-floor--boss .tw-floor__window { width: 76px; height: 76px; background: var(--tile); }
+.tw-floor--boss .tw-floor__n { background: var(--hit); }
+
+.tower__rules { display: grid; gap: 8px; padding-top: 6px; border-top: var(--edge) solid var(--ink); }
+.tower__rules h2 { margin: 6px 0 0; font-family: var(--display); font-size: 18px; text-transform: uppercase; }
+.tower__rules ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font: 13px/1.45 var(--mono); }
+.tower__rules b { font-weight: 500; }
+
+@media (width <= 520px) {
+  .tw-building { --wall: 8px; }
+  .tw-floors { padding: 8px; gap: 8px; }
+  .tw-floor { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; padding: 8px 10px 8px 8px; }
+  .tw-floor__n { position: absolute; top: -9px; left: -9px; width: 24px; height: 24px; font-size: 13px; z-index: 1; }
+  .tw-floor__window { width: 52px; height: 52px; }
+  .tw-floor__window svg { width: 44px; height: 44px; }
+  .tw-floor--boss .tw-floor__window { width: 60px; height: 60px; }
+  /* the floor you're on: its Climb button gets a row of its own */
+  .tw-floor--current .tw-floor__side { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: center; }
+  .tw-floor--current .tw-floor__reward { order: -1; }
+  .tw-floor--current .tw-floor__go { width: 100%; padding: 8px 12px; font-size: 18px; }
+  .tw-floor__me { left: -14px; bottom: -14px; }
+  .tw-floor__me svg { width: 32px; height: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tw-floor--current, .tw-floor__me, .tw-sheet, .tw-roof__flag { animation: none; }
+}
+
+/* ── the result sheet over a floor's board ── */
+.tw-sheet {
+  position: fixed;
+  z-index: 55;
+  left: 50%;
+  bottom: 12px;
+  width: min(560px, calc(100% - 24px));
+  translate: -50% 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-lg);
+  animation: tw-sheet-in .4s var(--ease-snap) both;
+}
+@keyframes tw-sheet-in { from { translate: -50% 120%; } }
+.tw-sheet--won { background: var(--hit); }
+.tw-sheet--lost { border-left: 10px solid var(--strike); }
+.tw-sheet__face { display: grid; place-items: center; width: 74px; height: 74px; border: var(--edge) solid var(--ink); background: #fff6d6; }
+.tw-sheet__main { display: grid; gap: 3px; min-width: 0; }
+.tw-sheet__floor { margin: 0; font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.tw-sheet__title { margin: 0; font-family: var(--display); font-size: clamp(22px, 6vw, 30px); line-height: 1; text-transform: uppercase; }
+.tw-sheet__line { margin: 0; font: 13px var(--mono); }
+.tw-sheet__chips { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-family: var(--display); font-size: 22px; }
+.tw-sheet__chips .cchip { filter: drop-shadow(2px 2px 0 var(--ink)); animation: chip-drop .5s var(--ease-snap) .2s both; }
+.tw-sheet__actions { grid-column: 1 / -1; display: grid; justify-items: center; gap: 6px; }
+.tw-sheet__actions:empty { display: none; }

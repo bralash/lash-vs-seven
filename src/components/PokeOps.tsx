@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useSound } from '../lib/sound'
 import { lineFor, linesFor, type LineKey } from '../match/opsLines'
-import { OPS_LOOK, OPS_PRONOUNS, OpsFace, type BaseMood, type OpsMood } from './OpsFace'
+import { usePlayerLook } from '../match/looks'
+import { useVsOps } from '../match/session'
+import { OPS_LOOK, OPS_STYLES, OpsFace, pronounsOf, type BaseMood, type OpsMood } from './OpsFace'
 import '../styles/pokeops.css'
 
 /**
@@ -46,8 +48,12 @@ const SULK_MS = 4000
 
 export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number }) {
   const { play } = useSound()
-  const { them } = OPS_PRONOUNS
-  const lines = linesFor(OPS_LOOK)
+  // in a match against her, whoever she's playing as (a Tower floor's guardian); otherwise herself
+  const playing = usePlayerLook('p1')
+  const look = useVsOps() && playing ? playing : OPS_LOOK
+  const name = look === OPS_LOOK ? 'Ops' : (OPS_STYLES.find((x) => x.id === look)?.name ?? 'Ops')
+  const { them } = pronounsOf(look)
+  const lines = linesFor(look)
   const own = ([mood, line]: Say, key: LineKey): Say => [mood, lineFor(lines, key, line)]
   const [say, setSay] = useState<{ mood: OpsMood; line: string; n: number } | null>(null)
   const pokes = useRef({ count: rest === 'lose' ? 2 : 0, at: 0, sulkUntil: 0, n: 0, first: true })
@@ -122,7 +128,7 @@ export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number
       <button
         type="button"
         className="poke__btn"
-        aria-label={`Poke Ops (hold to pet ${them})`}
+        aria-label={`Poke ${name} (hold to pet ${them})`}
         onPointerDown={down}
         onPointerUp={up}
         onPointerLeave={() => clearTimeout(hold.current)}
@@ -130,7 +136,7 @@ export function PokeOps({ rest = 'idle', size }: { rest?: BaseMood; size: number
         onContextMenu={(e) => e.preventDefault()}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), poke())}
       >
-        <OpsFace key={say ? say.n : rest} mood={say?.mood ?? rest} size={size} />
+        <OpsFace key={say ? say.n : rest} look={look} mood={say?.mood ?? rest} size={size} />
       </button>
       {say && (
         <span key={say.n} className="poke__said" role="status">

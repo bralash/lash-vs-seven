@@ -490,3 +490,15 @@
   .corner__bars { gap: 3px; }
   .corner__bar { min-width: 0; height: 7px; }
 }
+
+/* ── Ops' Tower: a dark tile, the full width on phones ── */
+.corner__tile--tower { background: var(--board); color: var(--paper); }
+.corner__tile--tower:hover, .corner__tile--tower:focus-visible { background: var(--tile-hi); }
+.corner__tile--tower .corner__title b { color: var(--hit); }
+.corner__tile--tower .corner__line { display: flex; align-items: center; gap: 6px; color: color-mix(in srgb, var(--paper) 75%, transparent); }
+@media (width <= 640px) {
+  .corner__tile--tower { grid-column: 1 / -1; }
+  /* the Tower comes last: an odd one out just before it spans the row too */
+  .corner__tile:not(.corner__tile--tower):nth-last-child(2):nth-child(odd):has(+ .corner__tile--tower) { grid-column: 1 / -1; }
+  .corner__tile--tower .corner__line { display: flex; }
+}

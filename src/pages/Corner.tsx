@@ -7,6 +7,7 @@ import { ChipStack } from '../components/Chip'
 import { useChips } from '../match/chips'
 import { useDebts } from '../match/stakes'
 import { MissionsTile } from './Missions'
+import { TowerTile } from './Tower'
 import { Rivals, rivalsSummary } from './Rivals'
 import { Stakes, stakesSummary } from './Stakes'
 import '../styles/home.css'
@@ -62,7 +63,7 @@ export function CornerTiles() {
   const stakes = me && debts.length ? stakesSummary(me, debts) : null
   if (!rivals && !stakes && chips === null) return null
   return (
-    <nav className="corner" aria-label="Your chips, missions, rivals and stakes">
+    <nav className="corner" aria-label="Your chips, missions, Tower, rivals and stakes">
       {chips !== null && (
         <Link to="/shop" className="corner__tile corner__tile--chips" onClick={() => play('tap')}>
           <span className="corner__title">
@@ -88,6 +89,7 @@ export function CornerTiles() {
           <span className="corner__line">{stakes.line}</span>
         </Link>
       )}
+      <TowerTile onTap={() => play('tap')} />
     </nav>
   )
 }

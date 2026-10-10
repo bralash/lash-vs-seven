@@ -1,7 +1,7 @@
 import { onValue, ref, set } from 'firebase/database'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Smile } from '../components/Icons'
-import { OpsFace, type OpsMood } from '../components/OpsFace'
+import { OpsFace, type OpsMood, type OpsStyle } from '../components/OpsFace'
 import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { useSound } from '../lib/sound'
@@ -79,6 +79,8 @@ export interface Pop {
   said: string
   e?: string
   face?: OpsMood
+  /** whose face pulls it (Ops's own when left out) */
+  look?: OpsStyle
   /** who sent it, when more than one other player could have */
   who?: string
 }
@@ -198,7 +200,7 @@ export function Pops({ pops, other }: { pops: Pop[]; other: string | null }) {
           <div key={p.id} className={`react__pop react__pop--${p.mine ? 'mine' : 'theirs'}${p.face ? ' react__pop--ops' : ''}`}>
             {p.face ? (
               <span className="react__face" aria-hidden="true">
-                <OpsFace mood={p.face} size={56} />
+                <OpsFace look={p.look} mood={p.face} size={56} />
               </span>
             ) : (
               <span className="react__emoji" aria-hidden="true">{p.e}</span>

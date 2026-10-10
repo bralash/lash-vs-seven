@@ -11,6 +11,9 @@ import { UltEarn } from '../match/Ultimates'
 import { OPS_LOOK, useCrewLook } from '../components/OpsFace'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
 import type { AnySeat, Room, Seat } from './rooms'
+import { floorOf } from '../tower/floors'
+import { settleFloor } from '../tower/tower'
+import { TowerSheet, type SheetState } from '../tower/TowerSheet'
 
 /** A pass-and-play match: the names (two, or up to four in games for more), the host's option, and the whole game state, all on this device. */
 export interface LocalMatch {
@@ -20,6 +23,18 @@ export interface LocalMatch {
   startedAt?: number
   /** playing Ops at this level (Ops is seat 1) */
   bot?: Level
+  /** a floor of Ops' Tower (src/tower): Ops plays as the floor's guardian */
+  tower?: TowerRun
+}
+
+export interface TowerRun {
+  floor: number
+  /** games won on this floor so far (floors that take more than one), by seat */
+  wins: [number, number]
+  /** the last match end counted, so a re-render or refresh never counts it twice */
+  counted?: string
+  /** the floor's result is in (or being saved) */
+  done?: 'won' | 'lost'
 }
 
 // Kept for the tab's lifetime, so a refresh mid-game picks up where you were.
@@ -160,6 +175,8 @@ export function LocalGame({
   renderGame,
   brain,
   sense,
+  onTowerAgain,
+  onTowerExit,
 }: {
   game: GameMeta
   match: LocalMatch
@@ -170,17 +187,58 @@ export function LocalGame({
   brain?: Brain
   /** how a game's end reads, so its winner charges an ultimate */
   sense?: OpsSense
+  /** a Tower floor: play the floor again (or its next game), keeping these wins */
+  onTowerAgain?: (wins: [number, number]) => void
+  /** a Tower floor: back to the Tower */
+  onTowerExit?: () => void
 }) {
   const level = brain ? match.bot : undefined
   const crewLook = useCrewLook()
   const wear = useWear()
   const [state, setState] = useState(match.state)
   const [startedAt] = useState(() => match.startedAt ?? Date.now())
+  const [tower, setTower] = useState(match.tower)
+  const [sheet, setSheet] = useState<SheetState | null>(null)
 
   // keep the lobby (and the tab's storage) in step, so a refresh resumes the game
   useEffect(() => {
-    onChange({ names: match.names, state, startedAt, ...(match.bot ? { bot: match.bot } : {}) })
-  }, [state, match.names, startedAt, match.bot, onChange])
+    onChange({ names: match.names, state, startedAt, ...(match.bot ? { bot: match.bot } : {}), ...(tower ? { tower } : {}) })
+  }, [state, match.names, startedAt, match.bot, tower, onChange])
+
+  // a Tower floor: when a match ends, count it towards the floor (once), and settle the floor when it's decided
+  const settle = (run: TowerRun, key: string) => {
+    const won = run.done === 'won'
+    setSheet({ kind: 'saving', won })
+    settleFloor(run.floor, won, key).then((out) => setSheet(out ? { kind: 'done', out } : { kind: 'error', won }))
+  }
+  useEffect(() => {
+    if (!tower || !sense) return
+    const key = `${startedAt}:${(state as { match?: number }).match ?? 0}`
+    if (tower.counted === key) {
+      // decided before a refresh, maybe unsaved: saving again is safe (the climb remembers the key)
+      if (tower.done && !sheet) settle(tower, key)
+      return
+    }
+    const end = sense.ended(state)
+    if (!end?.final || tower.done) return
+    const need = floorOf(tower.floor)?.firstTo ?? 1
+    if (end.winner === -1) {
+      setTower({ ...tower, counted: key })
+      setSheet({ kind: 'draw' })
+      return
+    }
+    const wins: [number, number] = [...tower.wins]
+    wins[end.winner]++
+    if (wins[0] < need && wins[1] < need) {
+      setTower({ ...tower, wins, counted: key })
+      setSheet({ kind: 'next', wins })
+      return
+    }
+    const run: TowerRun = { ...tower, wins, counted: key, done: wins[0] >= need ? 'won' : 'lost' }
+    setTower(run)
+    settle(run, key)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, tower, sense, startedAt])
 
   const session = useMemo<Session>(
     () => ({
@@ -229,7 +287,9 @@ export function LocalGame({
   const me: Me = { id: `p${seat}`, seat: (seat < 2 ? seat : 0) as Seat, seatN: seat, isHost: true }
 
   // against Ops: you wear your character (if you picked one) and she wears her own face; in pass & play every face is drawn for the match
-  const looks = looksFor(room, level ? { p1: OPS_LOOK, ...(crewLook ? { p0: crewLook } : {}) } : {})
+  // on a Tower floor she plays as its guardian (and you don't get the same face)
+  const guardian = tower ? floorOf(tower.floor)?.guardian : undefined
+  const looks = looksFor(room, level ? { p1: guardian ?? OPS_LOOK, ...(crewLook && crewLook !== guardian ? { p0: crewLook } : {}) } : {})
   // against Ops you bring what your character has on too
   const wears = wearsFor(room, level && crewLook ? { p0: wear } : {})
 
@@ -239,6 +299,15 @@ export function LocalGame({
       <LooksProvider value={looks}>
         <WearsProvider value={wears}>{renderGame(room, me, exit)}</WearsProvider>
       </LooksProvider>
+      {tower && sheet && (
+        <TowerSheet
+          floor={tower.floor}
+          sheet={sheet}
+          onAgain={() => onTowerAgain?.(sheet.kind === 'next' || sheet.kind === 'draw' ? tower.wins : [0, 0])}
+          onTower={() => onTowerExit?.()}
+          onRetry={() => settle(tower, tower.counted ?? '')}
+        />
+      )}
     </LocalSessionProvider>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { OPS_LOOK, type OpsMood } from '../components/OpsFace'
+import { OPS_LOOK, type OpsMood, type OpsStyle } from '../components/OpsFace'
 import { useSound } from '../lib/sound'
 import { BOT_NAME, type Level, type Moment, type OpsSense } from './bot'
 import { Pops, ReactionButton, usePops, useSend, type ReactionKey } from './Reactions'
@@ -140,7 +140,7 @@ function endSay(winner: 0 | 1 | -1, final: boolean, level: Level): Say | null {
  * The reaction button and stickers for a match against Ops. Mount it fresh for each match (key it
  * by the match's start) so she says hello once.
  */
-export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: Record<string, unknown>; level: Level }) {
+export function OpsReactions({ sense, state, level, as }: { sense: OpsSense; state: Record<string, unknown>; level: Level; as?: { look: OpsStyle; name: string } }) {
   const { pops, pop } = usePops()
   const { play } = useSound()
   const saidAt = useRef(0)
@@ -148,12 +148,12 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
   const replyTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const stateRef = useRef(state)
   stateRef.current = state
-  // she always plays (and talks) as herself
-  const lines = linesFor(OPS_LOOK)
+  // she plays (and talks) as herself, except on a Tower floor, where she's its guardian
+  const lines = linesFor(as?.look ?? OPS_LOOK)
 
   const say = (s: Say, buzz = true) => {
     saidAt.current = Date.now()
-    pop({ mine: false, face: s.face, said: lineFor(lines, s.line, s.said) })
+    pop({ mine: false, face: s.face, look: as?.look, said: lineFor(lines, s.line, s.said) })
     play('tap')
     if (buzz) navigator.vibrate?.(40)
   }
@@ -295,7 +295,7 @@ export function OpsReactions({ sense, state, level }: { sense: OpsSense; state: 
   return (
     <div className="react">
       <ReactionButton onPick={send} />
-      <Pops pops={pops} other={BOT_NAME} />
+      <Pops pops={pops} other={as?.name ?? BOT_NAME} />
       <ThrowLayer me="p0" onHit={onHit} />
       <TauntLayer me="p0" onArrive={onArrive} />
       <UltLayer me="p0" />

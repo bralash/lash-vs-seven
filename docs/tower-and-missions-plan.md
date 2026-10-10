@@ -140,7 +140,7 @@ pool per difficulty), so every phone shows the same three with no server code.
       claiming with flying chips; play / win / social missions.
 - [x] **2. Missions, game moments:** (done 2026-10-10) hooks in Ludo, Uno, Connect Four, Battleship, Pool and Table
       Tennis; the full pool of ~30.
-- [ ] **3. Tower core:** `/tower` page, hearts, checkpoints, rewards, floors 1–6 with the simple
+- [x] **3. Tower core:** (done 2026-10-10) `/tower` page, hearts, checkpoints, rewards, floors 1–6 with the simple
       twists (moves first, best of N); homepage tile.
 - [ ] **4. Tower top:** clock and barrage twists, floors 7–10, the Ops boss match, champion title and
       Tower crown, monthly seasons.
@@ -178,3 +178,20 @@ doesn't cost a heart right before the boss. Anti-farming: a match ticks missions
   (neither game keeps that in its state).
 - New missions get `from: <week>` (the next week number): the shuffle depends on the pool's size, so
   adding one without it would swap the week that's already showing.
+
+### As built (step 3)
+
+- `src/tower/floors.ts` (the ten floors: game, guardian, level, twist, reward, checkpoint, options;
+  `open: false` on 7–10 until step 4), `tower.ts` (the climb in `wallets/{uid}/tower = { s, at,
+  hearts, best, got, k }`; `settleFloor` is keyed by match, so a retry or refresh never counts twice),
+  `start.ts` (`towerMatch`: the floor's options plus its twist: `oppFirst` sets starter/turn to 1,
+  `twoColours` deals Ludo 'full' and takes your second colour away), `TowerSheet.tsx` (result sheet,
+  hearts).
+- A floor opens the game's own page with `navigate('/<game>', { state: { tower: n } })`; the Lobby
+  starts the vs-Ops match from it. LocalGame dresses Ops as the guardian (looks, OpsReactions `as`,
+  PokeOps), counts each match end once (`sense.ended` final), handles first-to-N floors and draws
+  (go again, no heart lost) and shows the sheet. Leaving mid-floor is a loss (ConfirmLeave warns)
+  and returns to /tower.
+- Floors 3 (Hangman) and 4 (Dots) play without their twists (clock, barrage) until step 4.
+- Season = calendar month (UTC); the floors don't reshuffle between seasons yet (step 4).
+- Not tested end to end: the "next game" sheet of a first-to-2 floor (Uno, floor 6).

@@ -13,6 +13,8 @@ interface Props {
   carryOn?: boolean
   /** the stake, when leaving now counts as a loss */
   stake?: string
+  /** a Tower floor still being played: leaving loses it (and a heart) */
+  tower?: boolean
   onStay: () => void
   onLeave: () => void
 }
@@ -20,7 +22,7 @@ interface Props {
 /** How long the destructive button stays inert, so a double-tap on "Leave" can't confirm by accident. */
 const ARM_MS = 400
 
-export function ConfirmLeave({ kind, other, carryOn, stake, onStay, onLeave }: Props) {
+export function ConfirmLeave({ kind, other, carryOn, stake, tower, onStay, onLeave }: Props) {
   const [armed, setArmed] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setArmed(true), ARM_MS)
@@ -29,7 +31,14 @@ export function ConfirmLeave({ kind, other, carryOn, stake, onStay, onLeave }: P
 
   const them = other ?? (kind === 'match' ? 'Your opponent' : 'Your guest')
   const copy =
-    kind === 'local'
+    kind === 'local' && tower
+      ? {
+          title: 'Leave this floor?',
+          body: 'It counts as losing the floor, so you’ll lose a heart.',
+          stay: 'Keep playing',
+          leave: 'Leave floor',
+        }
+      : kind === 'local'
       ? {
           title: 'End this game?',
           body: 'The board and score won’t be saved.',
