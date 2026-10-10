@@ -664,3 +664,17 @@ html.scroll-locked .mt-banner.mt-banner--self {
 @keyframes ult-chalk { 0% { translate: -50% -100vh; rotate: -6deg; } 28% { translate: -50% -50%; rotate: 2deg; } 33% { rotate: -1deg; } 38%, 86% { translate: -50% -50%; rotate: 0deg; opacity: 1; } 100% { translate: -50% -50%; opacity: 0; } }
 .ult__cap { position: absolute; left: calc(var(--x) + var(--cx) * 260px); top: calc(var(--y) + 120px); display: flex; opacity: 0; animation: ult-cap 1.5s cubic-bezier(.2,.8,.5,1) both; animation-delay: calc(1.25s + var(--i) * 50ms); }
 @keyframes ult-cap { 0% { opacity: 0; translate: -50% 0; rotate: 0deg; } 6% { opacity: 1; } 55% { translate: -50% -260px; rotate: var(--rot); } 85% { opacity: 1; } 100% { opacity: 0; translate: -50% -180px; rotate: calc(var(--rot) * 3); } }
+
+/* ── HUD for three or four players ─────────────────────── */
+/* phones: the cards two by two either side of the clock; wide screens: one row with the clock in the middle */
+.mt-hud.mt-hud--many { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.mt-hud--many > .mt-clock { grid-column: 2; grid-row: 1 / span 2; }
+.mt-hud--many .mt-score { text-align: left; }
+@media (width >= 900px) {
+  .mt-hud.mt-hud--3 { grid-template-columns: repeat(2, minmax(0, 1fr)) auto minmax(0, 1fr); }
+  .mt-hud.mt-hud--4 { grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr)); }
+  .mt-hud--many > .mt-clock { grid-column: 3; grid-row: 1; }
+}
+/* the "match ended" scoreboard for three or four */
+.mt-ended-many { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.mt-ended-many .mt-score { text-align: left; padding-inline: 8px; }

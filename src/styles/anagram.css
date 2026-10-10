@@ -164,3 +164,21 @@
   html.scroll-locked .ag > .ag-reveal { grid-row: 4; align-self: center; }
   html.scroll-locked .ag .mt-score { padding-block: 6px 8px; }
 }
+
+/* ── Three or four players ────────────────────────────── */
+.ag-pip--won-2 { background: var(--p3); color: var(--paper); }
+.ag-pip--won-3 { background: var(--p4); color: var(--paper); }
+.ag-round--2 { border-left-color: var(--p3); }
+.ag-round--3 { border-left-color: var(--p4); }
+.ag-results__who { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+.ag-results__name { padding-top: 2px; border-top: 4px solid var(--lash); }
+.ag-results__name--1 { border-top-color: var(--seven); }
+.ag-results__name--2 { border-top-color: var(--p3); }
+.ag-results__name--3 { border-top-color: var(--p4); }
+@media (width < 900px) {
+  /* the second row of cards: keep them low so the letters still fit */
+  html.scroll-locked .ag--many { gap: 8px; }
+  html.scroll-locked .ag--many .mt-hud { gap: 6px 8px; }
+  html.scroll-locked .ag--many .mt-score { padding-block: 4px 6px; }
+  html.scroll-locked .ag--many .mt-score__n { font-size: 22px; }
+}

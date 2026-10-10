@@ -7,19 +7,19 @@ import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
 import type { MatchExit, Me } from '../../lobby/Lobby'
 import type { OpsSense } from '../../match/bot'
-import { playersBySeat, roomPath, startMatch, type Room } from '../../lobby/rooms'
+import { roomPath, seatedPlayers, startMatch, stillIn, type Room } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
 import { VsBlock } from '../../components/VsBlock'
 import { RivalryLine } from '../../match/RivalryLine'
-import { useRivalry } from '../../match/useRivalry'
-import type { CardInput } from '../../match/shareCard'
+import { useRivalryMulti } from '../../match/useRivalry'
+import type { CardInput, SeatN } from '../../match/shareCard'
 import { Countdown } from '../../match/Countdown'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
 import type { Seated } from '../../match/types'
-import { useOpponentAway } from '../../match/useOpponentAway'
+import { useAwayPlayers } from '../../match/useOpponentAway'
 import {
   ROUNDS,
   ROUND_MS,
@@ -88,8 +88,9 @@ export function AnagramMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   const round = rounds[r]
   const target = st.targets[r]
 
-  const seats = playersBySeat(room)
-  const opp = seats[me.seat === 0 ? 1 : 0]
+  const seats = seatedPlayers(room)
+  const seated = seats.filter((p): p is Seated => !!p)
+  const many = seated.length > 2
   const wins = (p: Seated | null) => (p ? rounds.filter((x) => x.solve?.by === p.id).length : 0)
 
   const abandoned = room.status === 'abandoned'
@@ -99,7 +100,9 @@ export function AnagramMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
 
   useBeforeUnload(inMatch)
   useScrollLock(inMatch)
-  const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
+  // someone dropped: a short window to come back; with two that ends the match, with more the rest carry on
+  const others = stillIn(room).filter((p) => p.id !== me.id)
+  const away = useAwayPlayers(GAME, room.code, others, inMatch)
 
   /* ── answer building ───────────────────────────────────────────────── */
   // Tiles are positions in the scramble; `picked` lists them in the order they were tapped.
@@ -221,40 +224,47 @@ export function AnagramMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   }, [phase, r, countdown, secsLeft, play, round.solve, me.id])
 
   /* ── screens ───────────────────────────────────────────────────────── */
-  const scoreboard = (meta: (p: Seated | null) => string) => (
-    <>
-      <ScoreCard p={seats[0]} you={me.seat === 0} value={wins(seats[0])} meta={meta(seats[0])} />
-      <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={me.seat === 1} value={wins(seats[1])} meta={meta(seats[1])} />
-    </>
-  )
+  const card = (meta: (p: Seated) => string) => (p: Seated | null, k?: number) =>
+    p ? <ScoreCard key={p.seat} p={p} you={p.id === me.id} value={wins(p)} meta={many && room.out?.[p.id] ? 'left' : meta(p)} /> : <div key={k} className="mt-score" />
+  const scoreboard = (meta: (p: Seated) => string) =>
+    many ? (
+      <div className="mt-ended-many">{seated.map((p) => card(meta)(p))}</div>
+    ) : (
+      <>
+        {card(meta)(seats[0], 0)}
+        <span className="mt-ended__vs" aria-hidden="true">vs</span>
+        {card(meta)(seats[1], 1)}
+      </>
+    )
 
   if (endedEarly) {
     return <MatchEnded room={room} me={me} seats={seats} exit={exit} scoreboard={scoreboard(() => 'rounds won')} />
   }
   if (phase === 'results' || abandoned) {
-    return <Results room={room} me={me} st={st} rounds={rounds} seats={seats} exit={exit} />
+    return <Results room={room} me={me} st={st} rounds={rounds} exit={exit} />
   }
 
-  const oppProgress = opp && st.progress?.[opp.id]?.r === r ? st.progress[opp.id].n : 0
-  const progressMeta = (p: Seated | null) => {
-    if (!p) return ''
+  const progressMeta = (p: Seated) => {
     if (phase !== 'play') return 'rounds won'
-    const n = p.id === me.id ? picked.length : oppProgress
+    const n = p.id === me.id ? picked.length : st.progress?.[p.id]?.r === r ? st.progress[p.id].n : 0
     return '●'.repeat(n) + '○'.repeat(Math.max(0, (target?.length ?? 0) - n))
   }
   const pct = phase === 'play' ? ((round.start + ROUND_MS - now) / ROUND_MS) * 100 : phase === 'countdown' ? 100 : 0
   const hot = phase === 'play' && secsLeft <= 10
+  const clock = (
+    <div key="clock" className={`mt-clock${hot ? ' mt-clock--hot' : ''}`} role="timer" aria-live="off">
+      <span className="label">Time</span>
+      <span className="mt-clock__n">{phase === 'play' ? secsLeft : ROUND_MS / 1000}</span>
+    </div>
+  )
+  const hudCard = card(progressMeta)
+  const solver = round.solve ? seated.find((p) => p.id === round.solve!.by) : undefined
 
   return (
-    <main className="ag screen-in">
-      <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={me.seat === 0} value={wins(seats[0])} meta={progressMeta(seats[0])} />
-        <div className={`mt-clock${hot ? ' mt-clock--hot' : ''}`} role="timer" aria-live="off">
-          <span className="label">Time</span>
-          <span className="mt-clock__n">{phase === 'play' ? secsLeft : ROUND_MS / 1000}</span>
-        </div>
-        <ScoreCard p={seats[1]} you={me.seat === 1} value={wins(seats[1])} meta={progressMeta(seats[1])} />
+    <main className={`ag screen-in${many ? ' ag--many' : ''}`}>
+      {/* three or four players: phones put the cards two by two either side of the clock, wide screens in one row */}
+      <div className={`mt-hud${many ? ` mt-hud--many mt-hud--${seated.length}` : ''}`}>
+        {many ? [...seated.slice(0, 2).map((p) => hudCard(p)), clock, ...seated.slice(2).map((p) => hudCard(p))] : [hudCard(seats[0], 0), clock, hudCard(seats[1], 1)]}
       </div>
 
       <div className="mt-timebar" aria-hidden="true">
@@ -322,23 +332,23 @@ export function AnagramMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
             </button>
           </div>
           <p className="ag-hint hint">
-            {claimLost ? `${opp?.name ?? 'Your opponent'} got there first` : 'Tap the letters in order'}
+            {claimLost ? `${solver?.name ?? 'Someone'} got there first` : 'Tap the letters in order'}
             <span className="ag-hint--keys"> · or type · space shuffles</span>
           </p>
         </div>
       )}
 
-      {awaySecs !== null && opp && (
-        <p className="mt-banner" role="status">
-          {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back
+      {away.map((a) => (
+        <p key={a.id} className="mt-banner" role="status">
+          {a.name} disconnected · {others.length >= 2 ? 'carrying on without them' : 'ending the match'} in {a.secs}s unless they’re back
         </p>
-      )}
+      ))}
 
       {(phase === 'countdown' || (phase === 'play' && r === 0 && now - rounds[0].start < GO_MS)) && (
         <Countdown
           label={`Match ${st.match}`}
           n={phase === 'countdown' ? countdown : 0}
-          names={[seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']}
+          names={many ? seated.map((p) => p.name) : [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']}
           subtitle={`Same letters · ${ROUNDS} rounds · first to solve wins`}
         />
       )}
@@ -348,7 +358,7 @@ export function AnagramMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
 
 /* ── Round progress pips ─────────────────────────────────────────────── */
 
-function RoundPips({ rounds, current, seats }: { rounds: RoundTimes[]; current: number; seats: [Seated | null, Seated | null] }) {
+function RoundPips({ rounds, current, seats }: { rounds: RoundTimes[]; current: number; seats: (Seated | null)[] }) {
   return (
     <ol className="ag-pips" aria-label={`Round ${current + 1} of ${ROUNDS}`}>
       {rounds.map((x, i) => {
@@ -378,7 +388,7 @@ function Reveal({
   r: number
   round: RoundTimes
   target: string
-  seats: [Seated | null, Seated | null]
+  seats: (Seated | null)[]
   me: Me
   last: boolean
   now: number
@@ -422,26 +432,21 @@ function Reveal({
 
 /* ── Final results ───────────────────────────────────────────────────── */
 
-function Results({
-  room,
-  me,
-  st,
-  rounds,
-  seats,
-  exit,
-}: {
-  room: Room
-  me: Me
-  st: AnagramState
-  rounds: RoundTimes[]
-  seats: [Seated | null, Seated | null]
-  exit: MatchExit
-}) {
+function Results({ room, me, st, rounds, exit }: { room: Room; me: Me; st: AnagramState; rounds: RoundTimes[]; exit: MatchExit }) {
   const { play } = useSound()
-  const wins = seats.map((p) => (p ? rounds.filter((x) => x.solve?.by === p.id).length : 0))
-  const winner = wins[0] === wins[1] ? -1 : wins[0] > wins[1] ? 0 : 1
-  const iWon = winner === me.seat
-  const opp = seats[me.seat === 0 ? 1 : 0]
+  const players = seatedPlayers(room)
+  const seated = players.filter((p): p is Seated => !!p)
+  const many = seated.length > 2
+  const wins = seated.map((p) => rounds.filter((x) => x.solve?.by === p.id).length)
+  // three or four: whoever left mid-match is out of the running (two: the results stand as before)
+  const left = (i: number) => many && !!room.out?.[seated[i].id]
+  const finished = seated.flatMap((_, i) => (left(i) ? [] : [i]))
+  const top = Math.max(...finished.map((i) => wins[i]))
+  const atTop = finished.filter((i) => wins[i] === top)
+  /** index into `seated`, or -1 on a draw */
+  const winner = atTop.length === 1 ? atTop[0] : -1
+  const iWon = winner !== -1 && seated[winner].id === me.id
+  const name = (i: number) => seated[i]?.name ?? `Player ${i + 1}`
 
   const cheered = useRef(false)
   useEffect(() => {
@@ -451,65 +456,85 @@ function Results({
     }
   }, [iWon, play])
 
+  // a rematch is for everyone still in the room, and starts once they're all ready
   const ready = st.ready ?? {}
+  const others = stillIn(room).filter((p) => p.id !== me.id)
   const imReady = !!ready[me.id]
-  const oppReady = !!(opp && ready[opp.id])
-  const over = room.status === 'abandoned'
-  const oppGone = over || !opp?.online
+  const othersReady = others.length > 0 && others.every((p) => ready[p.id])
+  const oppGone = room.status === 'abandoned' || !others.length || others.every((p) => !p.online)
 
-  // the host deals the next five words once both are ready
+  // the host deals the next five words once everyone is ready
   const dealt = useRef(false)
   useEffect(() => {
-    if (!me.isHost || dealt.current || !imReady || !oppReady) return
+    if (!me.isHost || dealt.current || !imReady || !othersReady) return
     dealt.current = true
     startMatch(GAME, room.code, { ...initialAnagramState(st.match + 1) })
-  }, [me.isHost, imReady, oppReady, room.code, st.match])
+  }, [me.isHost, imReady, othersReady, room.code, st.match])
 
   const readyUp = () => {
     play('tap')
     set(ref(db, path(room.code, `state/ready/${me.id}`)), true).catch(() => {})
   }
 
-  const headline = winner === -1 ? 'Draw' : iWon ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`
+  const headline = winner === -1 ? 'Draw' : iWon ? 'You win' : `${name(winner)} wins`
 
-  const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
-  const scoreLine = `${wins[0]} — ${wins[1]}`
+  const bySeat = players.map((p) => (p ? wins[seated.indexOf(p)] : 0))
+  const rivalry = useRivalryMulti(GAME, room, me, players, bySeat, finished.map((i) => seated[i].seat), st.match)
+  const scoreLine = wins.join(' — ')
+  const solverOf = (x: RoundTimes) => (x.solve ? seated.find((p) => p.id === x.solve!.by) : undefined)
   const card: CardInput = {
     game: 'Anagram Race',
     winner,
     scoreLine,
     link: shareLink(GAME),
     rivalry: rivalry?.card,
-    players: [0, 1].map((s) => ({ name: names[s], seat: s as 0 | 1, score: String(wins[s]), meta: 'rounds won' })) as CardInput['players'],
+    players: seated.map((p, i) => ({ name: p.name, seat: p.seat as SeatN, score: String(wins[i]), meta: left(i) ? 'left' : 'rounds won' })),
     detail: {
       kind: 'rounds',
-      rows: rounds.map((x, i) => {
-        const solver = x.solve ? seats.find((p) => p?.id === x.solve!.by) : null
-        return {
-          word: x.solve?.word ?? st.targets[i],
-          seat: solver ? solver.seat : null,
-          note: x.solve ? `${((x.solve.at - x.start) / 1000).toFixed(1)}s` : 'time up',
-        }
-      }),
+      rows: rounds.map((x, i) => ({
+        word: x.solve?.word ?? st.targets[i],
+        seat: (solverOf(x)?.seat ?? null) as SeatN | null,
+        note: x.solve ? `${((x.solve.at - x.start) / 1000).toFixed(1)}s` : 'time up',
+      })),
     },
   }
+  const message = many
+    ? multiMessage(seated.map((p) => p.name), winner === -1 ? null : name(winner))
+    : shareMessage('Anagram Race', GAME, [name(0), name(1)], winner, scoreLine)
+  const winSide = winner !== -1 && seated[winner].seat < 2 ? (seated[winner].seat as 0 | 1) : null
 
   return (
     <main className="ag ag-results screen-in">
       {iWon && <Confetti />}
       <div className="ag-results__head">
-        {winner !== -1 && <VsBlock mood="win" side={winner} eyes size={64} />}
-        <p className="label">Match {st.match} · final</p>
+        {winSide !== null && <VsBlock mood="win" side={winSide} eyes size={64} />}
+        <p className="label">
+          Match {st.match} · final{many ? ` · ${seated.length} players` : ''}
+        </p>
         <h1 className={`ag-results__title${iWon ? ' ag-results__title--win' : ''}`}>{headline}</h1>
         <p className="ag-results__line">
-          {wins[0]} <span>—</span> {wins[1]}
+          {wins.map((x, i) => (
+            <span key={i}>
+              {i > 0 && <span> — </span>}
+              {x}
+            </span>
+          ))}
         </p>
+        {many && (
+          <p className="ag-results__who">
+            {seated.map((p, i) => (
+              <span key={p.id} className={`ag-results__name ag-results__name--${p.seat}`}>
+                {p.id === me.id ? 'You' : p.name}
+                {left(i) && ' · left'}
+              </span>
+            ))}
+          </p>
+        )}
       </div>
 
       <ol className="ag-rounds">
         {rounds.map((x, i) => {
-          const solver = x.solve ? seats.find((p) => p?.id === x.solve!.by) : null
+          const solver = solverOf(x)
           return (
             <li key={i} className={`ag-round${solver ? ` ag-round--${solver.seat}` : ''}`}>
               <span className="ag-round__n">{i + 1}</span>
@@ -525,14 +550,22 @@ function Results({
       <RivalryLine r={rivalry} />
       <ResultActions
         card={card}
-        message={shareMessage('Anagram Race', GAME, names, winner, scoreLine)}
-        oppName={opp?.name}
+        message={message}
+        oppName={others.map((p) => p.name).join(' & ') || undefined}
         imReady={imReady}
-        oppReady={oppReady}
+        oppReady={othersReady}
         oppGone={oppGone}
         onReady={readyUp}
         onLeave={exit.now}
       />
     </main>
   )
+}
+
+/** The share text for a 3–4 player match. */
+function multiMessage(names: string[], winner: string | null) {
+  const url = `${location.origin}/${GAME}`
+  const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0])
+  if (!winner) return `${list(names)} played Anagram Race on Lash vs Seven and it ended level. Your turn: ${url}`
+  return `${winner} won Anagram Race against ${list(names.filter((x) => x !== winner))} on Lash vs Seven. Think you can do better? ${url}`
 }

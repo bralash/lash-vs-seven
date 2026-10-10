@@ -189,7 +189,7 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         exit={exit}
         scoreboard={
           many ? (
-            <div className="sp-hud-many">{seated.map((p) => card(p))}</div>
+            <div className="mt-ended-many">{seated.map((p) => card(p))}</div>
           ) : (
             <>
               {card(seats[0], 0)}
@@ -216,7 +216,7 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   return (
     <main className={`wh screen-in${many ? ' wh--many' : ''}`}>
       {/* three or four players: phones put the cards two by two either side of the clock, wide screens in one row */}
-      <div className={`mt-hud${many ? ` wh-hud wh-hud--${seated.length}` : ''}`}>
+      <div className={`mt-hud${many ? ` mt-hud--many mt-hud--${seated.length}` : ''}`}>
         {many ? [...seated.slice(0, 2).map((p) => card(p)), clock, ...seated.slice(2).map((p) => card(p))] : [card(seats[0], 0), clock, card(seats[1], 1)]}
       </div>
 
