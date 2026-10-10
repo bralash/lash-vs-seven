@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { OpsMood } from '../components/OpsFace'
 import { PotArt } from '../components/faces/anansops'
+import { BAT_PATH, SignalArt } from '../components/faces/batops'
 import { TrotroArt } from '../components/faces/trotrops'
 import { ReticleArt } from '../components/faces/ghops'
 import { FistArt } from '../components/faces/hulkops'
@@ -26,12 +27,13 @@ import { ItemArt, throwsIn, type Item } from './Throws'
  * three blasts shake it; Anansops spins his Web of Tales: threads tie up the board from its corners, then
  * the pot of all the world's wisdom tips over it and pours out gold; Trotrops' Kwaaa!: his trotro
  * screeches onto the board, skids to a stop while the mate calls the stops, and pulls off in a cloud
- * of dust. The robot faces fizz the screen
+ * of dust; Batops' Night Fall: the lights go out, the bat-signal sweeps onto the board and a swarm of
+ * bats flies across before the lights come back. The robot faces fizz the screen
  * into static. Looks only: the game underneath never changes and taps go straight through. One
  * use per win. Online it rides the reactions channel (k = 'ult'); anyone can mute incoming ones.
  */
 
-export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'smash' | 'airstrike' | 'tales' | 'kwaa' | 'static'
+export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'smash' | 'airstrike' | 'tales' | 'kwaa' | 'nightfall' | 'static'
 export const ULTS: Record<Ult, { name: string; said: string }> = {
   rage: { name: 'Spartan Rage', said: 'BOY.' },
   snap: { name: 'The Snap', said: 'Perfectly balanced.' },
@@ -41,17 +43,18 @@ export const ULTS: Record<Ult, { name: string; said: string }> = {
   airstrike: { name: 'Airstrike', said: 'Danger close.' },
   tales: { name: 'Web of Tales', said: 'Ananse wins again.' },
   kwaa: { name: 'Kwaaa!', said: 'Circle! Circle! Everybody down!' },
+  nightfall: { name: 'Night Fall', said: 'I’m Batops.' },
   static: { name: 'Static', said: 'Bzzt.' },
 }
-export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : look === 'ghost' ? 'airstrike' : look === 'anansi' ? 'tales' : look === 'trotro' ? 'kwaa' : 'static')
+export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : look === 'ghost' ? 'airstrike' : look === 'anansi' ? 'tales' : look === 'trotro' ? 'kwaa' : look === 'bat' ? 'nightfall' : 'static')
 
 /** how long each show runs, and when it lands (the hit on the faces, the shake, the dust) */
-const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, smash: 2600, airstrike: 2900, tales: 3100, kwaa: 3200, static: 1700 }
-const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, smash: 480, airstrike: 1000, tales: 1500, kwaa: 700, static: 150 }
+const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, smash: 2600, airstrike: 2900, tales: 3100, kwaa: 3200, nightfall: 3300, static: 1700 }
+const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, smash: 480, airstrike: 1000, tales: 1500, kwaa: 700, nightfall: 1300, static: 150 }
 /** what the faces it lands on wear, like a throw */
-const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, smash: 'rubble', airstrike: 'flash', tales: 'web', kwaa: 'coins', static: null }
+const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, smash: 'rubble', airstrike: 'flash', tales: 'web', kwaa: 'coins', nightfall: 'batarang', static: null }
 /** the firing card's face while it plays */
-export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', smash: 'angry', airstrike: 'smug', tales: 'smug', kwaa: 'hello', static: 'gotcha' }
+export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', smash: 'angry', airstrike: 'smug', tales: 'smug', kwaa: 'hello', nightfall: 'smug', static: 'gotcha' }
 
 interface Show {
   n: number
@@ -410,6 +413,15 @@ function Play({ s }: { s: Show }) {
       later(IMPACT_MS.kwaa + 650, () => play('horn'))
       later(2300, () => play('whoosh'))
     }
+    if (s.ult === 'nightfall') {
+      // the lights go out, the signal thuds on over the board, the bats rush past
+      play('whoosh')
+      later(IMPACT_MS.nightfall, () => {
+        play('boom')
+        navigator.vibrate?.(60)
+      })
+      later(IMPACT_MS.nightfall + 300, () => play('whoosh'))
+    }
     if (s.ult === 'static') {
       play('buzz')
       navigator.vibrate?.([30, 30, 30, 30, 30])
@@ -563,6 +575,23 @@ function Play({ s }: { s: Show }) {
               {stop}
             </span>
           ))}
+        </>
+      )}
+      {s.ult === 'nightfall' && (
+        <>
+          {/* the dark, with a pool of light where the signal lands; the beam; the signal; the bats */}
+          <div className="ult__night" />
+          <span className="ult__beam" />
+          <span className="ult__signal">
+            <SignalArt size={Math.min(geo.span * 0.8, 240)} />
+          </span>
+          <svg className="ult__bats" width="100%" height="100%">
+            {Array.from({ length: 12 }, (_, i) => (
+              <g key={i} className="ult__bat" style={{ '--i': i, '--by': `${((i * 53) % 100) - 50}px` } as CSSProperties}>
+                <path d={BAT_PATH} transform={`translate(${geo.at.x} ${geo.at.y}) scale(${0.7 + ((i * 7) % 5) * 0.15})`} fill="#14161c" stroke="#3a3d47" strokeWidth=".8" />
+              </g>
+            ))}
+          </svg>
         </>
       )}
       {s.ult === 'static' && (

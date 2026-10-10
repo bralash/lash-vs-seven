@@ -472,7 +472,7 @@ html.scroll-locked .mt-banner.mt-banner--self {
 .ult__chip b { font-weight: 500; }
 .ult__chip button { flex: none; padding: 4px 8px; border: 2px solid var(--ink); background: var(--hit); font: 500 11px/1.2 var(--mono); cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
-  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks, .ult__fist, .ult__ring, .ult__reticle, .ult__blast, .ult__threads, .ult__pot, .ult__gold, .ult__tro, .ult__skid, .ult__dust, .ult__stop { display: none; }
+  .ult__axe, .ult__crack, .ult__speck, .ult__noise, .ult__strand, .ult__truck, .ult__tracks, .ult__fist, .ult__ring, .ult__reticle, .ult__blast, .ult__threads, .ult__pot, .ult__gold, .ult__tro, .ult__skid, .ult__dust, .ult__stop, .ult__beam, .ult__bats { display: none; }
   .ult__web { animation: none; }
   .ult-dust { animation-duration: .01s !important; }
 }
@@ -576,3 +576,33 @@ html.scroll-locked .mt-banner.mt-banner--self {
 @keyframes ult-dust { 0% { opacity: 1; scale: .4; } 100% { opacity: 0; scale: 2.2 1.4; } }
 .ult__stop { position: absolute; left: calc(var(--x) + (var(--i) - 1) * 70px); top: calc(var(--y) - 85px - var(--i) * 6px); translate: -50% -50%; padding: 4px 10px; border: var(--edge, 3px) solid var(--ink); background: #fff; font: 800 clamp(14px, 4vw, 20px) / 1 var(--font-display, system-ui); text-transform: uppercase; box-shadow: 3px 3px 0 var(--ink); opacity: 0; animation: ult-stop .9s var(--ease-snap, ease-out) both; animation-delay: calc(.95s + var(--i) * .4s); }
 @keyframes ult-stop { 0% { opacity: 0; scale: .3; } 20% { opacity: 1; scale: 1.1; } 35% { scale: 1; } 80% { opacity: 1; } 100% { opacity: 0; translate: -50% -80%; } }
+
+/* Batops' batarang: it sticks in the face at an angle and quivers; the face jolts back */
+.mt-score__ops--batarang svg { animation: ops-jolt .6s var(--ease-snap, ease-out); }
+@keyframes ops-jolt { 12% { translate: 4px -2px; rotate: 8deg; } 40% { translate: -1px 0; rotate: -3deg; } 100% { translate: 0 0; rotate: 0deg; } }
+.throw__splat--batarang { inset: -6px; animation: web-stick 1.3s ease-out forwards; }
+.throw__stuck { transform-box: fill-box; transform-origin: center; rotate: -28deg; animation: quiver .08s steps(2) 8; }
+@keyframes quiver { 50% { rotate: -22deg; } }
+
+/* Batops' taunt: he swoops down out of the dark beside their card, cape out */
+.taunt__ops--swoop > svg { animation: taunt-swoop 1.2s cubic-bezier(.3,.7,.4,1) both; }
+@keyframes taunt-swoop { 0% { translate: 0 -60px; scale: 1.3 .7; opacity: 0; } 35% { translate: 0 6px; scale: 1.1 .9; opacity: 1; } 55%, 100% { translate: 0 0; scale: 1 1; } }
+.taunt__ops--swoop::before { content: ''; position: absolute; inset: 10% -45% -10%; background: radial-gradient(ellipse at 50% 0%, rgb(20 22 30 / .85), transparent 70%); clip-path: polygon(50% 0, 100% 30%, 85% 100%, 70% 70%, 50% 100%, 30% 70%, 15% 100%, 0 30%); z-index: -1; animation: taunt-cape 1.2s ease-out both; }
+@keyframes taunt-cape { 0% { scale: .2 .2; opacity: 0; } 40% { scale: 1.1 1; opacity: 1; } 100% { scale: 1 1; opacity: .9; } }
+
+/* Night Fall (Batops): the lights go out round the board, a beam reaches up from the corner, the
+   bat-signal thuds on over the board, a swarm of bats rushes past, and the lights come back */
+.ult--nightfall .ult__said { animation-delay: 1.5s; }
+.ult--nightfall .ult__said strong { background: #ffd23f; }
+.mt-score__ops--ult-nightfall svg { filter: drop-shadow(0 0 5px #ffd23f); }
+.ult__night { position: absolute; inset: 0; background: radial-gradient(circle at var(--x) var(--y), rgb(8 10 20 / .2) 0 110px, rgb(8 10 20 / .9) 190px); opacity: 0; animation: ult-night 3.3s ease-in-out both; }
+@keyframes ult-night { 0% { opacity: 0; } 12%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.ult__beam { position: absolute; inset: 0; background: linear-gradient(to top right, rgb(255 225 120 / .55), rgb(255 225 120 / .12)); clip-path: polygon(0 100%, 6% 100%, calc(var(--x) + 110px) calc(var(--y) + 40px), calc(var(--x) - 40px) calc(var(--y) - 110px), 0 94%); opacity: 0; animation: ult-beam 3.3s ease-out both; }
+@keyframes ult-beam { 0%, 15% { opacity: 0; } 22% { opacity: .5; } 26% { opacity: .2; } 32%, 78% { opacity: 1; } 100% { opacity: 0; } }
+.ult__signal { position: absolute; left: var(--x); top: var(--y); display: flex; translate: -50% -50%; opacity: 0; filter: drop-shadow(0 0 22px rgb(255 210 63 / .8)); animation: ult-signal 3.3s ease-out both; }
+@keyframes ult-signal { 0%, 30% { opacity: 0; scale: 2.2; } 39% { opacity: 1; scale: 1; } 42% { opacity: .6; } 45%, 78% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: 1; } }
+.ult__bats { position: absolute; inset: 0; overflow: visible; }
+.ult__bat { translate: 100vw var(--by); opacity: 0; animation: ult-bat 1s cubic-bezier(.4,.1,.6,.9) both; animation-delay: calc(1.45s + var(--i) * 55ms); }
+.ult__bat path { animation: ult-flap .12s steps(2) infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ult-bat { 0% { opacity: 1; translate: 60vw calc(var(--by) + 30px); } 50% { translate: 0 var(--by); } 100% { opacity: 1; translate: -70vw calc(var(--by) - 40px); } }
+@keyframes ult-flap { 50% { scale: 1 .4; } }

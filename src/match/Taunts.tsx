@@ -8,7 +8,7 @@ import { linesFor } from './opsLines'
 /*
  * Hold your own Ops on your score card and it hops out, walks over to someone else's card and
  * taunts them for a couple of seconds: Kratops shouts in their face, Thanops snaps, Spidops hangs
- * upside down and waves, Opstimus salutes, Hulkops pounds his fists, Ghops flickers like a ghost, Anansops sways and spins a tale, Trotrops bangs the side of his tro, the robots dance. A speech bubble says it in the
+ * upside down and waves, Opstimus salutes, Hulkops pounds his fists, Ghops flickers like a ghost, Anansops sways and spins a tale, Trotrops bangs the side of his tro, Batops swoops down out of the dark, the robots dance. A speech bubble says it in the
  * character's words. The face being visited goes angry and shakes until the visitor walks home.
  * Looks only; the game underneath never changes. With more than one other card, you tap whose to
  * visit after the hold. Online it goes over the reactions channel (k = 'taunt', `at` = whose card),
@@ -50,6 +50,7 @@ const ACT: Partial<Record<OpsStyle, { mood: OpsMood; act: string }>> = {
   ghost: { mood: 'smug', act: 'vanish' },
   anansi: { mood: 'smug', act: 'tale' },
   trotro: { mood: 'hello', act: 'bang' },
+  bat: { mood: 'smug', act: 'swoop' },
 }
 const DANCE = { mood: 'giggle' as OpsMood, act: 'dance' }
 

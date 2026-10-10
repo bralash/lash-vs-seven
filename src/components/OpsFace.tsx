@@ -3,6 +3,7 @@ import { KEYS, load, save } from '../lib/storage'
 import '../styles/opsfaces.css'
 import { Kratops } from './faces/kratops'
 import { Anansops } from './faces/anansops'
+import { Batops } from './faces/batops'
 import { Ghops } from './faces/ghops'
 import { Hulkops } from './faces/hulkops'
 import { DROP, Head, INK, heart, star } from './faces/parts'
@@ -15,7 +16,7 @@ import { PAINT_FILTERS, WearLayers, paintOf, type Wear } from './faces/wardrobe'
 // The faces. Ops, the computer opponent, always wears Screen (OPS_LOOK, reserved for her). The rest
 // are the Crew: the characters players wear on their score cards, picked (and bought) in the Locker
 // at /locker and saved on the device. Every look has the five base moods; Screen and the characters
-// (Kratops, Thanops, Spidops, Opstimus, Hulkops, Ghops, Anansops, Trotrops: drawn in faces/) also have a face for every reaction, and the other looks
+// (Kratops, Thanops, Spidops, Opstimus, Hulkops, Ghops, Anansops, Trotrops, Batops: drawn in faces/) also have a face for every reaction, and the other looks
 // borrow the nearest base mood.
 
 export type BaseMood = 'idle' | 'think' | 'win' | 'lose' | 'draw'
@@ -26,7 +27,7 @@ export type ReactMood =
   /** when you poke or pet her (PokeOps) */
   | 'love' | 'giggle' | 'angry'
 export type OpsMood = BaseMood | ReactMood
-export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'prime' | 'warrior' | 'titan' | 'spider' | 'brute' | 'ghost' | 'anansi' | 'trotro'
+export type OpsStyle = 'screen' | 'bot' | 'cyclops' | 'die' | 'prime' | 'warrior' | 'titan' | 'spider' | 'brute' | 'ghost' | 'anansi' | 'trotro' | 'bat'
 
 /** Ops' own face: always hers, never worn by a player. */
 export const OPS_LOOK: OpsStyle = 'screen'
@@ -58,6 +59,7 @@ export const OPS_STYLES: { id: OpsStyle; name: string; blurb: string; pronouns: 
   { id: 'ghost', name: 'Ghops', blurb: 'A soldier in a black balaclava with a white skull on it; only his eyes show. His headset blinks while he thinks, the shades go on when he wins, and he throws flashbangs. Few words.', pronouns: HE, price: 800 },
   { id: 'anansi', name: 'Anansops', blurb: 'Kwaku Ananse, the spider of the Akan tales who tricked the Sky God out of every story in the world. Six eyes, eight legs, one sly grin. He rubs his legs together when he schemes, throws sticky gum, and when he loses he’s caught in his own web.', pronouns: HE, price: 500 },
   { id: 'trotro', name: 'Trotrops', blurb: 'A trotro mate, hanging out of the sliding door calling the stops. A towel on his head, a cedi note behind his ear. He shouts while he thinks, counts his fares when he wins, throws small-small coins, and when he loses his tro breaks down.', pronouns: HE, price: 400 },
+  { id: 'bat', name: 'Batops', blurb: 'A black cowl with pointed ears, blank white lenses and a jaw like a brick. He squints like a detective while he thinks, his bat-signal lights up when he wins, he throws batarangs, and when he loses the cowl slips and he looks like he hasn’t slept in a week.', pronouns: HE, price: 600 },
 ]
 
 /** The Crew: every face a player can wear (all but Ops' own). */
@@ -472,7 +474,7 @@ const REACT_FACES: Record<ReactMood, (px: string) => ReactNode> = {
 }
 
 /** Looks with their own face for every reaction (the rest borrow a base mood). */
-const OWN_REACTIONS = new Set<OpsStyle>(['screen', 'warrior', 'titan', 'spider', 'prime', 'brute', 'ghost', 'anansi', 'trotro'])
+const OWN_REACTIONS = new Set<OpsStyle>(['screen', 'warrior', 'titan', 'spider', 'prime', 'brute', 'ghost', 'anansi', 'trotro', 'bat'])
 export const hasOwnReactions = (look: OpsStyle) => OWN_REACTIONS.has(look)
 
 /** The other looks only know the five base moods, so reactions borrow the nearest one. */
@@ -482,7 +484,7 @@ const BASE: Record<ReactMood, BaseMood> = {
   love: 'win', giggle: 'win', angry: 'lose',
 }
 
-const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, prime: Opstimus, warrior: Kratops, titan: Thanops, spider: Spidops, brute: Hulkops, ghost: Ghops, anansi: Anansops, trotro: Trotrops }
+const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, prime: Opstimus, warrior: Kratops, titan: Thanops, spider: Spidops, brute: Hulkops, ghost: Ghops, anansi: Anansops, trotro: Trotrops, bat: Batops }
 
 /**
  * A face: Ops' own unless `look` says which character, with anything from the wardrobe on (`wear`:
