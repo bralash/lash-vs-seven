@@ -24,6 +24,7 @@ import { SoundProvider } from './lib/sound'
 import { Home } from './pages/Home'
 import { Locker } from './pages/Locker'
 import { RivalsPage, StakesPage } from './pages/Corner'
+import { MissionsPage } from './pages/Missions'
 import { Shop } from './pages/Shop'
 
 // Dev-only sandbox; the DEV guard lets the bundler drop it from production builds.
@@ -46,6 +47,7 @@ const routes: RouteObject[] = [
   { path: '/ops', element: <Navigate to="/locker" replace /> },
   { path: '/rivals', element: <RivalsPage /> },
   { path: '/stakes', element: <StakesPage /> },
+  { path: '/missions', element: <MissionsPage /> },
   { path: '/shop', element: <Shop /> },
   { path: '/wordhunt', element: <WordHunt /> },
   { path: '/anagram', element: <Anagram /> },

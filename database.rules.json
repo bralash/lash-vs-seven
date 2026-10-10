@@ -263,6 +263,23 @@
             "$other": { ".validate": false }
           }
         },
+        "missions": {
+          ".validate": "newData.hasChild('w')",
+          "w": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+          "n": {
+            "$id": { ".validate": "$id.matches(/^[a-z0-9]{2,16}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" }
+          },
+          "s": {
+            "$id": {
+              ".validate": "$id.matches(/^[a-z0-9]{2,16}$/)",
+              "$k": { ".validate": "$k.matches(/^[a-z0-9]{2,20}$/) && newData.val() === true" }
+            }
+          },
+          "got": {
+            "$id": { ".validate": "$id.matches(/^[a-z0-9]{2,16}$/) && newData.val() === true && (data.exists() || newData.parent().parent().parent().child('chips').val() <= (data.parent().parent().parent().child('chips').exists() ? data.parent().parent().parent().child('chips').val() : 0) + 120)" }
+          },
+          "$other": { ".validate": false }
+        },
         "$other": {
           ".validate": false
         }

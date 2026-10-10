@@ -92,6 +92,11 @@ try {
   await expect('guest owns Anansops in their wallet', true, call(guest, 'PUT', `wallets/${G}`, { chips: 0, owned: { anansi: true, trotro: true, bat: true } }))
   await expect('guest owns something that isn’t sold', false, call(guest, 'PUT', `wallets/${G}`, { chips: 0, owned: { cheat: true } }))
   await expect('host gives the guest a crown', false, call(host, 'PUT', `wallets/${G}/owned/crown`, true))
+  await expect('guest counts a mission', true, call(guest, 'PUT', `wallets/${G}`, { chips: 0, missions: { w: 2963, n: { win3: 2 }, s: { games3: { ludo: true, uno: true } } } }))
+  await expect('guest collects a mission (+60)', true, call(guest, 'PUT', `wallets/${G}`, { chips: 60, missions: { w: 2963, n: { win3: 3 }, got: { win3: true } } }))
+  await expect('guest collects a mission for 500', false, call(guest, 'PUT', `wallets/${G}`, { chips: 560, missions: { w: 2963, n: { win3: 3 }, got: { win3: true, play5: true } } }))
+  await expect('guest writes something odd in missions', false, call(guest, 'PATCH', `wallets/${G}/missions`, { cheat: 1 }))
+  await expect('host counts the guest\'s mission', false, call(host, 'PATCH', `wallets/${G}/missions/n`, { win3: 3 }))
   await expect('stranger deletes a waiting room', false, call(stranger, 'DELETE', ROOM))
   await expect('guest closes the host\'s waiting room', false, call(guest, 'DELETE', ROOM))
 

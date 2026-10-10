@@ -8,6 +8,7 @@ import { useSound } from '../lib/sound'
 import { roomPath } from '../lobby/rooms'
 import { useWallet } from './chips'
 import { TauntLayer, visit } from './Taunts'
+import { mission } from './missions'
 import { isItem, launch, ThrowLayer, throwsIn } from './Throws'
 import { UltLayer, unleash } from './Ultimates'
 
@@ -258,6 +259,7 @@ export function Reactions({ game, code, pid, other, names, watching }: { game: s
 
   const send = useSend(pop, (k) => {
     set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now() }).catch(() => {})
+    mission({ k: 'sticker' })
   })
 
   const cheer = useCheer(game, code, pid)
@@ -286,10 +288,21 @@ export function Reactions({ game, code, pid, other, names, watching }: { game: s
         <>
           <ThrowLayer
             me={pid}
-            deliver={(at, k) => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now(), at }).catch(() => {})}
+            deliver={(at, k) => {
+              set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k, n: Date.now(), at }).catch(() => {})
+              mission({ k: 'throw' })
+            }}
           />
-          <TauntLayer me={pid} deliver={(at, n) => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k: 'taunt', n, at }).catch(() => {})} />
-          <UltLayer me={pid} deliver={() => set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k: 'ult', n: Date.now() }).catch(() => {})} />
+          <TauntLayer me={pid} deliver={(at, n) => {
+              set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k: 'taunt', n, at }).catch(() => {})
+              mission({ k: 'taunt' })
+            }}
+          />
+          <UltLayer me={pid} deliver={() => {
+              set(ref(db, `${roomPath(game, code)}/react/${pid}`), { k: 'ult', n: Date.now() }).catch(() => {})
+              mission({ k: 'ult' })
+            }}
+          />
         </>
       )}
     </div>

@@ -4,6 +4,7 @@ import { db, signIn } from '../lib/firebase'
 import { pickedCrewLook, priceOf, type OpsStyle } from '../components/OpsFace'
 import { itemOf, type ItemId } from '../components/faces/wardrobe'
 import type { Level } from './bot'
+import { mission } from './missions'
 
 /*
  * Chips: what every finished match pays out, spent later in the shop. They live in the database at
@@ -173,9 +174,21 @@ export function payOut(r: Result) {
         const cutoff = today(Date.now() - KEEP_DAYS * 864e5)
         const kept = Object.fromEntries(Object.entries(paid).filter(([, p]) => p.d >= cutoff))
         const entry: Paid = { d: today(), t: total, ...(r.rival ? { r: r.rival } : {}), ...(r.outcome === 'win' ? { w: true } : {}) }
-        return { chips: (w.chips ?? 0) + total, paid: { ...kept, [r.key]: entry } }
+        // keep the rest of the wallet (what I own, my missions): a transaction replaces the whole node
+        return { ...w, chips: (w.chips ?? 0) + total, paid: { ...kept, [r.key]: entry } }
       })
       const total = lines.reduce((s, l) => s + l.n, 0)
+      // a match counts towards the week's missions once, when it pays
+      if (res.committed && total)
+        mission({
+          k: 'match',
+          game: r.key.split(':')[0],
+          out: r.outcome,
+          ops: r.ops,
+          fullWin: r.outcome === 'win' && lines.some((l) => l.label === 'Win' || !!r.ops),
+          group: r.stayed,
+          streak: r.streak,
+        })
       if (res.committed && total) show({ key: r.key, lines, total: Math.min(MAX_PAYOUT, total), fresh: true, at })
       else if (already) show({ key: r.key, lines: [], total: (already as Paid).t, fresh: false, at })
     })

@@ -483,3 +483,18 @@
 .payout__total span { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-soft); }
 .payout__lines { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
 @media (prefers-reduced-motion: reduce) { .payout__chip { animation: none; } }
+
+/* chips flying from one place to another (collecting a mission) */
+.chip-fly {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  filter: drop-shadow(2px 2px 0 var(--ink));
+  animation: chip-fly .62s cubic-bezier(.3, 0, .6, 1) both;
+}
+@keyframes chip-fly {
+  0% { transform: translate(0, 0) scale(.6); opacity: 0; }
+  12% { opacity: 1; }
+  45% { transform: translate(calc(var(--dx) * .45), calc(var(--dy) * .45 - 80px)) scale(1.25) rotate(200deg); }
+  100% { transform: translate(var(--dx), var(--dy)) scale(.8) rotate(380deg); opacity: .3; }
+}

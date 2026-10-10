@@ -464,3 +464,17 @@
 .corner__tile--chips { flex: 0 1 auto; background: var(--hit); }
 .corner__tile--chips:hover, .corner__tile--chips:focus-visible { background: var(--hit-deep); }
 .corner__tile--chips .corner__title b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ── Missions: this week's three, as little bars ── */
+.corner { flex-wrap: wrap; }
+.corner__tile--missions { background: var(--slot); border-left-width: 8px; border-left-color: var(--seven); }
+.corner__bars { display: flex; gap: 4px; }
+.corner__bar { flex: 1; min-width: 22px; height: 8px; border: 2px solid var(--ink); background: var(--paper); }
+.corner__bar span { display: block; height: 100%; max-width: 100%; }
+.corner__bar--t1 span { background: var(--good); }
+.corner__bar--t2 span { background: var(--seven); }
+.corner__bar--t3 span { background: var(--lash); }
+.corner__tile--collect { background: var(--hit); animation: tile-call 2s ease-in-out infinite; }
+.corner__tile--collect .corner__line { color: var(--ink); }
+@keyframes tile-call { 0%, 80%, 100% { rotate: 0deg; } 85% { rotate: -1.5deg; } 92% { rotate: 1.5deg; } }
+@media (prefers-reduced-motion: reduce) { .corner__tile--collect { animation: none; } }

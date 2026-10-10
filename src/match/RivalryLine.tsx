@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MissionLine } from './MissionLine'
 import { Payout } from './Payout'
 import type { RivalryView } from './useRivalry'
 
@@ -6,7 +7,13 @@ import type { RivalryView } from './useRivalry'
 export function RivalryLine({ r }: { r: RivalryView | null }) {
   const [open, setOpen] = useState<string | null>(null)
   // against Ops there's no record, but a win still pays
-  if (!r) return <Payout />
+  if (!r)
+    return (
+      <>
+        <Payout />
+        <MissionLine />
+      </>
+    )
   const shown = r.feats.find((f) => `${f.id}:${f.who}` === open)
   return (
     <div className="mt-rivalry">
@@ -20,6 +27,7 @@ export function RivalryLine({ r }: { r: RivalryView | null }) {
       <p className="mt-rivalry__line">{r.line}</p>
       {(r.streak || r.split) && <p className="mt-rivalry__meta">{[r.streak, r.split].filter(Boolean).join(' · ')}</p>}
       <Payout />
+      <MissionLine />
       {r.feats.length > 0 && (
         <>
           <ul className="mt-feats" aria-label="Feats this match">

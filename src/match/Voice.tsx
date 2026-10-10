@@ -5,6 +5,7 @@ import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { KEYS, load, save } from '../lib/storage'
 import { roomPath, type Room } from '../lobby/rooms'
+import { mission } from './missions'
 
 /*
  * Voice notes in an online match: hold the mic, talk (10 seconds at most), let go and it plays on the
@@ -165,6 +166,7 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
       set(ref(db, `${base}/${pid}`), { a, t: type || blob.type || 'audio/mp4', n: Date.now(), d: Math.round(ms) } satisfies Clip)
         .then(() => {
           say('Sent')
+          mission({ k: 'voice' })
           clearTimeout(wipe.current)
           wipe.current = setTimeout(() => remove(ref(db, `${base}/${pid}`)).catch(() => {}), KEEP_MS)
         })
