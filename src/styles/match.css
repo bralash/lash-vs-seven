@@ -180,6 +180,12 @@ html.scroll-locked .mt-banner.mt-banner--self {
   .mt-clock { min-width: 66px; }
 }
 
+/* ── Tablets and desktop during a live round: no spare padding past the bottom of the screen,
+   so there is nothing for a swipe to scroll (on iPad that collapses the toolbar and resizes the board) ─ */
+@media (width >= 900px) {
+  html.scroll-locked .lobby { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+
 /* ── Phones during a live round: page pinned to one screen ─ */
 @media (width < 900px) {
   html.scroll-locked .lobby {

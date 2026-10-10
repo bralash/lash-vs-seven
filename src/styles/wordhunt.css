@@ -47,7 +47,7 @@
 .wh-board {
   position: relative;
   /* keep HUD + board + input on one screen */
-  width: min(100%, max(260px, calc(100dvh - 400px)));
+  width: min(100%, max(260px, calc(100svh - 400px)));
   justify-self: center;
   display: grid;
   padding: clamp(10px, 3vw, 16px);
@@ -238,7 +238,7 @@
   .wh > .mt-banner { grid-area: note; }
   .wh-best { display: flex; }
   .wh-stage { grid-area: board; }
-  .wh-board { width: min(560px, max(340px, calc(100dvh - 290px))); }
+  .wh-board { width: min(560px, max(340px, calc(100svh - 290px))); }
   .wh-side {
     grid-area: side;
     align-self: stretch; /* same height as the board */
@@ -255,7 +255,8 @@
   .wh-found { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .wh-found ul { flex: 1; min-height: 0; overflow-y: auto; align-content: flex-start; }
   /* if the panel is taller than the board allows, the word list scrolls instead of stretching the page */
-  .wh-side { max-height: min(560px, max(340px, calc(100dvh - 290px))); }
+  .wh-side { max-height: min(560px, max(340px, calc(100svh - 290px))); }
+  html.scroll-locked .wh:not(.wh-results) { padding-bottom: 0; }
 }
 
 /* ── Phones during a live round: the whole game fits one screen ───────────── */
@@ -276,7 +277,7 @@
   html.scroll-locked .wh-stage { grid-row: 5; }
   html.scroll-locked .wh-found { grid-row: 6; }
   /* everything else on this screen has a fixed height (~330px incl. top bar), the board gets the rest */
-  html.scroll-locked .wh-board { width: min(100% - 10px, max(220px, 100dvh - 345px)); }
+  html.scroll-locked .wh-board { width: min(100% - 10px, max(220px, 100svh - 345px)); }
   html.scroll-locked .wh .mt-score { padding-block: 6px 8px; }
 
   /* found words: one sideways-scrolling strip instead of growing the page */
