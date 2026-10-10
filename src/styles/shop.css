@@ -1,0 +1,107 @@
+/* ── The shop (/shop) ─────────────────────────────────────────────────────── */
+.shop { gap: 22px; }
+
+.shop__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; width: 100%; }
+.shop__title { font-size: clamp(40px, 9vw, 72px); line-height: .95; }
+.shop__sub { margin-top: 6px; text-align: left; }
+.shop__pile {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 14px 6px 8px;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-sm);
+  font: 500 14px var(--mono);
+}
+.shop__pile b { font-family: var(--display); font-weight: 400; font-size: 26px; font-variant-numeric: tabular-nums; }
+.shop__pile-label { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
+
+/* shelves: every tab in view, wrapping onto a second row on a phone; shelves still to come are dashed */
+.shop__tabs { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.shop__tab {
+  flex: none;
+  padding: 7px 12px;
+  border: 2px solid var(--ink);
+  background: var(--slot);
+  box-shadow: 3px 3px 0 var(--ink);
+  color: var(--ink);
+  font: 500 13px var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.shop__tab--soon { border-style: dashed; box-shadow: none; background: transparent; }
+.shop__tab[aria-selected="true"] { border-style: solid; background: var(--ink); color: var(--paper); box-shadow: 3px 3px 0 var(--hit-deep); }
+.shop__tab:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+
+.shop__shelf { display: grid; gap: 16px; width: 100%; }
+.shop__blurb { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.shop__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; margin: 0; padding: 12px 0 0; list-style: none; }
+@media (width < 420px) { .shop__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; } }
+
+.shop__item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 18px 10px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.shop__item--wearing { background: var(--hit); }
+.shop__item--locked .ops-face, .shop__item--locked svg:not(.cchip) { filter: grayscale(.55); opacity: .85; }
+.shop__item--new { animation: shop-pop .5s var(--ease-snap) .55s both; }
+.shop__item--soon { min-height: 110px; align-content: center; background: color-mix(in srgb, var(--slot) 60%, var(--paper)); border-style: dashed; box-shadow: none; }
+.shop__stamp { position: absolute; top: -12px; right: -8px; rotate: 6deg; }
+.shop__price, .shop__owned {
+  position: absolute;
+  top: -12px;
+  left: -8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 3px;
+  border: 2px solid var(--ink);
+  background: var(--slot);
+  box-shadow: 2px 2px 0 var(--ink);
+  font: 500 12px var(--mono);
+  font-variant-numeric: tabular-nums;
+  rotate: -5deg;
+}
+.shop__owned { padding: 2px 8px; background: var(--good); color: var(--paper); letter-spacing: .08em; text-transform: uppercase; }
+.shop__name { font-family: var(--display); font-size: 20px; line-height: 1; text-transform: uppercase; }
+.shop__desc { font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
+.shop__act { display: grid; justify-items: center; min-height: 44px; align-content: end; width: 100%; }
+.shop__act .btn { min-width: 92px; padding: 8px 14px; font-size: 15px; }
+.shop__note { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.shop__confirm { display: grid; justify-items: center; gap: 6px; font: 13px var(--mono); }
+.shop__cancel { border: 0; background: none; font: 12px var(--mono); text-decoration: underline; color: var(--ink-soft); cursor: pointer; }
+.shop__error { font-size: 12px; }
+.shop__foot { text-align: left; }
+.shop__foot a { color: inherit; }
+
+/* paying: chips fly from the pile onto the item */
+.shop__fly {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  animation: shop-fly .55s cubic-bezier(.3, 0, .6, 1) both;
+}
+@keyframes shop-fly {
+  0% { transform: translate(0, 0) scale(1); }
+  45% { transform: translate(calc(var(--dx) * .5), calc(var(--dy) * .5 - 60px)) scale(1.15) rotate(180deg); }
+  100% { transform: translate(var(--dx), var(--dy)) scale(.7) rotate(360deg); opacity: .2; }
+}
+@keyframes shop-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06) rotate(-1deg); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop__item--new { animation: none; }
+}

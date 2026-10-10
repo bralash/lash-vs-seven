@@ -63,13 +63,12 @@ export function CornerTiles() {
   return (
     <nav className="corner" aria-label="Your chips, rivals and stakes">
       {chips !== null && (
-        // the shop comes next; until then the tile just shows the pile
-        <div className="corner__tile corner__tile--chips">
+        <Link to="/shop" className="corner__tile corner__tile--chips" onClick={() => play('tap')}>
           <span className="corner__title">
             <ChipStack size={26} /> <b>{chips.toLocaleString()}</b>
           </span>
-          <span className="corner__line">{chips ? 'Chips · shop soon' : 'Win matches for chips'}</span>
-        </div>
+          <span className="corner__line">{chips ? 'Chips · shop' : 'Win chips · shop'}</span>
+        </Link>
       )}
       {rivals && (
         <Link to="/rivals" className="corner__tile" onClick={() => play('tap')}>
