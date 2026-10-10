@@ -17,7 +17,7 @@ export function Ludo() {
           initial: 'quick',
           choices: [
             { value: 'quick', label: '1 colour each' },
-            { value: 'full', label: '2 colours each' },
+            { value: 'full', label: '2 colours each (2 players)' },
           ],
         },
         {
@@ -29,7 +29,7 @@ export function Ludo() {
       ]}
       bot={ludoBrain}
       sense={ludoSense}
-      initialState={(_, all) => ({ ...initialLudoState(all?.[0] === 'full' ? 'full' : 'quick', (all?.[1] as Color) ?? 'yellow') })}
+      initialState={(_, all, seats) => ({ ...initialLudoState(all?.[0] === 'full' ? 'full' : 'quick', (all?.[1] as Color) ?? 'yellow', 1, seats) })}
       renderGame={(room, me, exit) => <LudoMatch room={room} me={me} exit={exit} />}
     />
   )

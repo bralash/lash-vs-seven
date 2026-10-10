@@ -1,5 +1,5 @@
 import { BOT_SEAT, pick, squash, type Brain, type Level, type Moment, type OpsSense, type Said } from '../../match/bot'
-import type { Seat } from '../../lobby/rooms'
+import type { Seat } from './engine'
 import { HOME, backKick, colorsOf, homeCount, move, movable, other, roll, type Color, type Live } from './engine'
 import type { LudoState } from './LudoMatch'
 
@@ -86,7 +86,7 @@ export const ludoBrain: Brain = (state, level) => {
 export const ludoSense: OpsSense = {
   turn: (state) => {
     const live = (state as unknown as LudoState).live
-    return !live || live.winner !== undefined ? null : live.turn
+    return !live || live.winner !== undefined ? null : (live.turn as 0 | 1)
   },
   standing: (state) => {
     const live = (state as unknown as LudoState).live
@@ -94,7 +94,7 @@ export const ludoSense: OpsSense = {
   },
   ended: (state) => {
     const w = (state as unknown as LudoState).live?.winner
-    return w === undefined ? null : { winner: w, final: true }
+    return w === undefined ? null : { winner: w as 0 | 1, final: true }
   },
   moment: (prev, next) => {
     const a = (prev as unknown as LudoState).live

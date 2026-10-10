@@ -46,7 +46,8 @@ export function useOpponentAway(game: string, code: string, opp: Seated | null, 
  * if two or more are left, otherwise it's over. Returns who's away and the seconds each has left.
  */
 export function useAwayPlayers(game: string, code: string, others: Seated[], active: boolean): { id: string; name: string; secs: number }[] {
-  const away = active && !useWatching() ? others.filter((p) => !p.online) : []
+  const watching = useWatching()
+  const away = active && !watching ? others.filter((p) => !p.online) : []
   const awayKey = away.map((p) => p.id).join(',')
   const since = useRef<Record<string, number>>({})
   const [, tick] = useState(0)

@@ -3,37 +3,43 @@ import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
 import type { MatchExit, Me } from '../../lobby/Lobby'
-import { playersBySeat, type Room, type Seat } from '../../lobby/rooms'
+import { seatedPlayers, stillIn, type Room } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
 import { ResultActions } from '../../match/ResultActions'
 import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
-import { useRivalry } from '../../match/useRivalry'
-import type { CardInput } from '../../match/shareCard'
+import { useRivalryMulti } from '../../match/useRivalry'
+import type { CardInput, SeatN } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
 import { useSession } from '../../match/session'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
-import { useOpponentAway } from '../../match/useOpponentAway'
+import { useAwayPlayers } from '../../match/useOpponentAway'
 import { COLOR_HEX, COLOR_NAME, Die3D, LudoBoard, spot, type Dest, type TokenView } from './Board'
 import {
   COLORS,
   HOME,
   YARD,
+  allColors,
   backKick,
   colorsOf,
+  drop,
   exitBlocked,
   freshLive,
   homeCount,
   move,
   movable,
+  orderOf,
+  progress,
   roll,
   tokenTotal,
   type Color,
   type Live,
+  type Seat,
 } from './engine'
+import '../../styles/spar.css'
 import '../../styles/ludo.css'
 
 const GAME = 'ludo'
@@ -54,9 +60,9 @@ export interface LudoState {
   ready?: Record<string, boolean>
 }
 
-export function initialLudoState(mode: 'quick' | 'full' = 'quick', color: Color = 'yellow', match = 1): LudoState {
-  // whoever rolls first alternates between matches
-  return { mode, color, match, live: freshLive(mode, color, (match % 2 === 1 ? 0 : 1) as Seat) }
+/** `seats`: the seats taken (2–4 players). Whoever rolls first moves on one place each match. */
+export function initialLudoState(mode: 'quick' | 'full' = 'quick', color: Color = 'yellow', match = 1, seats: Seat[] = [0, 1]): LudoState {
+  return { mode, color, match, live: freshLive(mode, color, match - 1, seats.length ? seats : [0, 1]) }
 }
 
 const colorList = (cs: Color[]) => cs.map((c) => COLOR_NAME[c]).join(' + ')
@@ -67,10 +73,10 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
   const local = session.local
-  const seats = playersBySeat(room)
-  const opp = seats[me.seat === 0 ? 1 : 0]
+  const seats = seatedPlayers(room)
+  const many = seats.filter(Boolean).length > 2
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: Seat) => !local && s === me.seat
+  const mine = (s: Seat) => !local && s === me.seatN
 
   const over = live.winner !== undefined
   const showResults = useHold(over, RESULT_MS)
@@ -78,7 +84,20 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const inMatch = !abandoned && !over
   useBeforeUnload(inMatch)
   useScrollLock(inMatch)
-  const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
+  const others = local || session.bot ? [] : stillIn(room).filter((p) => p.id !== me.id)
+  const away = useAwayPlayers(GAME, room.code, others, inMatch)
+  const carryOn = others.length >= 2
+
+  // someone left the room (or dropped) in a 3–4 player game: their tokens come off and play goes on.
+  // Any phone can do it; the transaction only lands once.
+  const outKey = Object.keys(room.out ?? {}).join(',')
+  useEffect(() => {
+    for (const s of orderOf(live)) {
+      const p = seats[s]
+      if (p && room.out?.[p.id]) session.move<Live>((cur) => drop(cur, s)).catch(() => {})
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outKey])
 
   /* ── the die: everyone sees it shake, then land ── */
   const dieN = live.die?.n ?? 0
@@ -127,7 +146,7 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const animating = step !== null || shaking
 
   // what's on the board right now (mid-move: the mover on its path, its victims still standing)
-  const tokens: TokenView[] = live.colors.flat().flatMap((c) => (live.tokens[c] ?? []).map((pos, i) => ({ c, i, pos })))
+  const tokens: TokenView[] = allColors(live).flatMap((c) => (live.tokens[c] ?? []).map((pos, i) => ({ c, i, pos })))
   if (step !== null && live.last) {
     const L = live.last
     for (const t of tokens) {
@@ -138,7 +157,7 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   }
 
   /* ── my turn ── */
-  const myTurn = !over && (local || live.turn === me.seat)
+  const myTurn = !over && (local || live.turn === me.seatN)
   const canRoll = inMatch && myTurn && !live.rolled && !animating
   const pickable = inMatch && myTurn && !animating ? movable(live) : []
   const [selected, setSelected] = useState<{ c: Color; i: number } | null>(null)
@@ -195,11 +214,29 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const scoreboard = (
+  const playing = orderOf(live)
+  /** a seat's card: its colours and how many it has home ('left' once it's gone) */
+  const card = (s: Seat) => {
+    const gone = !playing.includes(s)
+    return (
+      <ScoreCard
+        key={s}
+        p={seats[s]}
+        you={mine(s)}
+        active={local && inMatch && live.turn === s}
+        turn={inMatch && live.turn === s}
+        value={gone ? '–' : `${homeCount(live, s)}/${tokenTotal(live, s)}`}
+        meta={gone ? 'left' : <Swatches colors={colorsOf(live, s)} />}
+      />
+    )
+  }
+  const scoreboard = many ? (
+    <div className="sp-hud-many">{seats.map((p, s) => p && card(s))}</div>
+  ) : (
     <>
-      <ScoreCard p={seats[0]} you={mine(0)} value={`${homeCount(live, 0)}/${tokenTotal(live, 0)}`} meta="home" />
+      {card(0)}
       <span className="mt-ended__vs" aria-hidden="true">vs</span>
-      <ScoreCard p={seats[1]} you={mine(1)} value={`${homeCount(live, 1)}/${tokenTotal(live, 1)}`} meta="home" />
+      {card(1)}
     </>
   )
 
@@ -211,17 +248,17 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const v = live.die?.v ?? 0
   const status = (() => {
     if (over) return `${name(live.winner!)} brings them all home!`
-    if (shaking) return live.die ? `${local || live.die.s !== me.seat ? name(live.die.s) : 'You'} rolled…` : 'Rolling…'
+    if (shaking) return live.die ? `${local || live.die.s !== me.seatN ? name(live.die.s) : 'You'} rolled…` : 'Rolling…'
     if (step !== null) return live.last?.kicks?.length ? 'Kicked!' : ' '
     if (live.die?.none && !live.rolled && live.die.s !== who) {
-      return `${local || live.die.s !== me.seat ? name(live.die.s) : 'You'} rolled ${live.die.v} — no move`
+      return `${local || live.die.s !== me.seatN ? name(live.die.s) : 'You'} rolled ${live.die.v} — no move`
     }
     const bonus = live.last && live.die && live.die.v === 6 && !live.rolled && live.die.s === who && !live.die.none
     if (!live.rolled) {
       if (local) return `${name(who)}${bonus ? ' — six, roll again' : '’s roll'}`
-      return who === me.seat ? (bonus ? 'Six! Roll again' : 'Your roll') : `${name(who)} ${bonus ? 'rolls again' : 'is rolling…'}`
+      return who === me.seatN ? (bonus ? 'Six! Roll again' : 'Your roll') : `${name(who)} ${bonus ? 'rolls again' : 'is rolling…'}`
     }
-    if (!local && who !== me.seat) return `${name(who)} rolled ${v} · moving…`
+    if (!local && who !== me.seatN) return `${name(who)} rolled ${v} · moving…`
     if (selected) return 'Forward, or back to capture?'
     const blocked = v === 6 && exitBlocked(live, who)
     return `${v === 6 ? 'Six! ' : ''}Pick a token${blocked ? ' · exit blocked' : ''}`
@@ -232,32 +269,16 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       ? colorsOf(live, who).filter((c) => pickable.some((p) => p.c === c && live.tokens[c]?.[p.i] === 0))
       : []
 
-  const view: Seat = local ? 0 : me.seat
+  const view: Seat = local ? 0 : me.seatN
   const youAct = inMatch && myTurn && !animating
 
   return (
     <main className="ldm screen-in">
-      <div className="mt-hud">
-        <ScoreCard
-          p={seats[0]}
-          you={mine(0)}
-          active={local && inMatch && who === 0} turn={inMatch && who === 0}
-          value={`${homeCount(live, 0)}/${tokenTotal(live, 0)}`}
-          meta={<Swatches colors={colorsOf(live, 0)} />}
-        />
-        <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard
-          p={seats[1]}
-          you={mine(1)}
-          active={local && inMatch && who === 1} turn={inMatch && who === 1}
-          value={`${homeCount(live, 1)}/${tokenTotal(live, 1)}`}
-          meta={<Swatches colors={colorsOf(live, 1)} />}
-        />
-      </div>
+      {many ? scoreboard : <div className="mt-hud">{scoreboard}</div>}
 
       <div className="ld-stage">
         <LudoBoard
-          colors={live.colors.flat()}
+          colors={allColors(live)}
           bottom={colorsOf(live, view)[0]}
           tokens={tokens}
           pickable={pickable}
@@ -287,7 +308,11 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         </button>
       </div>
 
-      {awaySecs !== null && opp && <p className="mt-banner" role="status">{opp.name} disconnected · ending the match in {awaySecs}s unless they’re back</p>}
+      {away.map((a) => (
+        <p key={a.id} className="mt-banner" role="status">
+          {a.name} disconnected · {carryOn ? 'taken off the board' : 'ending the match'} in {a.secs}s unless they’re back
+        </p>
+      ))}
     </main>
   )
 }
@@ -304,13 +329,14 @@ function Swatches({ colors }: { colors: Color[] }) {
 
 /* ── Results ─────────────────────────────────────────────────────────── */
 
-function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoState; seats: [Seated | null, Seated | null]; exit: MatchExit }) {
+function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoState; seats: (Seated | null)[]; exit: MatchExit }) {
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
   const live = st.live
-  const winner = (live.winner ?? -1) as Seat | -1
-  const iWon = session.local ? winner !== -1 : winner === me.seat
-  const opp = seats[me.seat === 0 ? 1 : 0]
+  const winner: number = live.winner ?? -1
+  const iWon = session.local ? winner !== -1 : winner === me.seatN
+  const many = seats.filter(Boolean).length > 2
+  const name = (k: number) => seats[k]?.name ?? `Player ${k + 1}`
 
   const cheered = useRef(false)
   useEffect(() => {
@@ -320,72 +346,109 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
     }
   }, [iWon, sound])
 
+  // a rematch is for everyone still in the room, and starts once they're all ready
   const ready = st.ready ?? {}
+  const inRoom = stillIn(room)
+  const others = inRoom.filter((p) => p.id !== me.id)
   const imReady = !!ready[me.id]
-  const oppReady = !!(opp && ready[opp.id])
-  const oppGone = room.status === 'abandoned' || !opp?.online
-
+  const othersReady = others.length > 0 && others.every((p) => ready[p.id])
+  const oppGone = room.status === 'abandoned' || !others.length || others.every((p) => !p.online)
   const dealt = useRef(false)
   useEffect(() => {
-    if (!me.isHost || dealt.current || !imReady || !oppReady) return
+    if (!me.isHost || dealt.current || !imReady || !othersReady) return
     dealt.current = true
-    session.start({ ...initialLudoState(st.mode, st.color, st.match + 1) })
-  }, [session, me.isHost, imReady, oppReady, st.mode, st.color, st.match])
+    session.start({ ...initialLudoState(st.mode, st.color, st.match + 1, inRoom.map((p) => p.seat)) })
+  }, [session, me.isHost, imReady, othersReady, st.mode, st.color, st.match, inRoom])
 
-  const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
-  const home: [number, number] = [homeCount(live, 0), homeCount(live, 1)]
-  const total = tokenTotal(live, 0)
-  const scoreLine = `${home[0]} — ${home[1]}`
+  // the standings: the winner, then whoever has most home, then whoever's furthest round
+  const playing = orderOf(live)
+  const standing = [...playing].sort((a, b) => (a === winner ? -1 : b === winner ? 1 : homeCount(live, b) - homeCount(live, a) || progress(live, b) - progress(live, a)))
+  const gone = seats.flatMap((p, k) => (p && !playing.includes(k) ? [k] : []))
+  const scores = seats.map((_, s) => (s === winner ? 1 : 0))
+  const rivalry = useRivalryMulti(GAME, room, me, seats, scores, playing, st.match)
+  const home = (k: number) => homeCount(live, k)
+  const total = tokenTotal(live, winner === -1 ? standing[0] : winner)
+  const scoreLine = standing.map(home).join(' — ')
+  const cardPlayers = seats.flatMap((p, k) =>
+    p ? [{ name: p.name, seat: k as SeatN, score: playing.includes(k) ? `${home(k)}/${tokenTotal(live, k)}` : '–', meta: playing.includes(k) ? 'home' : 'left' }] : [],
+  )
   const card: CardInput = {
     game: 'Ludo',
-    winner,
+    winner: cardPlayers.findIndex((p) => p.seat === winner),
     scoreLine,
     headline: winner === -1 ? undefined : 'ALL TOKENS HOME',
     link: shareLink(GAME),
     rivalry: rivalry?.card,
-    players: [0, 1].map((k) => ({ name: names[k], seat: k as 0 | 1, score: `${home[k]}/${total}`, meta: 'home' })) as CardInput['players'],
+    players: cardPlayers,
     detail: {
       kind: 'ludo',
-      yards: COLORS.map((c) => ({ x: YARD[c][0], y: YARD[c][1], hex: live.colors.flat().includes(c) ? COLOR_HEX[c] : null })),
-      tokens: live.colors.flat().flatMap((c) => (live.tokens[c] ?? []).map((pos, i) => {
-        const [x, y] = spot({ c, i, pos })
-        return { x, y, hex: COLOR_HEX[c], home: pos === HOME }
-      })),
+      yards: COLORS.map((c) => ({ x: YARD[c][0], y: YARD[c][1], hex: allColors(live).includes(c) ? COLOR_HEX[c] : null })),
+      tokens: allColors(live).flatMap((c) =>
+        (live.tokens[c] ?? []).map((pos, i) => {
+          const [x, y] = spot({ c, i, pos })
+          return { x, y, hex: COLOR_HEX[c], home: pos === HOME }
+        }),
+      ),
       stats: [
-        ['COLOURS', st.mode === 'full' ? '2 EACH' : '1 EACH'],
-        ['CAPTURES', `${live.caps[0]} — ${live.caps[1]}`],
+        ['COLOURS', st.mode === 'full' && !many ? '2 EACH' : '1 EACH'],
+        ['CAPTURES', standing.map((k) => live.caps?.[k] ?? 0).join(' — ')],
       ],
     },
   }
+  const message = many ? multiMessage(standing.map(name), winner === -1 ? null : name(winner)) : shareMessage('Ludo', GAME, [name(0), name(1)], winner as 0 | 1 | -1, scoreLine)
+  const caps = (k: number) => live.caps?.[k] ?? 0
 
   return (
     <main className="ldm ldm-results screen-in">
       {iWon && <Confetti />}
       <div className="ldm-results__head">
-        <ResultMark winner={winner} />
-        <p className="label">Match {st.match} · Ludo · {st.mode === 'full' ? '2 colours each' : '1 colour each'}</p>
-        <h1 className={`ldm-results__title${iWon ? ' ldm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
-        </h1>
+        <ResultMark winner={(winner < 2 ? winner : -1) as 0 | 1 | -1} />
+        <p className="label">
+          Match {st.match} · Ludo · {many ? `${seats.filter(Boolean).length} players` : st.mode === 'full' ? '2 colours each' : '1 colour each'}
+        </p>
+        <h1 className={`ldm-results__title${iWon ? ' ldm-results__title--win' : ''}`}>{winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${name(winner)} wins`}</h1>
         <p className="ldm-results__line">All {total} tokens home</p>
       </div>
-      <div className="mt-hud ldm-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={`${home[0]}/${total}`} meta={`${live.caps[0]} capture${live.caps[0] === 1 ? '' : 's'}`} />
-        <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={`${home[1]}/${total}`} meta={`${live.caps[1]} capture${live.caps[1] === 1 ? '' : 's'}`} />
-      </div>
+      {many ? (
+        <ol className="sp-standings">
+          {[...standing, ...gone].map((k, i) => (
+            <li key={k} className={`sp-standings__row sp-standings__row--${k}${k === winner ? ' sp-standings__row--win' : ''}`}>
+              <span className="sp-standings__place">{playing.includes(k) ? i + 1 : '–'}</span>
+              <span className="sp-standings__who">
+                <Swatches colors={colorsOf(live, k)} /> {name(k)}
+                {!session.local && k === me.seatN && <em> · you</em>}
+                {!playing.includes(k) && <em> · left</em>}
+              </span>
+              <strong>{playing.includes(k) ? `${home(k)}/${tokenTotal(live, k)} home · ${caps(k)} ✕` : ''}</strong>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div className="mt-hud ldm-results__cards">
+          <ScoreCard p={seats[0]} you={!session.local && me.seatN === 0} value={`${home(0)}/${tokenTotal(live, 0)}`} meta={`${caps(0)} capture${caps(0) === 1 ? '' : 's'}`} />
+          <span className="mt-ended__vs" aria-hidden="true">vs</span>
+          <ScoreCard p={seats[1]} you={!session.local && me.seatN === 1} value={`${home(1)}/${tokenTotal(live, 1)}`} meta={`${caps(1)} capture${caps(1) === 1 ? '' : 's'}`} />
+        </div>
+      )}
       <RivalryLine r={rivalry} />
       <ResultActions
         card={card}
-        message={shareMessage('Ludo', GAME, names, winner, scoreLine)}
-        oppName={opp?.name}
+        message={message}
+        oppName={others.map((p) => p.name).join(' & ') || undefined}
         imReady={imReady}
-        oppReady={oppReady}
+        oppReady={othersReady}
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
       />
     </main>
   )
+}
+
+/** The share text for a 3–4 player game, names in finishing order. */
+function multiMessage(names: string[], winner: string | null) {
+  const url = `${location.origin}/${GAME}`
+  const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0])
+  if (!winner) return `${list(names)} played Ludo on Lash vs Seven. Your turn: ${url}`
+  return `${winner} brought every token home first at Ludo against ${list(names.filter((x) => x !== winner))} on Lash vs Seven. Think you can do better? ${url}`
 }

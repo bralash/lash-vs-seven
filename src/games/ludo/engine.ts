@@ -1,4 +1,5 @@
-import type { Seat } from '../../lobby/rooms'
+/** a seat at the table, 0–3 (two players use 0 and 1) */
+export type Seat = number
 
 /**
  * Ludo, as the classic Lash vs Seven version played it.
@@ -21,6 +22,8 @@ import type { Seat } from '../../lobby/rooms'
  *    you can't kick a token just because it was in your way. (House rule, added 2026-10-08.)
  *  - The home column needs an exact roll. First to bring every token home wins.
  *  - Quick: one colour each (diagonal opposites). Full: two colours each, eight tokens.
+ *  - Three or four players: one colour each, round the board clockwise from player 1's, and turns go
+ *    round the board the same way. Everyone else's tokens are fair game. First home wins.
  */
 export type Color = 'red' | 'blue' | 'green' | 'yellow'
 export const COLORS: Color[] = ['red', 'blue', 'green', 'yellow']
@@ -97,8 +100,10 @@ export interface LastMove {
 
 export interface Live {
   mode: 'quick' | 'full'
-  /** each seat's colours */
+  /** each seat's colours (a seat that's empty or has left has none) */
   colors: Color[][]
+  /** the seats still playing, in turn order (round the board) */
+  order?: Seat[]
   tokens: Partial<Record<Color, number[]>>
   turn: Seat
   /** waiting for the player who rolled to move */
@@ -107,24 +112,55 @@ export interface Live {
   die?: { v: number; s: Seat; n: number; none?: boolean }
   last?: LastMove
   /** captures (direct + line kicks) by seat */
-  caps: [number, number]
+  caps: number[]
   winner?: Seat
 }
 
+/** the other player, in a two-player game (Ops' brain) */
 export const other = (s: Seat) => (1 - s) as Seat
 
-export function freshLive(mode: 'quick' | 'full', p1: Color, starter: Seat): Live {
-  const pair: Color[] = [p1, OPPOSITE[p1]]
-  const colors: Color[][] = mode === 'full' ? [pair, COLORS.filter((c) => !pair.includes(c))] : [[p1], [OPPOSITE[p1]]]
+/**
+ * A new game for the players in `seats` (seat numbers, in seat order). Two players: player 1 takes
+ * `p1` (and, with two colours each, the colour diagonally across); the other player the rest.
+ * Three or four: one colour each, round the board clockwise from `p1`. `start` picks who rolls
+ * first, counted along the turn order (it wraps).
+ */
+export function freshLive(mode: 'quick' | 'full', p1: Color, start: number, seats: Seat[] = [0, 1]): Live {
+  const colors: Color[][] = []
+  let order = [...seats]
+  if (seats.length <= 2) {
+    const [a, b] = [seats[0] ?? 0, seats[1] ?? 1]
+    const pair: Color[] = [p1, OPPOSITE[p1]]
+    colors[a] = mode === 'full' ? pair : [p1]
+    colors[b] = mode === 'full' ? COLORS.filter((c) => !pair.includes(c)) : [OPPOSITE[p1]]
+  } else {
+    mode = 'quick'
+    const from = COLORS.indexOf(p1)
+    seats.forEach((s, k) => (colors[s] = [COLORS[(from + k) % 4]]))
+    order = [...seats]
+  }
+  for (let s = 0; s < colors.length; s++) colors[s] ??= []
   const tokens: Partial<Record<Color, number[]>> = {}
   for (const c of colors.flat()) tokens[c] = [0, 0, 0, 0]
-  return { mode, colors, tokens, turn: starter, rolled: false, caps: [0, 0] }
+  return { mode, colors, order, tokens, turn: order[((start % order.length) + order.length) % order.length], rolled: false, caps: [0, 0, 0, 0] }
 }
 
 const toks = (live: Live, c: Color) => live.tokens[c] ?? []
 export const colorsOf = (live: Live, s: Seat) => live.colors[s] ?? []
-export const seatOf = (live: Live, c: Color): Seat => (colorsOf(live, 0).includes(c) ? 0 : 1)
-const active = (live: Live) => live.colors.flat()
+/** every colour in play (the database can hand back a gap for a seat with none) */
+export const allColors = (live: Live) => live.colors.flatMap((cs) => cs ?? [])
+/** the seats still playing, in turn order (a game saved before 3–4 players: whoever has colours) */
+export const orderOf = (live: Live): Seat[] => live.order ?? live.colors.flatMap((cs, s) => (cs?.length ? [s] : []))
+export const seatOf = (live: Live, c: Color): Seat => live.colors.findIndex((cs) => cs?.includes(c))
+const active = allColors
+/** whose turn it is after `seat`'s */
+export function nextSeat(live: Live, seat: Seat): Seat {
+  const order = orderOf(live)
+  const k = order.indexOf(seat)
+  return order[(k + 1) % order.length] ?? seat
+}
+/** everyone else's colours, from `seat`'s side */
+const enemyColors = (live: Live, seat: Seat) => orderOf(live).flatMap((s) => (s === seat ? [] : colorsOf(live, s)))
 
 /** absolute track square of a token, or -1 off the outer track */
 export function absOf(color: Color, pos: number) {
@@ -141,7 +177,7 @@ export function blockadeAt(live: Live, abs: number) {
   return active(live).some((c) => countAt(live, c, abs) >= 2)
 }
 function enemyBlockadeAt(live: Live, seat: Seat, abs: number) {
-  return colorsOf(live, other(seat)).some((c) => countAt(live, c, abs) >= 2)
+  return enemyColors(live, seat).some((c) => countAt(live, c, abs) >= 2)
 }
 
 /** Can this token move forward by `roll`? */
@@ -159,7 +195,7 @@ export function canMove(live: Live, color: Color, i: number, roll: number): bool
 function victimsAt(live: Live, seat: Seat, abs: number): { c: Color; i: number }[] {
   const out: { c: Color; i: number }[] = []
   if (abs < 0) return out
-  for (const c of colorsOf(live, other(seat))) {
+  for (const c of enemyColors(live, seat)) {
     if (countAt(live, c, abs) >= 2) continue // a blockade can't be taken
     toks(live, c).forEach((p, i) => absOf(c, p) === abs && out.push({ c, i }))
   }
@@ -212,7 +248,7 @@ export function exitBlocked(live: Live, seat: Seat): boolean {
 export function roll(live: Live, seat: Seat, v: number): Live | undefined {
   if (live.winner !== undefined || live.turn !== seat || live.rolled || !(v >= 1 && v <= 6)) return undefined
   const n = (live.die?.n ?? 0) + 1
-  if (!anyMove(live, seat, v)) return { ...live, die: { v, s: seat, n, none: true }, rolled: false, turn: other(seat) }
+  if (!anyMove(live, seat, v)) return { ...live, die: { v, s: seat, n, none: true }, rolled: false, turn: nextSeat(live, seat) }
   return { ...live, die: { v, s: seat, n }, rolled: true }
 }
 
@@ -268,7 +304,7 @@ export function move(live: Live, seat: Seat, color: Color, i: number, dir: 'forw
     }
   }
 
-  const caps = [...live.caps] as [number, number]
+  const caps = [0, 1, 2, 3].map((k) => live.caps?.[k] ?? 0)
   caps[seat] += kicks.length
   const last: LastMove = { n: (live.last?.n ?? 0) + 1, c: color, i, path }
   if (dir === 'back') last.back = true
@@ -282,9 +318,25 @@ export function move(live: Live, seat: Seat, color: Color, i: number, dir: 'forw
     caps,
     last,
     rolled: false,
-    turn: won || bonus ? seat : other(seat),
+    turn: won || bonus ? seat : nextSeat(live, seat),
     ...(won ? { winner: seat } : {}),
   }
+}
+
+/**
+ * `seat` has left the game: their tokens come off the board and play goes on round the others. If
+ * it was their turn, it passes on.
+ */
+export function drop(live: Live, seat: Seat): Live | undefined {
+  const order = orderOf(live)
+  if (!order.includes(seat) || live.winner !== undefined) return undefined
+  const after = nextSeat(live, seat)
+  const tokens = { ...live.tokens }
+  for (const c of colorsOf(live, seat)) delete tokens[c]
+  const colors = live.colors.map((cs, s) => (s === seat ? [] : (cs ?? [])))
+  const left = order.filter((s) => s !== seat)
+  const turn = live.turn === seat ? after : live.turn
+  return { ...live, colors, tokens, order: left, turn, rolled: live.turn === seat ? false : live.rolled }
 }
 
 /* ── Read-outs ──────────────────────────────────────────────────────── */
