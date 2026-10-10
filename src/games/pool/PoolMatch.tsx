@@ -16,10 +16,11 @@ import { shareLink, shareMessage } from '../../match/share'
 import type { CardInput } from '../../match/shareCard'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
+import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
-import { BALLS, FRAME_DT, OFF, POCKETS, R, guide, simulate, type Ev } from './physics'
+import { BALLS, FRAME_DT, HEAD_Y, OFF, POCKETS, R, guide, simulate, type Ev } from './physics'
 import { Ball, Cue, RAIL, S, TableArt, VH, VW, X, Y } from './Table'
-import { RESULT_MS, freshLive, groupName, left, nextFrame, playShot, type Live } from './rules'
+import { RESULT_MS, canPlace, freshLive, groupName, left, nextFrame, onEight, playShot, type Live } from './rules'
 import '../../styles/pool.css'
 
 const GAME = 'pool'
@@ -60,6 +61,8 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const inMatch = !abandoned && !seriesOver
   useBeforeUnload(inMatch)
   useScrollLock(inMatch)
+  const opp = seats[me.seat === 0 ? 1 : 0]
+  const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
 
   const ballEls = useRef<(SVGGElement | null)[]>([])
   const place = (p: ArrayLike<number>) => {
@@ -76,7 +79,7 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   }
   // at rest the balls sit where the frame says
   useEffect(() => {
-    if (!rolling) place(live.pos)
+    if (!rolling) place(pos)
   })
 
   useEffect(() => {
@@ -148,8 +151,49 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   /** where on the cue ball you hit it: x left (−) / right (+), y draw (−) / follow (+), inside a circle of 1 */
   const [spin, setSpin] = useState({ x: 0, y: 0 })
   const [spinOpen, setSpinOpen] = useState(false)
+  /** when you tried to shoot at the 8 without calling a pocket (the hint shakes) */
+  const [noCall, setNoCall] = useState(0)
   const tableEl = useRef<SVGSVGElement>(null)
-  const aimGuide = useMemo(() => (myTurn ? guide(live.pos, angle) : null), [myTurn, live.pos, angle])
+  /** ball in hand: where you've put the cue ball (until you shoot) */
+  const [placed, setPlaced] = useState<{ x: number; y: number } | null>(null)
+  /** on the 8: the pocket you've called (until you shoot) */
+  const [called, setCalled] = useState<number | null>(null)
+  // a new shot (or frame) starts both afresh
+  const shotKey = `${live.frame}:${live.shot?.n ?? 0}`
+  useEffect(() => {
+    setPlaced(null)
+    setCalled(null)
+  }, [shotKey])
+  const inHand = myTurn && live.inHand ? live.inHand : null
+  const eightUp = myTurn && live.broken && onEight(live, live.turn)
+  /** the position as you're lining it up: the cue ball where you've put it */
+  const pos = useMemo(() => {
+    if (!placed) return live.pos
+    const p = live.pos.slice()
+    p[0] = placed.x
+    p[1] = placed.y
+    return p
+  }, [live.pos, placed])
+  const aimGuide = useMemo(() => (myTurn ? guide(pos, angle) : null), [myTurn, pos, angle])
+  /** aiming at the 8 and you haven't called: the pocket the 8 is heading for */
+  const autoCall = useMemo(() => {
+    const h = aimGuide?.hit
+    if (!eightUp || !h || h.ball !== 8) return null
+    const bx = pos[16]
+    const by = pos[17]
+    const ax = h.object.x - bx
+    const ay = h.object.y - by
+    let best: number | null = null
+    let bestCos = 0.94
+    POCKETS.forEach((q, k) => {
+      const qx = q.x - bx
+      const qy = q.y - by
+      const c = (ax * qx + ay * qy) / (Math.hypot(ax, ay) * Math.hypot(qx, qy) || 1)
+      if (c > bestCos) (bestCos = c), (best = k)
+    })
+    return best
+  }, [eightUp, aimGuide, pos])
+  const call = eightUp ? (called ?? autoCall) : null
 
   /** a finger on the table, in table units */
   const toTable = (e: { clientX: number; clientY: number }) => {
@@ -157,7 +201,7 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     if (!box?.width) return null
     return { x: (((e.clientX - box.left) / box.width) * VW - RAIL) / S, y: (((e.clientY - box.top) / box.height) * VH - RAIL) / S }
   }
-  const cue = { x: live.pos[0], y: live.pos[1] }
+  const cue = { x: pos[0], y: pos[1] }
   const angleRef = useRef(angle)
   angleRef.current = angle
   const aimAt = (t: { x: number; y: number }) => {
@@ -176,18 +220,32 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     return behind > R && behind < R + 0.06 + STICK_LEN && Math.abs(rx * dy - ry * dx) < 0.08
   }
   /** A finger on the table either points where to send the cue ball, or holds the cue and turns it round the ball. */
-  const grip = useRef<null | 'aim' | 'stick'>(null)
+  const grip = useRef<null | 'aim' | 'stick' | 'place'>(null)
   const onTableDown = (e: ReactPointerEvent) => {
     const t = toTable(e)
     if (!myTurn || !t) return
+    // on the 8: tap a pocket to call it
+    if (eightUp) {
+      const k = POCKETS.findIndex((q) => Math.hypot(t.x - q.x, t.y - q.y) < 0.1)
+      if (k >= 0) {
+        setCalled(k)
+        sound('tap')
+        return
+      }
+    }
     e.currentTarget.setPointerCapture?.(e.pointerId)
-    grip.current = onStick(t) ? 'stick' : 'aim'
+    grip.current = inHand && Math.hypot(t.x - cue.x, t.y - cue.y) < R * 3 ? 'place' : onStick(t) ? 'stick' : 'aim'
     if (grip.current === 'aim') aimAt(t)
   }
   const onTableMove = (e: ReactPointerEvent) => {
     const t = toTable(e)
     if (!grip.current || !t || !myTurn) return
     if (grip.current === 'aim') return aimAt(t)
+    // ball in hand: the cue ball follows your finger wherever it's allowed to go
+    if (grip.current === 'place') {
+      if (canPlace(live, t.x, t.y)) setPlaced({ x: t.x, y: t.y })
+      return
+    }
     // the cue points from your finger through the ball
     if (Math.hypot(t.x - cue.x, t.y - cue.y) > R * 2) setAngle(Math.atan2(cue.y - t.y, cue.x - t.x))
   }
@@ -231,11 +289,17 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
   const shoot = (strike: number) => {
     if (!myTurn) return
+    if (eightUp && call === null) {
+      sound('error')
+      setNoCall(Date.now())
+      return
+    }
+    const play = { cueAt: inHand && placed ? placed : null, call }
     const by = live.turn
     const a = angleRef.current
     // the status line keeps names, never 'You': online it's read on both phones
     const said = (k: Seat) => seats[k]?.name ?? (k === 0 ? 'Player 1' : 'Player 2')
-    session.move<Live>((cur) => playShot(cur, by, { angle: a, power: strike, spin: spin.y, side: spin.x }, said)).catch(() => {})
+    session.move<Live>((cur) => playShot(cur, by, { angle: a, power: strike, spin: spin.y, side: spin.x }, said, play)).catch(() => {})
   }
 
 
@@ -283,6 +347,20 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         : `${live.says ? `${live.says} · ` : ''}${mine(shooter) ? 'your' : `${name(shooter)}’s`} shot`
   const dir = { x: Math.cos(angle), y: Math.sin(angle) }
   const back = R + 0.012 + power * 0.22
+  /** what to do now, while it matters: put the cue ball down, call the 8, or wait for the other player */
+  const hint = rolling || live.result
+    ? null
+    : inHand === 'kitchen'
+      ? 'Drag the cue ball anywhere behind the line'
+      : inHand
+        ? 'Ball in hand · drag the cue ball anywhere'
+        : eightUp
+          ? call === null
+            ? 'On the 8 · tap a pocket to call it'
+            : `The 8 · called: ${POCKET_NAMES[call]} · tap another to change`
+          : !myTurn && !session.local && !watching
+            ? `${name(live.turn)} is lining up a shot`
+            : null
 
   return (
     <main className="poolm screen-in">
@@ -298,7 +376,7 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       <div className="poolm-stage">
         {/* what just happened, over the far end of the table for a moment (the cards show whose shot it is) */}
         {status.trim() && (
-          <p key={status} className={`poolm-status${myTurn && !session.local ? ' poolm-status--you' : ''}${live.result ? ' poolm-status--stay' : ''}`} role="status">
+          <p key={status} className={`poolm-status${myTurn && !session.local ? ' poolm-status--you' : ''}${live.foul && !live.result ? ' poolm-status--foul' : ''}${live.result ? ' poolm-status--stay' : ''}`} role="status">
             {status.charAt(0).toUpperCase() + status.slice(1)}
           </p>
         )}
@@ -314,6 +392,14 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           onPointerCancel={onTableUp}
         >
           <TableArt />
+
+          {/* ball in hand behind the head string: the area you can put it in */}
+          {inHand === 'kitchen' && <rect x={X(0)} y={Y(HEAD_Y)} width={S} height={Y(2) - Y(HEAD_Y)} className="poolm-kitchen" pointerEvents="none" />}
+          {/* on the 8: every pocket can be called, the called one ringed */}
+          {eightUp &&
+            POCKETS.map((q, k) => (
+              <circle key={k} cx={X(q.x)} cy={Y(q.y)} r={q.r * S * 0.9} className={`poolm-pocket${k === call ? ' poolm-pocket--called' : ''}`} pointerEvents="none" />
+            ))}
 
           {/* where the shot goes: to the first ball (and on from it), or off a cushion */}
           {aimGuide && (
@@ -340,6 +426,8 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
               <Ball n={n} />
             </g>
           ))}
+
+          {inHand && <circle cx={X(cue.x)} cy={Y(cue.y)} r={R * S * 1.9} className="poolm-inhand" pointerEvents="none" />}
 
           {/* the cue: grab it to turn it round the ball; it draws back as you pull the power cue */}
           {myTurn && (
@@ -402,10 +490,22 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           </button>
         </div>
       </div>
+      {hint && (
+        <p key={`${hint}:${noCall}`} className={`poolm-hint${noCall ? ' poolm-hint--nudge' : ''}`} role="status">
+          {hint}
+        </p>
+      )}
+      {awaySecs !== null && opp && (
+        <p className="mt-banner" role="status">
+          {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back
+        </p>
+      )}
       {spinOpen && <SpinPicker spin={spin} onChange={setSpin} onClose={() => setSpinOpen(false)} />}
     </main>
   )
 }
+
+const POCKET_NAMES = ['top left', 'top right', 'left side', 'right side', 'bottom left', 'bottom right']
 
 /** what a spin does, in a few words */
 const spinWords = ({ x, y }: { x: number; y: number }) => {
