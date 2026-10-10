@@ -138,7 +138,7 @@ pool per difficulty), so every phone shows the same three with no server code.
 
 - [x] **1. Missions core:** (done 2026-10-10) `missions.ts`, storage + rules, homepage tile + list, results line,
       claiming with flying chips; play / win / social missions.
-- [ ] **2. Missions, game moments:** hooks in Ludo, Uno, Connect Four, Battleship, Pool and Table
+- [x] **2. Missions, game moments:** (done 2026-10-10) hooks in Ludo, Uno, Connect Four, Battleship, Pool and Table
       Tennis; the full pool of ~30.
 - [ ] **3. Tower core:** `/tower` page, hearts, checkpoints, rewards, floors 1–6 with the simple
       twists (moves first, best of N); homepage tile.
@@ -163,11 +163,18 @@ doesn't cost a heart right before the boss. Anti-farming: a match ticks missions
 
 ### As built (step 1)
 
-- `src/match/missions.ts`: the pool (17: 6 easy, 6 medium, 5 hard), `weekOf`, `missionsFor` (each
+- `src/match/missions.ts`: the pool (28: 9 easy, 10 medium, 9 hard), `weekOf`, `missionsFor` (each
   tier cycles its pool in a fixed shuffle), `mission(event)`, `useMissions`, `collect(id)`, `useMoved`.
   Storage: `wallets/{uid}/missions = { w, n, s, got }`, replaced when the week changes.
 - Matches tick from `payOut` (chips.ts); throws, stickers, taunts and Ultimates from the online
   `Reactions` (Reactions.tsx); voice notes from `VoiceNotes`.
 - `/missions` page (src/pages/Missions.tsx, src/styles/missions.css), `MissionsTile` on the homepage,
   `MissionLine` under every result, flying chips in `src/components/ChipFlight.tsx`.
-- Step 2 adds game-moment missions to `POOL` with new event kinds (`{ k: 'kick' }` etc.).
+- Step 2: game moments are read from each game's final state (`src/match/moments.ts`: Ludo kicks, Uno
+  draw cards + going out on a Wild, Connect Four diagonal / 7-disc finish of the deciding game,
+  Battleship ships sunk + 5 hits in a row, Pool frames won on the 8, Table Tennis deuce games + wins
+  by 7) and passed through useRivalry / useRivalryMulti into the payout, so they count once with the
+  match, online with friends only. Not built: 'pot 3 in one visit' and 'win a point with a smash'
+  (neither game keeps that in its state).
+- New missions get `from: <week>` (the next week number): the shuffle depends on the pool's size, so
+  adding one without it would swap the week that's already showing.

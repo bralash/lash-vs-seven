@@ -37,6 +37,8 @@ export type MissionEvent =
       group?: boolean
       /** your run of wins against them, this one included */
       streak?: number
+      /** what you did in the match (moments.ts): kicks, draw cards, ships sunk… */
+      moments?: Record<string, number>
     }
   | { k: 'throw' | 'sticker' | 'taunt' | 'ult' | 'voice' }
 
@@ -46,6 +48,11 @@ export interface Mission {
   name: string
   blurb: string
   target: number
+  /**
+   * the first week it's in the rotation: new missions start next week, so adding one never swaps
+   * a week that's already showing (the shuffle depends on the pool's size)
+   */
+  from?: number
   /** what this event adds: a number, or a key (counts distinct keys: different games) */
   take: (e: MissionEvent) => number | string | 0
 }
@@ -57,6 +64,11 @@ const friendWin = (e: MissionEvent) => {
 }
 const opsWin = (e: MissionEvent) => (e.k === 'match' && e.ops && e.out === 'win' ? e : null)
 const on = (k: MissionEvent['k']) => (e: MissionEvent) => (e.k === k ? 1 : 0)
+/** a game moment (moments.ts) from a match with friends in this game: how many times it happened */
+const moment = (game: string, name: string) => (e: MissionEvent) => {
+  const m = friend(e)
+  return m && m.game === game ? (m.moments?.[name] ?? 0) : 0
+}
 
 export const POOL: Mission[] = [
   // easy
@@ -66,6 +78,9 @@ export const POOL: Mission[] = [
   { id: 'taunt3', tier: 1, name: 'Show-off', blurb: 'Taunt your rivals 3 times', target: 3, take: on('taunt') },
   { id: 'voice3', tier: 1, name: 'Say it loud', blurb: 'Send 3 voice notes in matches', target: 3, take: on('voice') },
   { id: 'ops3', tier: 1, name: 'Ops practice', blurb: 'Beat Ops 3 times, any level', target: 3, take: (e) => (opsWin(e) ? 1 : 0) },
+  { id: 'kick5', from: 2963, tier: 1, name: 'Back you go', blurb: 'Kick 5 tokens back to base in Ludo', target: 5, take: moment('ludo', 'kick') },
+  { id: 'draws5', from: 2963, tier: 1, name: 'Pile it on', blurb: 'Play 5 draw cards (+2 or +4) in Uno', target: 5, take: moment('uno', 'draws') },
+  { id: 'sink5', from: 2963, tier: 1, name: 'Depth charge', blurb: 'Sink 5 ships in Battleship', target: 5, take: moment('battleship', 'sunk') },
   // medium
   { id: 'games3', tier: 2, name: 'Mix it up', blurb: 'Play 3 different games with friends', target: 3, take: (e) => friend(e)?.game ?? 0 },
   { id: 'win3', tier: 2, name: 'Winner', blurb: 'Win 3 matches with friends', target: 3, take: (e) => (friendWin(e) ? 1 : 0) },
@@ -73,12 +88,20 @@ export const POOL: Mission[] = [
   { id: 'group2', tier: 2, name: 'Party', blurb: 'Play 2 matches with 3 or 4 players', target: 2, take: (e) => (friend(e)?.group ? 1 : 0) },
   { id: 'play12', tier: 2, name: 'Regular', blurb: 'Play 12 matches with friends', target: 12, take: (e) => (friend(e) ? 1 : 0) },
   { id: 'opshard', tier: 2, name: 'Hard target', blurb: 'Beat Ops on Hard', target: 1, take: (e) => (opsWin(e)?.ops === 'hard' ? 1 : 0) },
+  { id: 'diag', from: 2963, tier: 2, name: 'On the slant', blurb: 'Win Connect Four with a diagonal four', target: 1, take: moment('connect4', 'diagonal') },
+  { id: 'chain', from: 2963, tier: 2, name: 'Chain reaction', blurb: 'Hit 5 shots in a row in Battleship', target: 1, take: moment('battleship', 'chain') },
+  { id: 'eight2', from: 2963, tier: 2, name: 'Called it', blurb: 'Win 2 Pool frames by potting the 8', target: 2, take: moment('pool', 'eight') },
+  { id: 'deuce', from: 2963, tier: 2, name: 'Deuce!', blurb: 'Win a Table Tennis game that goes past 11', target: 1, take: moment('pingpong', 'deuce') },
   // hard
   { id: 'win8', tier: 3, name: 'On fire', blurb: 'Win 8 matches with friends', target: 8, take: (e) => (friendWin(e) ? 1 : 0) },
   { id: 'wins4', tier: 3, name: 'All-rounder', blurb: 'Win at 4 different games', target: 4, take: (e) => friendWin(e)?.game ?? 0 },
   { id: 'streak3', tier: 3, name: 'Hat-trick', blurb: 'Win 3 in a row against the same friend', target: 1, take: (e) => ((friendWin(e)?.streak ?? 0) >= 3 ? 1 : 0) },
   { id: 'opshard3', tier: 3, name: 'Ops slayer', blurb: 'Beat Ops on Hard at 3 different games', target: 3, take: (e) => (e.k === 'match' && opsWin(e)?.ops === 'hard' ? e.game : 0) },
   { id: 'games6', tier: 3, name: 'Explorer', blurb: 'Play 6 different games with friends', target: 6, take: (e) => friend(e)?.game ?? 0 },
+  { id: 'kick15', from: 2963, tier: 3, name: 'Bully', blurb: 'Kick 15 tokens back to base in Ludo', target: 15, take: moment('ludo', 'kick') },
+  { id: 'wildout', from: 2963, tier: 3, name: 'Wild finish', blurb: 'Win Uno going out on a Wild or a +4', target: 1, take: moment('uno', 'wildOut') },
+  { id: 'quick4', from: 2963, tier: 3, name: 'Lightning', blurb: 'Win Connect Four using 7 discs or fewer in the last game', target: 1, take: moment('connect4', 'quick') },
+  { id: 'thrash', from: 2963, tier: 3, name: 'Thrashing', blurb: 'Win a Table Tennis game by 7 points or more', target: 1, take: moment('pingpong', 'thrash') },
 ]
 
 /* ── the week ── */
@@ -109,7 +132,7 @@ function shuffled(n: number, seed: number) {
  */
 export function missionsFor(week: number): Mission[] {
   return ([1, 2, 3] as Tier[]).map((tier) => {
-    const pool = POOL.filter((m) => m.tier === tier)
+    const pool = POOL.filter((m) => m.tier === tier && (m.from ?? 0) <= week)
     return pool[shuffled(pool.length, tier)[week % pool.length]]
   })
 }

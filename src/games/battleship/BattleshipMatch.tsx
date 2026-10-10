@@ -11,6 +11,7 @@ import { ResultMark } from '../../match/ResultMark'
 import { BOT_SEAT } from '../../match/bot'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
+import { shipsMoments } from '../../match/moments'
 import { battleshipFeats } from './feats'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
@@ -512,7 +513,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
   }, [session, me.isHost, imReady, oppReady, st.best, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, battleshipFeats(live))
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, battleshipFeats(live), shipsMoments(live))
 
   // totals across the match, by seat
   const sum = (k: 'shots' | 'hits') => [0, 1].map((s) => played.reduce((n, g) => n + g[k][s], 0))

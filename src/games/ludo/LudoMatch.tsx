@@ -10,6 +10,7 @@ import { ResultActions } from '../../match/ResultActions'
 import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalryMulti } from '../../match/useRivalry'
+import { ludoMoments } from '../../match/moments'
 import type { CardInput, SeatN } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
@@ -365,7 +366,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
   const standing = [...playing].sort((a, b) => (a === winner ? -1 : b === winner ? 1 : homeCount(live, b) - homeCount(live, a) || progress(live, b) - progress(live, a)))
   const gone = seats.flatMap((p, k) => (p && !playing.includes(k) ? [k] : []))
   const scores = seats.map((_, s) => (s === winner ? 1 : 0))
-  const rivalry = useRivalryMulti(GAME, room, me, seats, scores, playing, st.match)
+  const rivalry = useRivalryMulti(GAME, room, me, seats, scores, playing, st.match, ludoMoments(live))
   const home = (k: number) => homeCount(live, k)
   const total = tokenTotal(live, winner === -1 ? standing[0] : winner)
   const scoreLine = standing.map(home).join(' — ')

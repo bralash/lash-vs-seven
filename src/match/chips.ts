@@ -103,6 +103,8 @@ export interface Result {
   ops?: Level
   /** when the match started (server or device time) */
   startedAt?: number
+  /** what I did in it, for the weekly missions (moments.ts) */
+  moments?: Record<string, number>
 }
 
 const today = (t = Date.now()) => {
@@ -188,6 +190,7 @@ export function payOut(r: Result) {
           fullWin: r.outcome === 'win' && lines.some((l) => l.label === 'Win' || !!r.ops),
           group: r.stayed,
           streak: r.streak,
+          moments: r.moments,
         })
       if (res.committed && total) show({ key: r.key, lines, total: Math.min(MAX_PAYOUT, total), fresh: true, at })
       else if (already) show({ key: r.key, lines: [], total: (already as Paid).t, fresh: false, at })

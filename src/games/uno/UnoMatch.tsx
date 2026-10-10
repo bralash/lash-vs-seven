@@ -19,6 +19,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useAwayPlayers } from '../../match/useOpponentAway'
 import { useRivalryMulti } from '../../match/useRivalry'
+import { unoMoments } from '../../match/moments'
 import { ColourPick, UnoBack, UnoCard, UnoHand } from './Cards'
 import { lockCards, newKey, openCard, readCard, relock, strip, verify } from './deal'
 import {
@@ -678,7 +679,7 @@ function Results({ room, me, st, players, exit, checkLine }: { room: Room; me: M
   }, [session, me.isHost, imReady, othersReady, st.match, inRoom])
 
   const scores = players.map((_, s) => (s === winner ? 1 : 0))
-  const rivalry = useRivalryMulti(GAME, room, me, players, scores, seats, st.match)
+  const rivalry = useRivalryMulti(GAME, room, me, players, scores, seats, st.match, unoMoments(g))
   const left = (s: number) => countOf(g, s)
   const standing = [...seats].sort((a, b) => (a === winner ? -1 : b === winner ? 1 : left(a) - left(b)))
   const gone = players.flatMap((p, k) => (p && !seats.includes(k) ? [k] : []))

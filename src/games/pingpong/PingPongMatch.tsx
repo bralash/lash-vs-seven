@@ -20,6 +20,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
+import { pingMoments } from '../../match/moments'
 import {
   BAT_REACH,
   BAT_X,
@@ -741,7 +742,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: PPStat
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'You', seats[1]?.name ?? 'Ops']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, undefined, pingMoments(st.live))
   const scoreLine = `${g[0]} — ${g[1]}`
   const history = st.live.history ?? []
   const card: CardInput = {

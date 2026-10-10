@@ -18,6 +18,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
+import { poolMoments } from '../../match/moments'
 import { BALLS, FRAME_DT, HEAD_Y, OFF, POCKETS, R, guide, simulate, type Ev } from './physics'
 import { Ball, Cue, RAIL, S, TableArt, VH, VW, X, Y } from './Table'
 import { RESULT_MS, canPlace, freshLive, groupName, left, nextFrame, onEight, playShot, type Live } from './rules'
@@ -638,7 +639,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: PoolSt
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, undefined, poolMoments(st.live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const history = st.live.history ?? []
   const card: CardInput = {

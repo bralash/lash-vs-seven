@@ -10,6 +10,7 @@ import { ResultActions } from '../../match/ResultActions'
 import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
+import { c4Moments } from '../../match/moments'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
@@ -195,7 +196,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, undefined, c4Moments(st.live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Connect Four',
