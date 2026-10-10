@@ -8,6 +8,7 @@ import { DROP, Head, INK, heart, star } from './faces/parts'
 import { Opstimus } from './faces/opstimus'
 import { Spidops } from './faces/spidops'
 import { Thanops } from './faces/thanops'
+import { PAINT_FILTERS, WearLayers, paintOf, type Wear } from './faces/wardrobe'
 
 // The faces. Ops, the computer opponent, always wears Screen (OPS_LOOK, reserved for her). The rest
 // are the Crew: the characters players wear on their score cards, picked (and bought) in the Locker
@@ -479,15 +480,32 @@ const BASE: Record<ReactMood, BaseMood> = {
 
 const DRAW: Record<OpsStyle, (p: { mood: OpsMood }) => ReactNode> = { screen: Screen, bot: Bot, cyclops: Cyclops, die: Die, prime: Opstimus, warrior: Kratops, titan: Thanops, spider: Spidops, brute: Hulkops, ghost: Ghops }
 
-/** A face: Ops' own unless `look` says which character. Moods animate in CSS; remount (change `key`) to replay a one-shot mood. */
-export function OpsFace({ look = OPS_LOOK, mood = 'idle', size = 96 }: { look?: OpsStyle; mood?: OpsMood; size?: number }) {
+/**
+ * A face: Ops' own unless `look` says which character, with anything from the wardrobe on (`wear`:
+ * a hat and a neck piece drawn over it, paint as a filter on the face alone). Hats and neck pieces
+ * reach out of the box, so the svg lets them spill over. Moods animate in CSS; remount (change `key`)
+ * to replay a one-shot mood.
+ */
+export function OpsFace({ look = OPS_LOOK, mood = 'idle', size = 96, wear }: { look?: OpsStyle; mood?: OpsMood; size?: number; wear?: Wear }) {
   const Face = DRAW[look]
   const name = look === OPS_LOOK ? 'Ops' : (OPS_STYLES.find((s) => s.id === look)?.name ?? 'Ops')
   if (!OWN_REACTIONS.has(look) && mood in BASE) mood = BASE[mood as ReactMood]
+  const paint = wear ? paintOf(wear) : null
   return (
-    <svg className={`opsf opsf--${look} opsf--${mood}`} viewBox="0 0 100 100" width={size} height={size} role="img" aria-label={`${name}, ${mood}`}>
+    <svg
+      className={`opsf opsf--${look} opsf--${mood}${paint ? ` opsf--paint-${paint}` : ''}${wear?.length ? ' opsf--worn' : ''}`}
+      viewBox="0 0 100 100"
+      width={size}
+      height={size}
+      role="img"
+      aria-label={`${name}, ${mood}`}
+    >
+      {paint && PAINT_FILTERS}
       <g className="opsf__body">
-        <Face mood={mood} />
+        <g className="opsf__paint" filter={paint ? `url(#opsw-${paint})` : undefined}>
+          <Face mood={mood} />
+        </g>
+        {!!wear?.length && <WearLayers look={look} wear={wear} />}
       </g>
     </svg>
   )

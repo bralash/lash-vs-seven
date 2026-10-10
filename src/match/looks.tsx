@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useSyncExternalStore } from 'react'
 import { asCrew, CREW_STYLES, type OpsMood, type OpsStyle } from '../components/OpsFace'
+import { asWear, type Wear } from '../components/faces/wardrobe'
 import type { Room } from '../lobby/rooms'
 
 /**
@@ -43,6 +44,21 @@ export const LooksProvider = LooksContext.Provider
 export const usePlayerLook = (id: string | undefined) => {
   const looks = useContext(LooksContext)
   return id ? looks[id] : undefined
+}
+
+/** What each player's character has on from the wardrobe (only someone who picked a character brings any). */
+export type Wears = Record<string, Wear>
+export function wearsFor(room: Room, fixed: Wears = {}): Wears {
+  const out: Wears = { ...fixed }
+  for (const [id, p] of Object.entries(room.players ?? {})) if (!out[id] && asCrew(p.look) && p.wear) out[id] = asWear(p.wear)
+  return out
+}
+const WearsContext = createContext<Wears>({})
+export const WearsProvider = WearsContext.Provider
+const NONE: Wear = []
+export const usePlayerWear = (id: string | undefined): Wear => {
+  const wears = useContext(WearsContext)
+  return (id && wears[id]) || NONE
 }
 
 /* ── Her mood: how this player is doing against the others on screen ── */

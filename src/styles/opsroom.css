@@ -70,3 +70,16 @@
 .opsroom__buy b { font: 400 20px var(--display); }
 .opsroom__need { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
 .opsroom__buy .error-text { flex-basis: 100%; text-align: center; }
+
+/* ── What you own: a link card to the shop, and the wardrobe by slot ── */
+.opsroom__wallet { color: var(--ink); text-decoration: none; }
+.opsroom__more { align-content: center; border-style: dashed; background: transparent; box-shadow: none; text-decoration: none; }
+.opsroom__more:hover { box-shadow: var(--shadow-sm); }
+.opsroom__more-n { font-family: var(--display); font-size: 40px; line-height: 1; }
+.opsroom__slot { display: grid; gap: 10px; }
+.opsroom__slot-h { margin: 0; text-align: left; font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+.opsroom__items { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 16px 12px; }
+.opsroom__item { padding: 22px 8px 12px; }
+.opsroom__item[aria-pressed="true"] { background: var(--hit); box-shadow: var(--shadow); }
+.opsroom__item-name { font-family: var(--display); font-size: 15px; line-height: 1.05; text-transform: uppercase; }
+.opsroom__item-act { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }

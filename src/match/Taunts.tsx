@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type MouseEvent } from 'react'
 import { OpsFace, type OpsMood, type OpsStyle } from '../components/OpsFace'
+import { asWear, type Wear } from '../components/faces/wardrobe'
 import { Portal } from '../components/Portal'
 import { useSound } from '../lib/sound'
 import { linesFor } from './opsLines'
@@ -32,6 +33,8 @@ interface Visit {
   from: string
   to: string
   look: OpsStyle
+  /** what the character has on */
+  wear: Wear
   name: string
   /** started on this phone */
   mine: boolean
@@ -103,7 +106,7 @@ export function visit(from: string, to: string, n: number, mine = false) {
   if (from === to || visits.some((v) => v.from === from)) return
   const el = faceEl(from)
   if (!el || !faceEl(to)) return
-  const v: Visit = { n, from, to, look: (el.dataset.opsLook ?? 'screen') as OpsStyle, name: el.dataset.opsName ?? 'Someone', mine }
+  const v: Visit = { n, from, to, look: (el.dataset.opsLook ?? 'screen') as OpsStyle, wear: asWear(el.dataset.opsWear), name: el.dataset.opsName ?? 'Someone', mine }
   visits = [...visits, v]
   notify()
   setTimeout(() => arrivals.forEach((f) => f(v)), WALK_MS)
@@ -298,7 +301,7 @@ function Visitor({ v }: { v: Visit }) {
   const face: OpsMood = stage === 'taunt' ? mood : stage === 'walk' ? 'smug' : 'gotcha'
   return (
     <div ref={el} className={`taunt__ops${stage === 'taunt' ? ` taunt__ops--${act}` : ''}`} style={{ '--s': `${geo?.size ?? 40}px` } as CSSProperties}>
-      <OpsFace look={v.look} mood={face} size={geo?.size ?? 40} />
+      <OpsFace look={v.look} mood={face} size={geo?.size ?? 40} wear={v.wear} />
       {stage === 'taunt' && (
         <span className={`taunt__said${geo?.below ? ' taunt__said--below' : ''}`}>
           <b>{v.mine ? 'You' : v.name}</b> {tauntLine(v.look, v.n)}

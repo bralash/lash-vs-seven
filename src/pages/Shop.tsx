@@ -1,19 +1,21 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Chip, ChipStack } from '../components/Chip'
 import { ArrowLeft } from '../components/Icons'
 import { CREW_STYLES, OpsFace, priceOf, setCrewLook, useCrewLook, type OpsStyle } from '../components/OpsFace'
+import { ITEMS, SLOTS, setWorn, useWear, type ItemId } from '../components/faces/wardrobe'
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
-import { buyLook, chipsFor, keepWornLook, ownsLook, useWallet, type ChipValue } from '../match/chips'
+import { buyItem, buyLook, chipsFor, keepWornLook, ownsItem, ownsLook, useWallet, type ChipValue } from '../match/chips'
 import { SHELVES, type ShelfId } from '../match/shop'
 import '../styles/lobby.css'
 import '../styles/shop.css'
 
 /**
  * The shop (/shop): spend chips on looks. Your pile sits at the top; each shelf is a tab. Characters
- * are on sale now: Buy (with a check first), then Wear. Paying sends chips flying from your pile onto
- * the item. The other shelves show what's coming and what it will cost.
+ * and the wardrobe are on sale: Buy (with a check first), and paying sends chips flying from your pile
+ * onto the item, which goes straight on. Then Wear / Put on / Take off. The other shelves show
+ * what's coming and what it will cost. What you own is also in the Locker.
  */
 
 /** the first sentence of a character's blurb */
@@ -34,6 +36,7 @@ export function Shop() {
   const { play } = useSound()
   const wallet = useWallet()
   const look = useCrewLook()
+  const wear = useWear()
   const [shelf, setShelf] = useState<ShelfId>(() => {
     try {
       return (sessionStorage.getItem(SHELF_KEY) as ShelfId | null) ?? 'characters'
@@ -41,16 +44,17 @@ export function Shop() {
       return 'characters'
     }
   })
-  const [confirm, setConfirm] = useState<OpsStyle | null>(null)
-  const [busy, setBusy] = useState<OpsStyle | null>(null)
-  const [error, setError] = useState<{ look: OpsStyle; msg: string } | null>(null)
+  const [confirm, setConfirm] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<{ id: string; msg: string } | null>(null)
   const [flights, setFlights] = useState<Flight[]>([])
-  const [justBought, setJustBought] = useState<OpsStyle | null>(null)
+  const [justBought, setJustBought] = useState<string | null>(null)
   const pileRef = useRef<HTMLSpanElement>(null)
-  const cardRefs = useRef<Partial<Record<OpsStyle, HTMLElement | null>>>({})
+  const cardRefs = useRef<Record<string, HTMLElement | null>>({})
 
-  const owns = (l: OpsStyle) => ownsLook(wallet?.owned, l)
   const current = SHELVES.find((s) => s.id === shelf) ?? SHELVES[0]
+  // the wardrobe is shown on your character (or Bot, if you haven't picked one)
+  const model: OpsStyle = look ?? 'bot'
 
   // anyone already wearing a character when they went on sale keeps it
   useEffect(() => {
@@ -71,11 +75,11 @@ export function Shop() {
   }
 
   /** chips leave the pile and land on the card */
-  const fly = (l: OpsStyle) => {
+  const fly = (id: string, price: number) => {
     const from = pileRef.current?.getBoundingClientRect()
-    const to = cardRefs.current[l]?.getBoundingClientRect()
+    const to = cardRefs.current[id]?.getBoundingClientRect()
     if (!from || !to || matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const vs = chipsFor(priceOf(l), 6)
+    const vs = chipsFor(price, 6)
     const x = from.left + from.width / 2 - 14
     const y = from.top + from.height / 2 - 14
     const stamp = Date.now()
@@ -94,29 +98,144 @@ export function Shop() {
     setTimeout(() => setFlights([]), 700 + vs.length * 70)
   }
 
-  const buy = async (l: OpsStyle) => {
+  /** buy something (a face or an item), then put it on */
+  const buy = async (id: string, price: number, pay: () => Promise<'ok' | 'short' | 'error'>, putOn: () => void) => {
     setConfirm(null)
     setError(null)
-    setBusy(l)
-    const res = await buyLook(l)
+    setBusy(id)
+    const res = await pay()
     setBusy(null)
     if (res === 'ok') {
-      fly(l)
-      setJustBought(l)
+      fly(id, price)
+      setJustBought(id)
       setTimeout(() => setJustBought(null), 1800)
       setTimeout(() => play('findBig'), 650)
-      setCrewLook(l)
+      putOn()
     } else {
       play('error')
-      setError({ look: l, msg: res === 'short' ? 'Not enough chips yet.' : 'Couldn’t buy right now. Check your connection and try again.' })
+      setError({ id, msg: res === 'short' ? 'Not enough chips yet.' : 'Couldn’t buy right now. Check your connection and try again.' })
     }
   }
 
-  const wear = (l: OpsStyle) => {
-    if (l === look) return
-    play('tap')
-    setCrewLook(l)
+  /** the buy area for something you don't own yet: Buy → "Spend n?" → Buy */
+  const buyArea = (id: string, price: number, onBuy: () => void) => {
+    const need = wallet ? price - wallet.chips : 0
+    if (!wallet) return <span className="shop__note">…</span>
+    if (confirm === id)
+      return (
+        <div className="shop__confirm">
+          <span>
+            Spend <b>{price.toLocaleString()}</b>?
+          </span>
+          <button type="button" className="btn btn--primary" onClick={onBuy}>
+            Buy
+          </button>
+          <button type="button" className="shop__cancel" onClick={() => setConfirm(null)}>
+            Not now
+          </button>
+        </div>
+      )
+    if (need > 0) return <span className="shop__note">{need.toLocaleString()} more to go</span>
+    return (
+      <button
+        type="button"
+        className="btn btn--primary"
+        disabled={busy !== null}
+        onClick={() => {
+          play('tap')
+          setError(null)
+          setConfirm(id)
+        }}
+      >
+        {busy === id ? 'Buying…' : 'Buy'}
+      </button>
+    )
   }
+
+  /** one card on a shelf */
+  const card = (id: string, o: { price: number; mine: boolean; on: boolean; onLabel: string; face: ReactNode; name: string; desc: string; act: ReactNode }) => (
+    <li
+      key={id}
+      ref={(el) => {
+        cardRefs.current[id] = el
+      }}
+      className={`shop__item${o.on ? ' shop__item--wearing' : ''}${!o.mine ? ' shop__item--locked' : ''}${justBought === id ? ' shop__item--new' : ''}`}
+    >
+      {o.on && <span className="stamp stamp--live shop__stamp">{o.onLabel}</span>}
+      {!o.mine && (
+        <span className="shop__price">
+          <Chip v={25} size={16} /> {o.price.toLocaleString()}
+        </span>
+      )}
+      {o.mine && !o.on && <span className="shop__owned">{o.price ? 'Owned' : 'Free'}</span>}
+      {o.face}
+      <span className="shop__name">{o.name}</span>
+      <span className="shop__desc">{o.desc}</span>
+      <div className="shop__act">{o.act}</div>
+      {error?.id === id && <span className="error-text shop__error">{error.msg}</span>}
+    </li>
+  )
+
+  const characters = (
+    <ul className="shop__grid shop__grid--looks">
+      {CREW_STYLES.map((s) => {
+        const price = priceOf(s.id)
+        const wearing = s.id === look
+        const mine = ownsLook(wallet?.owned, s.id) || wearing
+        return card(s.id, {
+          price,
+          mine,
+          on: wearing,
+          onLabel: 'Wearing',
+          face: <OpsFace look={s.id} mood={justBought === s.id ? 'win' : 'idle'} size={84} wear={wearing ? wear : undefined} />,
+          name: s.name,
+          desc: short(s.blurb),
+          act: wearing ? (
+            <span className="shop__note">On your score card</span>
+          ) : mine ? (
+            <button type="button" className="btn" onClick={() => (play('tap'), setCrewLook(s.id))}>
+              Wear
+            </button>
+          ) : (
+            buyArea(s.id, price, () => buy(s.id, price, () => buyLook(s.id), () => setCrewLook(s.id)))
+          ),
+        })
+      })}
+    </ul>
+  )
+
+  const wardrobe = SLOTS.map((slot) => (
+    <div key={slot.id} className="shop__slot">
+      <h3 className="shop__slot-h">{slot.name}</h3>
+      <ul className="shop__grid">
+        {ITEMS.filter((it) => it.slot === slot.id).map((it) => {
+          const on = wear.includes(it.id)
+          const mine = ownsItem(wallet?.owned, it.id) || on
+          const toggle = (id: ItemId, v: boolean) => (play('tap'), setWorn(id, v))
+          return card(it.id, {
+            price: it.price,
+            mine,
+            on,
+            onLabel: 'On',
+            face: <OpsFace look={model} mood={justBought === it.id ? 'win' : 'idle'} size={72} wear={[it.id]} />,
+            name: it.name,
+            desc: it.blurb,
+            act: on ? (
+              <button type="button" className="btn" onClick={() => toggle(it.id, false)}>
+                Take off
+              </button>
+            ) : mine ? (
+              <button type="button" className="btn" onClick={() => toggle(it.id, true)}>
+                Put on
+              </button>
+            ) : (
+              buyArea(it.id, it.price, () => buy(it.id, it.price, () => buyItem(it.id), () => setWorn(it.id, true)))
+            ),
+          })
+        })}
+      </ul>
+    </div>
+  ))
 
   return (
     <div className="page screen-in">
@@ -148,7 +267,15 @@ export function Shop() {
 
         <nav className="shop__tabs" role="tablist" aria-label="Shelves">
           {SHELVES.map((s) => (
-            <button key={s.id} type="button" role="tab" aria-selected={s.id === shelf} aria-label={s.soon ? `${s.name} (coming soon)` : undefined} className={`shop__tab${s.soon ? ' shop__tab--soon' : ''}`} onClick={() => pickShelf(s.id)}>
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={s.id === shelf}
+              aria-label={s.soon ? `${s.name} (coming soon)` : undefined}
+              className={`shop__tab${s.soon ? ' shop__tab--soon' : ''}`}
+              onClick={() => pickShelf(s.id)}
+            >
               {s.name}
             </button>
           ))}
@@ -158,74 +285,9 @@ export function Shop() {
           <p className="shop__blurb">{current.blurb}</p>
 
           {current.id === 'characters' ? (
-            <ul className="shop__grid">
-              {CREW_STYLES.map((s) => {
-                const price = priceOf(s.id)
-                const mine = owns(s.id) || s.id === look
-                const wearing = s.id === look
-                const asking = confirm === s.id
-                const need = wallet ? price - wallet.chips : 0
-                return (
-                  <li
-                    key={s.id}
-                    ref={(el) => {
-                      cardRefs.current[s.id] = el
-                    }}
-                    className={`shop__item${wearing ? ' shop__item--wearing' : ''}${!mine ? ' shop__item--locked' : ''}${justBought === s.id ? ' shop__item--new' : ''}`}
-                  >
-                    {wearing && <span className="stamp stamp--live shop__stamp">Wearing</span>}
-                    {!mine && (
-                      <span className="shop__price">
-                        <Chip v={25} size={16} /> {price.toLocaleString()}
-                      </span>
-                    )}
-                    {mine && !wearing && <span className="shop__owned">{price ? 'Owned' : 'Free'}</span>}
-                    <OpsFace look={s.id} mood={justBought === s.id ? 'win' : 'idle'} size={84} />
-                    <span className="shop__name">{s.name}</span>
-                    <span className="shop__desc">{short(s.blurb)}</span>
-                    <div className="shop__act">
-                      {wearing ? (
-                        <span className="shop__note">On your score card</span>
-                      ) : mine ? (
-                        <button type="button" className="btn" onClick={() => wear(s.id)}>
-                          Wear
-                        </button>
-                      ) : !wallet ? (
-                        <span className="shop__note">…</span>
-                      ) : asking ? (
-                        <div className="shop__confirm">
-                          <span>
-                            Spend <b>{price.toLocaleString()}</b>?
-                          </span>
-                          <button type="button" className="btn btn--primary" onClick={() => buy(s.id)}>
-                            Buy
-                          </button>
-                          <button type="button" className="shop__cancel" onClick={() => setConfirm(null)}>
-                            Not now
-                          </button>
-                        </div>
-                      ) : need > 0 ? (
-                        <span className="shop__note">{need.toLocaleString()} more to go</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn btn--primary"
-                          disabled={busy !== null}
-                          onClick={() => {
-                            play('tap')
-                            setError(null)
-                            setConfirm(s.id)
-                          }}
-                        >
-                          {busy === s.id ? 'Buying…' : 'Buy'}
-                        </button>
-                      )}
-                    </div>
-                    {error?.look === s.id && <span className="error-text shop__error">{error.msg}</span>}
-                  </li>
-                )
-              })}
-            </ul>
+            characters
+          ) : current.id === 'wardrobe' ? (
+            wardrobe
           ) : (
             <ul className="shop__grid">
               {(current.soon ?? []).map((it) => (
@@ -241,9 +303,10 @@ export function Shop() {
             </ul>
           )}
 
-          {current.id === 'characters' ? (
+          {current.id === 'characters' || current.id === 'wardrobe' ? (
             <p className="hint shop__foot">
-              See every face in the <Link to="/locker">Locker</Link> · win matches for chips
+              {current.id === 'wardrobe' && !look ? 'Pick a character in the Locker to wear these in games · ' : ''}
+              Everything you own is in your <Link to="/locker">Locker</Link> · win matches for chips
             </p>
           ) : (
             <p className="hint shop__foot">Coming to the shop · prices may change before it opens</p>

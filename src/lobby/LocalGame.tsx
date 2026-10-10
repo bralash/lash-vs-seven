@@ -5,7 +5,8 @@ import { KEYS, load, save } from '../lib/storage'
 import { BOT_NAME, LEVELS, type Brain, type Level, type OpsSense } from '../match/bot'
 import { PokeOps } from '../components/PokeOps'
 import { LocalSessionProvider, type Session } from '../match/session'
-import { LooksProvider, looksFor } from '../match/looks'
+import { useWear } from '../components/faces/wardrobe'
+import { LooksProvider, WearsProvider, looksFor, wearsFor } from '../match/looks'
 import { UltEarn } from '../match/Ultimates'
 import { OPS_LOOK, useCrewLook } from '../components/OpsFace'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
@@ -172,6 +173,7 @@ export function LocalGame({
 }) {
   const level = brain ? match.bot : undefined
   const crewLook = useCrewLook()
+  const wear = useWear()
   const [state, setState] = useState(match.state)
   const [startedAt] = useState(() => match.startedAt ?? Date.now())
 
@@ -228,11 +230,15 @@ export function LocalGame({
 
   // against Ops: you wear your character (if you picked one) and she wears her own face; in pass & play every face is drawn for the match
   const looks = looksFor(room, level ? { p1: OPS_LOOK, ...(crewLook ? { p0: crewLook } : {}) } : {})
+  // against Ops you bring what your character has on too
+  const wears = wearsFor(room, level && crewLook ? { p0: wear } : {})
 
   return (
     <LocalSessionProvider value={session}>
       <UltEarn room={room} sense={sense} />
-      <LooksProvider value={looks}>{renderGame(room, me, exit)}</LooksProvider>
+      <LooksProvider value={looks}>
+        <WearsProvider value={wears}>{renderGame(room, me, exit)}</WearsProvider>
+      </LooksProvider>
     </LocalSessionProvider>
   )
 }

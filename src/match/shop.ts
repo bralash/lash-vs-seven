@@ -1,7 +1,8 @@
 /*
  * The shop's catalogue (store plan, promo/store-plan.html). Chips only buy looks: nothing here helps
- * anyone win. Characters are on sale now (their prices live with the faces, in OpsFace.tsx); every
- * other shelf is listed with its planned prices and marked Soon until it's built.
+ * anyone win. Characters and the wardrobe are on sale (their prices live with the faces, OpsFace.tsx,
+ * and the items, faces/wardrobe.tsx); every other shelf is listed with its planned prices and marked
+ * Soon until it's built.
  */
 
 export type ShelfId = 'characters' | 'wardrobe' | 'throws' | 'stickers' | 'wins' | 'flair' | 'skins'
@@ -23,22 +24,7 @@ export interface Shelf {
 
 export const SHELVES: Shelf[] = [
   { id: 'characters', name: 'Characters', blurb: 'The face you wear on your score card, with their own throw, taunt and ultimate. The four robots are free.' },
-  {
-    id: 'wardrobe',
-    name: 'Wardrobe',
-    blurb: 'Hats, outfits and paint for your character.',
-    soon: [
-      { name: 'Kente scarf', price: 400 },
-      { name: 'Black Stars jersey', price: 500 },
-      { name: 'Crown', price: 600 },
-      { name: 'Snapback', price: 200 },
-      { name: 'Kufi', price: 200 },
-      { name: 'Party hat', price: 100 },
-      { name: 'Tux', price: 500 },
-      { name: 'Fugu smock', price: 400 },
-      { name: 'Gold paint', price: 800 },
-    ],
-  },
+  { id: 'wardrobe', name: 'Wardrobe', blurb: 'Hats, something round the neck, and paint for your character. One of each at a time; everyone gets the party hat.' },
   {
     id: 'throws',
     name: 'Throwables',

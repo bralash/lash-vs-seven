@@ -152,3 +152,6 @@
 .opsf-shades { animation: opsf-plate .25s ease-out both; }
 .opsf--brute.opsf--angry .opsf-mop, .opsf--brute.opsf--salty .opsf-mop { animation: opsf-bristle .12s steps(2) infinite; }
 @keyframes opsf-bristle { 50% { translate: 0 -1.5px; } }
+
+/* ── The wardrobe (faces/wardrobe.tsx): hats and neck pieces reach past the box; paint tints the face only ── */
+.opsf--worn { overflow: visible; }

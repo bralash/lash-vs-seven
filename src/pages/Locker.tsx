@@ -1,18 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Chip } from '../components/Chip'
 import { ArrowLeft } from '../components/Icons'
-import { CREW_STYLES, OpsFace, hasOwnReactions, priceOf, setCrewLook, useCrewLook, type BaseMood, type OpsStyle } from '../components/OpsFace'
+import { CREW_STYLES, OpsFace, hasOwnReactions, setCrewLook, useCrewLook, type BaseMood, type OpsStyle } from '../components/OpsFace'
+import { ITEMS, SLOTS, setWorn, useWear, type ItemId } from '../components/faces/wardrobe'
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
-import { buyLook, keepWornLook, ownsLook, useWallet } from '../match/chips'
+import { keepWornLook, ownsItem, ownsLook, useWallet } from '../match/chips'
 import '../styles/lobby.css'
 import '../styles/opsroom.css'
 
 /**
- * The Locker (/locker): pick your Crew character, the face you wear on your score card in every
- * game on this device. The robots are free; the characters cost chips: tap one to see it, then buy
- * it here. Screen isn't here: it's Ops' own face. The wardrobe (outfits, hats, colours) is a teaser for now.
+ * The Locker (/locker): what you own, and what you put on. Your Crew character (the face on your score
+ * card in every game on this device) and what it wears from the wardrobe. Only things you own are
+ * here: the robots and the party hat are everyone's, the rest comes from the shop (/shop). Screen
+ * isn't here: it's Ops' own face.
  */
 
 const MOODS: { id: BaseMood; label: string }[] = [
@@ -23,44 +25,26 @@ const MOODS: { id: BaseMood; label: string }[] = [
   { id: 'draw', label: 'Draw' },
 ]
 
-const SOON = [
-  { title: 'Outfits', body: 'Kente, a tux, a football kit…' },
-  { title: 'Hats & specs', body: 'Crowns, caps, shades.' },
-  { title: 'Colours', body: 'Paint the head and screen.' },
-]
-
 export function Locker() {
   const look = useCrewLook()
+  const wear = useWear()
   const { play } = useSound()
   const wallet = useWallet()
-  // the face being looked at: the one worn, or a locked one tapped to see before buying
-  const [seen, setSeen] = useState<OpsStyle>(look ?? CREW_STYLES[0].id)
-  const [buying, setBuying] = useState<'busy' | 'short' | 'error' | null>(null)
-  const current = CREW_STYLES.find((s) => s.id === seen) ?? CREW_STYLES[0]
-  const { them } = current.pronouns
-  // until the wallet loads, only the free faces count as yours
-  const owns = (l: OpsStyle) => ownsLook(wallet?.owned, l)
-  // the face you're wearing is yours (it was picked before faces went on sale)
-  const locked = !owns(seen) && seen !== look
+  // until the wallet loads, only the free things count as yours (and whatever you have on)
+  const mineLook = (l: OpsStyle) => ownsLook(wallet?.owned, l) || l === look
+  const mineItem = (id: ItemId) => ownsItem(wallet?.owned, id) || wear.includes(id)
+  const looks = CREW_STYLES.filter((s) => mineLook(s.id))
+  const items = ITEMS.filter((it) => mineItem(it.id))
+  const shown = look ?? looks[0]?.id ?? CREW_STYLES[0].id
+  const current = CREW_STYLES.find((s) => s.id === shown) ?? CREW_STYLES[0]
+  const moreLooks = CREW_STYLES.length - looks.length
+  const moreItems = ITEMS.length - items.length
 
   // anyone already wearing a character when they went on sale keeps it
   useEffect(() => {
     if (wallet && look && !ownsLook(wallet.owned, look)) keepWornLook()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!wallet])
-
-  const buy = async () => {
-    setBuying('busy')
-    const res = await buyLook(seen)
-    if (res === 'ok') {
-      play('findBig')
-      setCrewLook(seen)
-      setBuying(null)
-    } else {
-      play('error')
-      setBuying(res)
-    }
-  }
 
   return (
     <div className="page screen-in">
@@ -78,93 +62,104 @@ export function Locker() {
       <main className="lobby__main lobby__main--wide opsroom">
         <div className="lobby__hero">
           <div className="opsroom__star">
-            <OpsFace key={seen} look={seen} mood="hello" size={132} />
+            <OpsFace key={`${shown}:${wear.join()}`} look={shown} mood="hello" size={132} wear={look ? wear : undefined} />
           </div>
-          <p className="label">The Crew</p>
-          <h1 className="lobby__title">Pick your character</h1>
-          <p className="hint">{look ? 'You wear them on your score card in every game on this device' : 'Nothing picked yet: each match hands you one. Pick one to wear it in every game'} · Ops always plays as herself</p>
+          <p className="label">Your locker</p>
+          <h1 className="lobby__title">{look ? current.name : 'Pick your character'}</h1>
+          <p className="hint">{look ? 'On your score card in every game on this device' : 'Nothing picked yet: each match hands you one. Pick one to wear it, and what it has on, in every game'} · Ops always plays as herself</p>
           {wallet && (
-            <p className="opsroom__wallet">
-              <Chip v={25} size={22} /> {wallet.chips.toLocaleString()} chips
-            </p>
+            <Link to="/shop" className="opsroom__wallet" onClick={() => play('tap')}>
+              <Chip v={25} size={22} /> {wallet.chips.toLocaleString()} chips · Shop
+            </Link>
           )}
         </div>
 
         <section className="opsroom__section" aria-labelledby="looks-title">
           <h2 id="looks-title" className="opsroom__h">Characters</h2>
           <div className="opsroom__looks" role="radiogroup" aria-labelledby="looks-title">
-            {CREW_STYLES.map((s) => (
+            {looks.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 role="radio"
-                aria-checked={s.id === seen}
-                className={`opsroom__look${!owns(s.id) && s.id !== look ? ' opsroom__look--locked' : ''}`}
+                aria-checked={s.id === look}
+                className="opsroom__look"
                 onClick={() => {
-                  if (s.id !== seen) play('tap')
-                  setSeen(s.id)
-                  setBuying(null)
-                  // free or owned: wear it; locked: just look
-                  if (owns(s.id)) setCrewLook(s.id)
+                  if (s.id === look) return
+                  play('tap')
+                  setCrewLook(s.id)
                 }}
               >
                 {s.id === look && <span className="stamp stamp--live opsroom__picked">Wearing</span>}
-                {!owns(s.id) && s.id !== look && (
-                  <span className="opsroom__price">
-                    <Chip v={25} size={16} /> {priceOf(s.id)}
-                  </span>
-                )}
-                <OpsFace look={s.id} size={84} />
+                <OpsFace look={s.id} size={84} wear={s.id === look ? wear : undefined} />
                 <span className="opsroom__name">{s.name}</span>
                 <span className="opsroom__blurb">{s.blurb}</span>
               </button>
             ))}
+            {moreLooks > 0 && (
+              <Link to="/shop" className="opsroom__look opsroom__more" onClick={() => play('tap')}>
+                <span className="opsroom__more-n">+{moreLooks}</span>
+                <span className="opsroom__name">More in the shop</span>
+                <span className="opsroom__blurb">Characters cost chips. Win matches to earn them.</span>
+              </Link>
+            )}
           </div>
-        </section>
-
-        <section className="opsroom__section" aria-labelledby="moods-title">
-          <h2 id="moods-title" className="opsroom__h">{current.name} in a game</h2>
-          {locked && wallet && (
-            <div className="opsroom__buy" aria-live="polite">
-              <span>
-                <Chip v={25} size={20} /> <b>{priceOf(seen)}</b> chips · you have {wallet.chips.toLocaleString()}
-              </span>
-              {wallet.chips >= priceOf(seen) ? (
-                <button type="button" className="btn btn--primary" onClick={buy} disabled={buying === 'busy'}>
-                  {buying === 'busy' ? 'Buying…' : `Buy ${current.name}`}
-                </button>
-              ) : (
-                <span className="opsroom__need">{(priceOf(seen) - wallet.chips).toLocaleString()} more to go · win matches for chips</span>
-              )}
-              {buying === 'error' && <span className="error-text">Couldn’t buy right now. Check your connection and try again.</span>}
-              {buying === 'short' && <span className="error-text">Not enough chips yet.</span>}
-            </div>
-          )}
-          <ul className="opsroom__moods">
-            {MOODS.map((m) => (
-              <li key={`${seen}-${m.id}`}>
-                <OpsFace look={seen} mood={m.id} size={60} />
-                <span>{m.label}</span>
-              </li>
-            ))}
-          </ul>
-          {!hasOwnReactions(seen) && (
-            <p className="hint opsroom__note">{CREW_STYLES.filter((s) => hasOwnReactions(s.id)).map((s) => s.name).join(', ').replace(/, ([^,]*)$/, ' and $1')} have all 18 reaction faces. {current.name} shows the nearest of these five for now.</p>
-          )}
         </section>
 
         <section className="opsroom__section" aria-labelledby="wardrobe-title">
           <h2 id="wardrobe-title" className="opsroom__h">Wardrobe</h2>
-          <ul className="opsroom__soon">
-            {SOON.map((w) => (
-              <li key={w.title} className="opsroom__soon-card">
-                <span className="stamp">Soon</span>
-                <span className="opsroom__name">{w.title}</span>
-                <span className="opsroom__blurb">{w.body}</span>
+          {!look && <p className="hint opsroom__note">Pick a character above to wear these in games.</p>}
+          {SLOTS.map((slot) => {
+            const mine = items.filter((it) => it.slot === slot.id)
+            if (!mine.length) return null
+            return (
+              <div key={slot.id} className="opsroom__slot">
+                <h3 className="opsroom__slot-h">{slot.name}</h3>
+                <div className="opsroom__items" role="group" aria-label={slot.name}>
+                  {mine.map((it) => {
+                    const on = wear.includes(it.id)
+                    return (
+                      <button
+                        key={it.id}
+                        type="button"
+                        aria-pressed={on}
+                        className="opsroom__look opsroom__item"
+                        onClick={() => {
+                          play('tap')
+                          setWorn(it.id, !on)
+                        }}
+                      >
+                        {on && <span className="stamp stamp--live opsroom__picked">On</span>}
+                        <OpsFace look={shown} size={60} wear={[it.id]} />
+                        <span className="opsroom__item-name">{it.name}</span>
+                        <span className="opsroom__item-act">{on ? 'Take off' : 'Put on'}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+          {moreItems > 0 && (
+            <p className="hint opsroom__note">
+              {moreItems} more in the <Link to="/shop">shop</Link>: hats, scarves, jerseys, gold paint.
+            </p>
+          )}
+        </section>
+
+        <section className="opsroom__section" aria-labelledby="moods-title">
+          <h2 id="moods-title" className="opsroom__h">{current.name} in a game</h2>
+          <ul className="opsroom__moods">
+            {MOODS.map((m) => (
+              <li key={`${shown}-${m.id}`}>
+                <OpsFace look={shown} mood={m.id} size={60} wear={look ? wear : undefined} />
+                <span>{m.label}</span>
               </li>
             ))}
           </ul>
-          <p className="hint">Dressing {them} up is coming soon</p>
+          {!hasOwnReactions(shown) && (
+            <p className="hint opsroom__note">{CREW_STYLES.filter((s) => hasOwnReactions(s.id)).map((s) => s.name).join(', ').replace(/, ([^,]*)$/, ' and $1')} have all 18 reaction faces. {current.name} shows the nearest of these five for now.</p>
+          )}
         </section>
       </main>
     </div>

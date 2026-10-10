@@ -98,6 +98,9 @@
               "look": {
                 ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost)$/)"
               },
+              "wear": {
+                ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[a-z]+(,[a-z]+){0,2}$/)"
+              },
               "$other": {
                 ".validate": false
               }
@@ -208,6 +211,9 @@
               "look": {
                 ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost)$/)"
               },
+              "wear": {
+                ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[a-z]+(,[a-z]+){0,2}$/)"
+              },
               "$other": {
                 ".validate": false
               }
@@ -244,7 +250,7 @@
         },
         "owned": {
           "$look": {
-            ".validate": "newData.val() === true && $look.matches(/^(prime|warrior|titan|spider|brute|ghost)$/)"
+            ".validate": "newData.val() === true && $look.matches(/^(prime|warrior|titan|spider|brute|ghost|snapback|kufi|crown|kente|jersey|tux|fugu|gold)$/)"
           }
         },
         "paid": {

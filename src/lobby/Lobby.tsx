@@ -39,7 +39,7 @@ import { SelfOffline } from '../match/SelfOffline'
 import { BOT_NAME, type Brain, type OpsSense } from '../match/bot'
 import { OpsFace } from '../components/OpsFace'
 import { StakePanel } from './StakePanel'
-import { LooksProvider, looksFor } from '../match/looks'
+import { LooksProvider, WearsProvider, looksFor, wearsFor } from '../match/looks'
 import { LocalSessionProvider, WATCH_SESSION } from '../match/session'
 import { Spectators } from '../match/Spectators'
 import { TauntLayer } from '../match/Taunts'
@@ -948,7 +948,9 @@ function WaitingRoom({
       <>
         <UltEarn room={room} sense={sense} />
         <LooksProvider value={looksFor(room)}>
-          {renderGame(room, { id: pid, seat: (me.seat < 2 ? me.seat : 0) as 0 | 1, seatN: me.seat, isHost }, { request: onRequestLeave, now: leave })}
+          <WearsProvider value={wearsFor(room)}>
+            {renderGame(room, { id: pid, seat: (me.seat < 2 ? me.seat : 0) as 0 | 1, seatN: me.seat, isHost }, { request: onRequestLeave, now: leave })}
+          </WearsProvider>
         </LooksProvider>
         {room.status === 'playing' && <SelfOffline />}
         {game.watch && <Spectators game={game.slug} code={code} pid={pid} watchers={room.watchers} />}
@@ -1154,7 +1156,9 @@ function WatchRoom({
     <>
       <UltEarn room={room} sense={sense} />
       <LocalSessionProvider value={WATCH_SESSION}>
-        <LooksProvider value={looksFor(room)}>{renderGame(room, me, { request: onExit, now: onExit })}</LooksProvider>
+        <LooksProvider value={looksFor(room)}>
+          <WearsProvider value={wearsFor(room)}>{renderGame(room, me, { request: onExit, now: onExit })}</WearsProvider>
+        </LooksProvider>
       </LocalSessionProvider>
       {spectators}
     </>

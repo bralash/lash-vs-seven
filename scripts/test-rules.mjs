@@ -81,6 +81,12 @@ try {
     call(stranger, 'PUT', `${ROOM}/players/${stranger.uid}`, { name: 'Sneak', seat: 1, online: true }))
   await expect('guest renames the host', false, call(guest, 'PATCH', `${ROOM}/players/${H}`, { name: 'LOL' }))
   await expect('guest uses a 40-character name', false, call(guest, 'PATCH', `${ROOM}/players/${G}`, { name: 'x'.repeat(40) }))
+  await expect('guest wears a crown and a kente scarf', true, call(guest, 'PATCH', `${ROOM}/players/${G}`, { look: 'warrior', wear: 'crown,kente' }))
+  await expect('guest wears four things', false, call(guest, 'PATCH', `${ROOM}/players/${G}`, { wear: 'crown,kente,gold,tux' }))
+  await expect('guest wears something odd', false, call(guest, 'PATCH', `${ROOM}/players/${G}`, { wear: '<script>' }))
+  await expect('guest owns a crown in their wallet', true, call(guest, 'PUT', `wallets/${G}`, { chips: 0, owned: { crown: true, warrior: true } }))
+  await expect('guest owns something that isn’t sold', false, call(guest, 'PUT', `wallets/${G}`, { chips: 0, owned: { cheat: true } }))
+  await expect('host gives the guest a crown', false, call(host, 'PUT', `wallets/${G}/owned/crown`, true))
   await expect('stranger deletes a waiting room', false, call(stranger, 'DELETE', ROOM))
   await expect('guest closes the host\'s waiting room', false, call(guest, 'DELETE', ROOM))
 
@@ -226,6 +232,7 @@ try {
   await call(host, 'DELETE', ROOM).catch(() => {})
   await call(host, 'DELETE', `matches/${GAME}/QZQY`).catch(() => {})
   await call(host, 'DELETE', MROOM).catch(() => {})
+  await call(guest, 'DELETE', `wallets/${G}`).catch(() => {})
   await Promise.all([host, guest, stranger, third].map(dropUser))
 }
 

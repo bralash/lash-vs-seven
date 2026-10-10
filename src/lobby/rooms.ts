@@ -13,6 +13,7 @@ import { db, playerId } from '../lib/firebase'
 import { load, save } from '../lib/storage'
 import type { Stake } from '../match/stakes'
 import { pickedCrewLook, type OpsStyle } from '../components/OpsFace'
+import { myWear, wearString } from '../components/faces/wardrobe'
 
 // Rooms live at matches/{game}/{code}. Each game gets its own namespace, so codes only
 // have to be unique per game. (The old site still uses rooms/, wh-rooms/ etc. — left untouched.)
@@ -37,6 +38,8 @@ export interface Player {
   joinedAt: number
   /** the Crew character they picked in the Locker, shown on their score card (missing: they never picked) */
   look?: OpsStyle
+  /** what that character has on from the wardrobe, as item ids ("crown,kente") */
+  wear?: string
 }
 
 export interface Room {
@@ -79,6 +82,7 @@ export interface Watcher {
   name: string
   at: number
   look?: OpsStyle
+  wear?: string
 }
 
 /** How many can watch one room at once. */
@@ -101,10 +105,11 @@ export const CODE_LENGTH = 4
 /** Rooms older than this get cleaned up by the browser that created them. */
 const STALE_MS = 24 * 60 * 60 * 1000
 
-/** my Crew character for my room entry, if I picked one */
-const myLook = (): { look?: OpsStyle } => {
+/** my Crew character for my room entry, if I picked one, and what it has on */
+const myLook = (): { look?: OpsStyle; wear?: string } => {
   const look = pickedCrewLook()
-  return look ? { look } : {}
+  const wear = wearString(myWear())
+  return look ? { look, ...(wear ? { wear } : {}) } : {}
 }
 
 /**
@@ -112,13 +117,19 @@ const myLook = (): { look?: OpsStyle } => {
  * deployed rules (Hulkops before his rules went out) then just means a random face, never a room you
  * can't make or join.
  */
-async function withMyLook(write: (look: { look?: OpsStyle | null }) => Promise<unknown>) {
+async function withMyLook(write: (look: { look?: OpsStyle | null; wear?: string | null }) => Promise<unknown>) {
   const look = myLook()
   try {
     await write(look)
   } catch (err) {
     if (!look.look) throw err
-    await write({ look: null })
+    // rules from before the wardrobe: keep the face, drop what it wears; then drop the face too
+    try {
+      if (!look.wear) throw err
+      await write({ look: look.look, wear: null })
+    } catch {
+      await write({ look: null, wear: null })
+    }
   }
 }
 
@@ -230,7 +241,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
 
     // already seated (refresh, or coming back after a drop): just mark ourselves present again
     if (room.players?.[pid]) {
-      await withMyLook((look) => update(at(game, code, `players/${pid}`), { name, online: true, look: look.look ?? null }))
+      await withMyLook((look) => update(at(game, code, `players/${pid}`), { name, online: true, look: look.look ?? null, wear: look.wear ?? null }))
       return { ok: true }
     }
     if (room.status !== 'waiting') return { ok: false, error: 'started', room }

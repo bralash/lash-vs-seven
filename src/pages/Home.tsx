@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../components/Logo'
 import { OpsFace, useCrewLook } from '../components/OpsFace'
+import { useWear } from '../components/faces/wardrobe'
 import { TopBar } from '../components/TopBar'
 import { CATEGORY_LABEL, GAMES, type Category, type GameMeta } from '../games/registry'
 import { useSound } from '../lib/sound'
@@ -27,6 +28,7 @@ export function Home() {
   const [filter, setFilter] = useState<Filter>('all')
   const { play } = useSound()
   const crewLook = useCrewLook()
+  const wear = useWear()
 
   const counts = useMemo(() => {
     const c: Record<Filter, number> = { all: GAMES.length, word: 0, board: 0, card: 0, puzzle: 0, sport: 0 }
@@ -43,7 +45,7 @@ export function Home() {
           left={<Logo />}
           right={
             <Link to="/locker" className="icon-btn icon-btn--ops" aria-label="Locker: pick your character" onClick={() => play('tap')}>
-              <OpsFace look={crewLook ?? 'bot'} mood="hello" size={30} />
+              <OpsFace look={crewLook ?? 'bot'} mood="hello" size={30} wear={crewLook ? wear : undefined} />
             </Link>
           }
         />

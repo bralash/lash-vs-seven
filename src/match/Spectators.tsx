@@ -1,6 +1,7 @@
 import { onValue, ref } from 'firebase/database'
 import { useEffect, useRef, useState } from 'react'
 import { OpsFace, asLook } from '../components/OpsFace'
+import { asWear } from '../components/faces/wardrobe'
 import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
 import { useSound } from '../lib/sound'
@@ -88,7 +89,7 @@ export function Spectators({ game, code, pid, watchers }: { game: string; code: 
               <ul>
                 {list.map(([id, w]) => (
                   <li key={id}>
-                    <OpsFace size={28} look={asLook(w.look) ?? 'screen'} />
+                    <OpsFace size={28} look={asLook(w.look) ?? 'screen'} wear={asWear(w.wear)} />
                     <span>{w.name}</span>
                     {id === pid && <span className="seat__you">You</span>}
                   </li>

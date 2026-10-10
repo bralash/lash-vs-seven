@@ -2,6 +2,7 @@ import { get, onValue, ref, runTransaction } from 'firebase/database'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { db, signIn } from '../lib/firebase'
 import { pickedCrewLook, priceOf, type OpsStyle } from '../components/OpsFace'
+import { itemOf, type ItemId } from '../components/faces/wardrobe'
 import type { Level } from './bot'
 
 /*
@@ -63,9 +64,12 @@ interface Paid {
 interface Wallet {
   chips: number
   paid?: Record<string, Paid>
-  /** the faces bought (or kept: whoever already wore one when they went on sale) */
-  owned?: Partial<Record<OpsStyle, true>>
+  /** what's been bought, by id: faces (or kept: whoever already wore one when they went on sale) and wardrobe items */
+  owned?: Owned
 }
+
+/** what a player owns, by face or item id */
+export type Owned = Partial<Record<string, true>>
 
 export interface PayLine {
   label: string
@@ -202,9 +206,9 @@ export function useChips(): number | null {
   return chips
 }
 
-/** My wallet, live: the balance and the faces I own (null until it's known). */
-export function useWallet(): { chips: number; owned: Partial<Record<OpsStyle, true>> } | null {
-  const [w, setW] = useState<{ chips: number; owned: Partial<Record<OpsStyle, true>> } | null>(null)
+/** My wallet, live: the balance and what I own (null until it's known). */
+export function useWallet(): { chips: number; owned: Owned } | null {
+  const [w, setW] = useState<{ chips: number; owned: Owned } | null>(null)
   useEffect(() => {
     let stop: (() => void) | undefined
     let alive = true
@@ -230,11 +234,16 @@ export function useWallet(): { chips: number; owned: Partial<Record<OpsStyle, tr
 }
 
 /** Free, or mine. */
-export const ownsLook = (owned: Partial<Record<OpsStyle, true>> | undefined, look: OpsStyle) => !priceOf(look) || !!owned?.[look]
+export const ownsLook = (owned: Owned | undefined, look: OpsStyle) => !priceOf(look) || !!owned?.[look]
+/** A wardrobe item: free (the starter hat), or mine. */
+export const ownsItem = (owned: Owned | undefined, id: ItemId) => !itemOf(id)?.price || !!owned?.[id]
 
 /** Buys a face with chips. 'short': not enough chips. */
-export async function buyLook(look: OpsStyle): Promise<'ok' | 'short' | 'error'> {
-  const price = priceOf(look)
+export const buyLook = (look: OpsStyle) => buy(look, priceOf(look))
+/** Buys a wardrobe item with chips. */
+export const buyItem = (id: ItemId) => buy(id, itemOf(id)?.price ?? 0)
+
+async function buy(id: string, price: number): Promise<'ok' | 'short' | 'error'> {
   try {
     const uid = await signIn()
     const at = ref(db, `wallets/${uid}`)
@@ -243,13 +252,13 @@ export async function buyLook(look: OpsStyle): Promise<'ok' | 'short' | 'error'>
     let short = false
     const res = await runTransaction(at, (cur: Wallet | null) => {
       const w: Wallet = cur ?? { chips: 0 }
-      if (w.owned?.[look]) return
+      if (w.owned?.[id]) return
       if ((w.chips ?? 0) < price) {
         short = true
         return
       }
       short = false
-      return { ...w, chips: w.chips - price, owned: { ...w.owned, [look]: true } }
+      return { ...w, chips: w.chips - price, owned: { ...w.owned, [id]: true } }
     })
     return res.committed ? 'ok' : short ? 'short' : 'ok'
   } catch {

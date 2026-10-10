@@ -54,7 +54,7 @@
   text-align: center;
 }
 .shop__item--wearing { background: var(--hit); }
-.shop__item--locked .ops-face, .shop__item--locked svg:not(.cchip) { filter: grayscale(.55); opacity: .85; }
+.shop__grid--looks .shop__item--locked svg:not(.cchip) { filter: grayscale(.55); opacity: .85; }
 .shop__item--new { animation: shop-pop .5s var(--ease-snap) .55s both; }
 .shop__item--soon { min-height: 110px; align-content: center; background: color-mix(in srgb, var(--slot) 60%, var(--paper)); border-style: dashed; box-shadow: none; }
 .shop__stamp { position: absolute; top: -12px; right: -8px; rotate: 6deg; }
@@ -105,3 +105,7 @@
 @media (prefers-reduced-motion: reduce) {
   .shop__item--new { animation: none; }
 }
+
+/* the wardrobe shelf, by slot */
+.shop__slot { display: grid; gap: 4px; }
+.shop__slot-h { margin: 6px 0 0; text-align: left; font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
