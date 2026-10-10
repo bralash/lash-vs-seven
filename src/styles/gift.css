@@ -1,0 +1,18 @@
+/* ── a gift of chips from the admin, over the homepage ── */
+.gift-back { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--ink) 55%, transparent); }
+.gift {
+  display: grid;
+  gap: 12px;
+  width: min(380px, 100%);
+  padding: 20px 18px 18px;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow-lg);
+  animation: gift-in .45s var(--ease-snap) both;
+}
+@keyframes gift-in { from { translate: 0 30px; scale: .9; opacity: 0; } }
+.gift__from { margin: 0; font: 500 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.gift__title { display: flex; align-items: center; gap: 10px; margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(28px, 8vw, 36px); line-height: 1; text-transform: uppercase; }
+.gift__title .cchip { flex: none; filter: drop-shadow(3px 3px 0 var(--ink)); animation: chip-drop .5s var(--ease-snap) .15s both; }
+.gift__msg { margin: 0; padding: 10px 12px; border: 2px solid var(--ink); background: var(--slot); font: 15px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .gift, .gift__title .cchip { animation: none; } }

@@ -13,6 +13,7 @@ import { ItemArt, launch, ownThrow, setThrowPick, SHOP_THROWS, Splat, ThrowLayer
 import '../styles/lobby.css'
 import '../styles/match.css'
 import '../styles/shop.css'
+import { PlayerCode } from '../components/PlayerCode'
 
 /**
  * The shop (/shop): spend chips on looks. Your pile sits at the top; each shelf is a tab. Characters
@@ -374,6 +375,7 @@ export function Shop() {
             <span className="shop__pile-label">chips</span>
           </p>
         </header>
+        <PlayerCode />
 
         <nav className="shop__tabs" role="tablist" aria-label="Shelves">
           {SHELVES.map((s) => (

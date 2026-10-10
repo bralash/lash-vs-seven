@@ -1,4 +1,5 @@
 import { FeedbackButton } from '../components/Feedback'
+import { GiftSheet } from '../components/GiftSheet'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../components/Logo'
@@ -63,6 +64,7 @@ export function Home() {
         </section>
 
         <CornerTiles />
+        <GiftSheet />
 
         <section aria-labelledby="games-title">
           <div className="games-head">

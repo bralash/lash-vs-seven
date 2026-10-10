@@ -120,3 +120,8 @@
 /* the wardrobe shelf, by slot */
 .shop__slot { display: grid; gap: 4px; }
 .shop__slot-h { margin: 6px 0 0; text-align: left; font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); }
+
+/* your player code, for the admin to find you */
+.player-code { display: flex; align-items: center; gap: 8px; margin: -6px 0 0; font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.player-code b { padding: 1px 6px; border: 2px solid var(--ink); background: var(--slot); color: var(--ink); letter-spacing: .14em; }
+.player-code__copy { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-decoration: underline; cursor: pointer; }

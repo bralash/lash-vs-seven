@@ -1,14 +1,16 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from 'firebase/auth'
-import { get, getDatabase, ref } from 'firebase/database'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { get, getDatabase, ref, runTransaction } from 'firebase/database'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Chip } from '../components/Chip'
 import { ArrowLeft } from '../components/Icons'
 import { OPS_STYLES, OpsFace } from '../components/OpsFace'
 import { ITEMS as WEAR } from '../components/faces/wardrobe'
+import type { Gift } from '../components/GiftSheet'
+import { Portal } from '../components/Portal'
 import { TopBar } from '../components/TopBar'
-import { db } from '../lib/firebase' // makes sure the default app exists before we copy its config
+import { codeOf, db } from '../lib/firebase' // makes sure the default app exists before we copy its config
 import { gameBySlug } from '../games/registry'
 import { BONUS_ID, missionsFor, POOL, weekOf } from '../match/missions'
 import { SHOP_THROWS } from '../match/Throws'
@@ -36,6 +38,7 @@ interface Wallet {
   owned?: Record<string, true>
   tower?: { s: number; at: number; hearts: number; best: number; champ?: boolean; got?: Record<string, true> }
   missions?: { w: number; got?: Record<string, true>; n?: Record<string, number> }
+  gifts?: Record<string, Gift>
 }
 interface RoomLite {
   status?: string
@@ -74,6 +77,84 @@ async function load(): Promise<Data> {
   const all = (m.val() ?? {}) as Record<string, Record<string, RoomLite>>
   for (const [game, codes] of Object.entries(all)) for (const [code, room] of Object.entries(codes ?? {})) rooms.push({ game, code, room })
   return { wallets: (w.val() ?? {}) as Record<string, Wallet>, rooms, at: Date.now() }
+}
+
+/**
+ * Chips into a player's wallet, with a message they see on their homepage. One transaction, so the
+ * chips and the message land together; the rules let only the admin add a gift.
+ */
+async function sendChips(uid: string, n: number, msg: string) {
+  const at = ref(adminDb, `wallets/${uid}`)
+  await get(at) // so the transaction starts from the real wallet
+  const id = `g${Date.now().toString(36)}`
+  const res = await runTransaction(
+    at,
+    (cur: Wallet | null) => {
+      if (!cur) return cur // an empty first pass: the server retries with the real wallet
+      return { ...cur, chips: (cur.chips ?? 0) + n, gifts: { ...cur.gifts, [id]: { n, msg, at: Date.now() } } }
+    },
+    { applyLocally: false },
+  )
+  if (!res.snapshot.child(`gifts/${id}`).exists()) throw new Error('That player has no wallet yet.')
+}
+
+const AMOUNTS = [50, 100, 250, 500]
+
+function SendChips({ uid, who, onClose, onSent }: { uid: string; who: string; onClose: () => void; onSent: () => void }) {
+  const [n, setN] = useState('100')
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const amount = Math.floor(Number(n))
+  const ok = amount >= 1 && amount <= 10000
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    if (!ok || busy) return
+    setBusy(true)
+    setErr('')
+    sendChips(uid, amount, msg.trim().slice(0, 200))
+      .then(() => {
+        onSent()
+        onClose()
+      })
+      .catch((x) => setErr(String(x?.message ?? x).includes('ermission') ? 'The database said no. Have the new rules been deployed?' : String(x?.message ?? x)))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <Portal>
+      <div className="admin-modal" role="presentation" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <form className="admin-send" role="dialog" aria-labelledby="send-title" onSubmit={submit}>
+          <h2 id="send-title">Send chips to {who}</h2>
+          <p className="admin-send__code">Code {codeOf(uid)}</p>
+          <div className="admin-send__amounts" role="group" aria-label="Amount">
+            {AMOUNTS.map((a) => (
+              <button key={a} type="button" className={`admin-send__amt${amount === a ? ' admin-send__amt--on' : ''}`} onClick={() => setN(String(a))}>
+                <Chip v={a >= 100 ? 100 : 25} size={18} /> {a}
+              </button>
+            ))}
+          </div>
+          <label className="admin-send__field">
+            <span>Chips (up to 10,000)</span>
+            <input type="number" inputMode="numeric" min={1} max={10000} value={n} onChange={(e) => setN(e.target.value)} />
+          </label>
+          <label className="admin-send__field">
+            <span>Message (they see it on their homepage)</span>
+            <textarea rows={3} maxLength={200} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Well played at the Tower!" />
+            <small>{msg.length}/200</small>
+          </label>
+          {err && <p className="admin__err">{err}</p>}
+          <div className="admin-send__actions">
+            <button type="submit" className="btn btn--primary" disabled={!ok || busy}>
+              {busy ? 'Sending…' : ok ? `Send ${amount.toLocaleString('en-GB')} chips` : 'Send'}
+            </button>
+            <button type="button" className="link-btn" onClick={onClose}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </Portal>
+  )
 }
 
 export function AdminPage() {
@@ -155,7 +236,7 @@ export function AdminPage() {
                 </button>
               </div>
             </header>
-            {data && <Stats data={data} />}
+            {data && <Stats data={data} onSent={refresh} />}
           </>
         )}
         {err && <p className="admin__err">{err}</p>}
@@ -191,8 +272,10 @@ function Bars({ rows }: { rows: { label: React.ReactNode; n: number; key: string
   )
 }
 
-function Stats({ data }: { data: Data }) {
+function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
   const now = data.at
+  const [sendTo, setSendTo] = useState<{ uid: string; who: string } | null>(null)
+  const [sent, setSent] = useState('')
   const season = seasonOf(now)
   const floors = floorsFor(season)
   const week = weekOf(now)
@@ -249,9 +332,16 @@ function Stats({ data }: { data: Data }) {
   const claimed = (id: string) => players.filter((p) => p.w.missions?.w === week && p.w.missions.got?.[id]).length
   const onMissions = players.filter((p) => p.w.missions?.w === week).length
 
-  /* everyone */
+  /* gifts sent */
+  const gifts = players
+    .flatMap((p) => Object.entries(p.w.gifts ?? {}).map(([id, g]) => ({ ...g, id, uid: p.uid, who: label(p) })))
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 50)
+
+  /* everyone: search by name or by the code the player reads off their Shop page */
+  const needle = q.trim().toLowerCase()
   const everyone = [...players]
-    .filter((p) => !q || label(p).toLowerCase().includes(q.toLowerCase()) || p.uid.startsWith(q))
+    .filter((p) => !needle || label(p).toLowerCase().includes(needle) || codeOf(p.uid).toLowerCase() === needle)
     .sort((a, b) => (b.w.seen ?? 0) - (a.w.seen ?? 0))
 
   return (
@@ -363,17 +453,55 @@ function Stats({ data }: { data: Data }) {
       </section>
 
       <section className="admin-sec">
+        <h2>Gifts sent</h2>
+        {gifts.length ? (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>To</th>
+                  <th>Chips</th>
+                  <th>Message</th>
+                  <th>Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gifts.map((g) => (
+                  <tr key={g.uid + g.id}>
+                    <td>{ago(g.at, now)}</td>
+                    <td>
+                      {g.who} <span className="admin-dim">{codeOf(g.uid)}</span>
+                    </td>
+                    <td>{g.n.toLocaleString('en-GB')}</td>
+                    <td className="admin-table__msg">{g.msg || '—'}</td>
+                    <td>{g.seen ? '✓' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="hint">No gifts yet. Send chips from the list below.</p>
+        )}
+      </section>
+
+      <section className="admin-sec">
         <h2>Everyone</h2>
-        <input className="admin-search" type="search" placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
+        <p className="admin__fine">To send chips, ask the player for the code under their chips on the Shop page and search for it here.</p>
+        <input className="admin-search" type="search" placeholder="Search by name or code" value={q} onChange={(e) => setQ(e.target.value)} />
+        {sent && <p className="admin__ok">{sent}</p>}
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
                 <th>Player</th>
+                <th>Code</th>
                 <th>Chips</th>
                 <th>Tower</th>
                 <th>Owns</th>
                 <th>Seen</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -383,16 +511,33 @@ function Stats({ data }: { data: Data }) {
                     {label(p)}
                     {!p.w.name && p.name && <span className="admin-dim"> (room)</span>}
                   </td>
+                  <td className="admin-code">{codeOf(p.uid)}</td>
                   <td>{(p.w.chips ?? 0).toLocaleString('en-GB')}</td>
                   <td>{p.climb ? (p.climb.champ ? '👑' : p.climb.at) : '—'}</td>
                   <td>{Object.keys(p.w.owned ?? {}).length}</td>
                   <td>{ago(p.w.seen, now)}</td>
+                  <td>
+                    <button type="button" className="admin-give" onClick={() => setSendTo({ uid: p.uid, who: label(p) })}>
+                      <Chip v={25} size={14} /> Send
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+      {sendTo && (
+        <SendChips
+          uid={sendTo.uid}
+          who={sendTo.who}
+          onClose={() => setSendTo(null)}
+          onSent={() => {
+            setSent(`Sent to ${sendTo.who} (${codeOf(sendTo.uid)}).`)
+            onSent()
+          }}
+        />
+      )}
     </>
   )
 }

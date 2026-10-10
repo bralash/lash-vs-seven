@@ -245,8 +245,8 @@
       ".read": "auth != null && auth.token.email === 'emmanuelasaber@gmail.com' && auth.token.email_verified === true",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChild('chips') && newData.child('chips').isNumber() && newData.child('chips').val() >= 0 && newData.child('chips').val() <= (data.exists() ? data.child('chips').val() : 0) + 600",
+        ".write": "auth != null && (auth.uid === $uid || (auth.token.email === 'emmanuelasaber@gmail.com' && auth.token.email_verified === true && data.exists()))",
+        ".validate": "newData.hasChild('chips') && newData.child('chips').isNumber() && newData.child('chips').val() >= 0 && (newData.child('chips').val() <= (data.exists() ? data.child('chips').val() : 0) + 600 || (auth.token.email === 'emmanuelasaber@gmail.com' && auth.token.email_verified === true && newData.child('chips').val() <= data.child('chips').val() + 10000))",
         "chips": {
           ".validate": "newData.isNumber()"
         },
@@ -255,6 +255,16 @@
         },
         "seen": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "gifts": {
+          "$id": {
+            ".validate": "$id.length <= 40 && newData.hasChildren(['n', 'msg', 'at']) && (data.exists() ? newData.child('n').val() === data.child('n').val() && newData.child('msg').val() === data.child('msg').val() && newData.child('at').val() === data.child('at').val() : (auth.token.email === 'emmanuelasaber@gmail.com' && auth.token.email_verified === true))",
+            "n": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 10000" },
+            "msg": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "at": { ".validate": "newData.isNumber()" },
+            "seen": { ".validate": "newData.val() === true" },
+            "$other": { ".validate": false }
+          }
         },
         "first": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() || newData.val() === data.val())"

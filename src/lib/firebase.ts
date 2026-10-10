@@ -51,3 +51,6 @@ export function playerId(): string {
   if (!uid) throw new Error('playerId() called before sign-in finished')
   return uid
 }
+
+/** A player's short code, for telling the admin who they are (shown on their Shop page). */
+export const codeOf = (uid: string) => uid.slice(0, 5).toUpperCase()
