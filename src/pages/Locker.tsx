@@ -7,7 +7,7 @@ import { ITEMS, SLOTS, setWorn, useWear, type ItemId } from '../components/faces
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
 import { keepWornLook, ownsExtra, ownsItem, ownsLook, useWallet } from '../match/chips'
-import { PACKS } from '../match/Reactions'
+import { PACKS, StickerArt } from '../match/Reactions'
 import { ItemArt, ownThrow, setThrowPick, SHOP_THROWS, useThrowPick } from '../match/Throws'
 import '../styles/lobby.css'
 import '../styles/opsroom.css'
@@ -190,7 +190,10 @@ export function Locker() {
           <h2 id="stickers-title" className="opsroom__h">Sticker packs</h2>
           {packs.map((pk) => (
             <p key={pk.id} className="opsroom__pack">
-              <b>{pk.name}</b> {pk.stickers.map((x) => x.e).join(' ')}
+              <b>{pk.name}</b>{' '}
+              {pk.stickers.map((x) => (
+                <StickerArt key={x.k} s={x} who={{ look: look ?? 'bot', wear: look ? wear : undefined }} size={'faces' in pk ? 26 : 20} />
+              ))}
             </p>
           ))}
           <p className="hint opsroom__note">

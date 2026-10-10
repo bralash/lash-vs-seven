@@ -104,6 +104,84 @@ function reply(k: ReactionKey, s: number, herTurn: boolean): Say {
       return s <= -0.25 ? { face: 'ouch', said: 'Not funny' } : { face: 'giggle', said: 'That was you' }
     case 'fulltime':
       return s >= 0.25 ? { face: 'smug', said: 'Yes please' } : { face: 'panic', said: 'Extra time!' }
+    // the Trash talk pack
+    case 'tooeasy':
+      return s >= 0.25 ? { face: 'smug', said: 'For me, yes' } : s <= -0.25 ? { face: 'salty', said: 'Don’t rub it in' } : { face: 'smug', said: 'We’ll see' }
+    case 'sitdown':
+      return s >= 0.25 ? { face: 'giggle', said: 'You first' } : { face: 'salty', said: 'Make me' }
+    case 'isthatall':
+      return s >= 0.25 ? { face: 'smug', said: 'I’m just warming up' } : { face: 'nervous', said: 'Er… no?' }
+    case 'lucky':
+      return s >= 0.25 ? { face: 'smug', said: 'Skill, actually' } : { face: 'giggle', said: 'So were you' }
+    case 'calculated':
+      return s <= -0.25 ? { face: 'salty', said: 'Sure it was' } : { face: 'pity', said: 'Was it, though?' }
+    case 'rematch':
+      return s >= 0.25 ? { face: 'smug', said: 'Glutton for it' } : { face: 'hello', said: 'Always' }
+    // the Chop bar pack
+    case 'jollof':
+      return { face: 'love', said: 'Ghana jollof, I hope' }
+    case 'kelewele':
+      return { face: 'love', said: 'Extra pepper' }
+    case 'waakye':
+      return { face: 'love', said: 'With gari and shito' }
+    case 'banku':
+      return { face: 'love', said: 'Save me the head' }
+    case 'hungry':
+      return herTurn ? { face: 'think', said: 'Let me finish first' } : { face: 'wait', said: 'Play, then eat' }
+    case 'chopmoney':
+      return s >= 0.25 ? { face: 'smug', said: 'You’ll owe me' } : { face: 'nervous', said: 'I’m broke' }
+    // the Pidgin pack
+    case 'wahala':
+      return s >= 0.25 ? { face: 'smug', said: 'Wahala dey' } : { face: 'nervous', said: 'No wahala' }
+    case 'abeg':
+      return s >= 0.25 ? { face: 'pity', said: 'No mercy' } : { face: 'giggle', said: 'Abeg yourself' }
+    case 'charley':
+      return { face: 'hello', said: 'Charley!' }
+    case 'ebiyou':
+      return { face: 'smug', said: 'Ebi me' }
+    case 'makeisee':
+      return s >= 0.25 ? { face: 'smug', said: 'See well' } : { face: 'nervous', said: 'Nothing to see' }
+    case 'ideycome':
+      return { face: 'wait', said: 'I dey wait' }
+    // the Church pack
+    case 'amen':
+      return { face: 'gg', said: 'Amen!' }
+    case 'hallelujah':
+      return s <= -0.25 ? { face: 'salty', said: 'Not yet' } : { face: 'love', said: 'Hallelujah!' }
+    case 'bloodjesus':
+      return s >= 0.25 ? { face: 'giggle', said: 'It won’t help' } : { face: 'panic', said: 'Cover me too!' }
+    case 'testimony':
+      return s >= 0.25 ? { face: 'smug', said: 'Mine’s coming' } : { face: 'salty', said: 'Sit down, Deacon' }
+    case 'godwhen':
+      return s >= 0.25 ? { face: 'pity', said: 'Not today' } : { face: 'sorry', said: 'Soon, maybe' }
+    case 'jesus':
+      return { face: 'wow', said: 'Ei!' }
+    // the Game night pack
+    case 'thinking':
+      return herTurn ? { face: 'think', said: 'Me too' } : { face: 'wait', said: 'Take your time' }
+    case 'sweating':
+      return s >= 0.25 ? { face: 'smug', said: 'You should be' } : { face: 'nervous', said: 'So am I' }
+    case 'bigbrain':
+      return s >= 0.25 ? { face: 'smug', said: 'Bigger brain' } : { face: 'wow', said: 'Okay, genius' }
+    case 'oops':
+      return s >= 0.25 ? { face: 'giggle', said: 'Thanks!' } : { face: 'pity', said: 'Happens' }
+    case 'onemore':
+      return { face: 'hello', said: 'Always one more' }
+    case 'niceone':
+      return { face: 'love', said: 'Thank you!' }
+    // the Face pack: she answers the face you pulled
+    case 'f_smug':
+      return s >= 0.25 ? { face: 'pity', said: 'Cute' } : { face: 'salty', said: 'Wipe that off' }
+    case 'f_gotcha':
+      return s >= 0.25 ? { face: 'smug', said: 'Missed' } : { face: 'ouch', said: 'Got me' }
+    case 'f_love':
+      return { face: 'love', said: 'Aww' }
+    case 'f_panic':
+      return s >= 0.25 ? { face: 'smug', said: 'As you should' } : { face: 'giggle', said: 'Breathe' }
+    case 'f_salty':
+      return s >= 0.25 ? { face: 'giggle', said: 'Extra salty' } : { face: 'salty', said: 'Me? Never' }
+    case 'f_sleep':
+      return herTurn ? { face: 'think', said: 'Thinking!' } : { face: 'wait', said: 'Wake up, it’s you' }
   }
 }
 

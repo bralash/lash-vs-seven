@@ -84,3 +84,4 @@
 .opsroom__item-name { font-family: var(--display); font-size: 15px; line-height: 1.05; text-transform: uppercase; }
 .opsroom__item-act { font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
 .opsroom__pack { margin: 0 0 8px; font-size: 20px; } .opsroom__pack b { margin-right: 8px; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.opsroom__pack .opsf, .opsroom__pack .react__emoji { vertical-align: middle; margin-right: 2px; }

@@ -7,7 +7,7 @@ import { ITEMS, SLOTS, setWorn, useWear, type ItemId } from '../components/faces
 import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
 import { buyExtra, buyItem, buyLook, chipsFor, keepWornLook, ownsExtra, ownsItem, ownsLook, useWallet, type ChipValue } from '../match/chips'
-import { PACKS } from '../match/Reactions'
+import { PACKS, StickerArt } from '../match/Reactions'
 import { SHELVES, type ShelfId } from '../match/shop'
 import { ItemArt, launch, ownThrow, setThrowPick, SHOP_THROWS, Splat, ThrowLayer, useHit, useThrowPick, type Item } from '../match/Throws'
 import '../styles/lobby.css'
@@ -334,14 +334,21 @@ export function Shop() {
             <span className="shop__pack" aria-label={pk.stickers.map((x) => x.label).join(', ')}>
               {pk.stickers.map((x) => (
                 <span key={x.k} className="shop__sticker">
-                  <span aria-hidden="true">{x.e}</span>
+                  <StickerArt s={x} who={{ look: model, wear: look ? wear : undefined }} size={'faces' in pk ? 34 : 24} />
                   <small>{x.label}</small>
                 </span>
               ))}
             </span>
           ),
           name: pk.name,
-          desc: mine ? 'In your reactions tray, on its own tab.' : 'Six reactions for the tray.',
+          desc:
+            'faces' in pk
+              ? mine
+                ? 'Your character pulls the face, on everyone’s screen.'
+                : 'Six stickers where your own character pulls the face. Any character from the shop; the free robots send the emoji.'
+              : mine
+                ? 'In your reactions tray, on its own tab.'
+                : 'Six reactions for the tray.',
           act: mine ? <span className="shop__note">In your tray</span> : buyArea(pk.id, pk.price, () => buy(pk.id, pk.price, () => buyExtra(pk.id, pk.price), () => {})),
         })
       })}

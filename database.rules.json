@@ -271,7 +271,7 @@
         },
         "owned": {
           "$look": {
-            ".validate": "newData.val() === true && ($look.matches(/^(prime|warrior|titan|spider|brute|ghost|anansi|trotro|bat|queen|addo|snapback|kufi|crown|kente|jersey|tux|fugu|gold|slipper|balloon|pie|fanice|kenkey|ghana|football)$/) || ($look === 'towercrown' && (data.exists() || newData.parent().parent().child('tower/champ').val() === true)))"
+            ".validate": "newData.val() === true && ($look.matches(/^(prime|warrior|titan|spider|brute|ghost|anansi|trotro|bat|queen|addo|snapback|kufi|crown|kente|jersey|tux|fugu|gold|slipper|balloon|pie|fanice|kenkey|ghana|football|trash|chopbar|pidgin|church|gamenight|faces)$/) || ($look === 'towercrown' && (data.exists() || newData.parent().parent().child('tower/champ').val() === true)))"
           }
         },
         "paid": {
