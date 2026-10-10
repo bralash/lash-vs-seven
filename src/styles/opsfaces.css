@@ -179,3 +179,7 @@
 .opsf-sway { transform-box: fill-box; transform-origin: top center; animation: opsf-sway 1.1s ease-in-out infinite alternate; }
 @keyframes opsf-sway { from { rotate: -14deg; } to { rotate: 14deg; } }
 .opsf-shine { animation: opsf-signal .5s steps(3) both; }
+/* Addo D: his V for victory pops up beside his head */
+.opsf--addo { overflow: visible; }
+.opsf-vee { transform-box: fill-box; transform-origin: bottom center; animation: opsf-vee .4s var(--ease-snap, ease-out) both; }
+@keyframes opsf-vee { from { scale: .3; opacity: 0; } to { scale: 1; opacity: 1; } }

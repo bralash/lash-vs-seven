@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { OpsMood } from '../components/OpsFace'
 import { PotArt } from '../components/faces/anansops'
+import { CapArt, ChalkboardArt } from '../components/faces/addod'
 import { GoldenStoolArt, WarriorArt } from '../components/faces/asantewops'
 import { BAT_PATH, SignalArt } from '../components/faces/batops'
 import { TrotroArt } from '../components/faces/trotrops'
@@ -31,12 +32,13 @@ import { ItemArt, throwsIn, type Item } from './Throws'
  * of dust; Batops' Night Fall: the lights go out, the bat-signal sweeps onto the board and a swarm of
  * bats flies across before the lights come back; Yaa Asantewops' War of the Golden Stool: the war drums
  * beat, the Golden Stool rises over the board in a blaze of gold and her warriors charge across
- * beneath it. The robot faces fizz the screen
+ * beneath it; Addo D's Free SHS: the school bell rings, a chalkboard drops over the board with FREE
+ * SHS chalked on it, and graduation caps fly up all round. The robot faces fizz the screen
  * into static. Looks only: the game underneath never changes and taps go straight through. One
  * use per win. Online it rides the reactions channel (k = 'ult'); anyone can mute incoming ones.
  */
 
-export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'smash' | 'airstrike' | 'tales' | 'kwaa' | 'nightfall' | 'asante' | 'static'
+export type Ult = 'rage' | 'snap' | 'thwip' | 'rollout' | 'smash' | 'airstrike' | 'tales' | 'kwaa' | 'nightfall' | 'asante' | 'freeshs' | 'static'
 export const ULTS: Record<Ult, { name: string; said: string }> = {
   rage: { name: 'Spartan Rage', said: 'BOY.' },
   snap: { name: 'The Snap', said: 'Perfectly balanced.' },
@@ -48,17 +50,18 @@ export const ULTS: Record<Ult, { name: string; said: string }> = {
   kwaa: { name: 'Kwaaa!', said: 'Circle! Circle! Everybody down!' },
   nightfall: { name: 'Night Fall', said: 'I’m Batops.' },
   asante: { name: 'War of the Golden Stool', said: 'Then we women will fight!' },
+  freeshs: { name: 'Free SHS', said: 'The battle is in our hands!' },
   static: { name: 'Static', said: 'Bzzt.' },
 }
-export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : look === 'ghost' ? 'airstrike' : look === 'anansi' ? 'tales' : look === 'trotro' ? 'kwaa' : look === 'bat' ? 'nightfall' : look === 'queen' ? 'asante' : 'static')
+export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : look === 'ghost' ? 'airstrike' : look === 'anansi' ? 'tales' : look === 'trotro' ? 'kwaa' : look === 'bat' ? 'nightfall' : look === 'queen' ? 'asante' : look === 'addo' ? 'freeshs' : 'static')
 
 /** how long each show runs, and when it lands (the hit on the faces, the shake, the dust) */
-const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, smash: 2600, airstrike: 2900, tales: 3100, kwaa: 3200, nightfall: 3300, asante: 3400, static: 1700 }
-const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, smash: 480, airstrike: 1000, tales: 1500, kwaa: 700, nightfall: 1300, asante: 1100, static: 150 }
+const SHOW_MS: Record<Ult, number> = { rage: 2700, snap: 3300, thwip: 2600, rollout: 2800, smash: 2600, airstrike: 2900, tales: 3100, kwaa: 3200, nightfall: 3300, asante: 3400, freeshs: 3200, static: 1700 }
+const IMPACT_MS: Record<Ult, number> = { rage: 420, snap: 1400, thwip: 520, rollout: 750, smash: 480, airstrike: 1000, tales: 1500, kwaa: 700, nightfall: 1300, asante: 1100, freeshs: 900, static: 150 }
 /** what the faces it lands on wear, like a throw */
-const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, smash: 'rubble', airstrike: 'flash', tales: 'web', kwaa: 'coins', nightfall: 'batarang', asante: 'stool', static: null }
+const MARK: Record<Ult, Item | null> = { rage: 'axe', snap: 'stone', thwip: 'web', rollout: null, smash: 'rubble', airstrike: 'flash', tales: 'web', kwaa: 'coins', nightfall: 'batarang', asante: 'stool', freeshs: 'book', static: null }
 /** the firing card's face while it plays */
-export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', smash: 'angry', airstrike: 'smug', tales: 'smug', kwaa: 'hello', nightfall: 'smug', asante: 'gotcha', static: 'gotcha' }
+export const FIRE_MOOD: Record<Ult, OpsMood> = { rage: 'angry', snap: 'sorry', thwip: 'gotcha', rollout: 'gotcha', smash: 'angry', airstrike: 'smug', tales: 'smug', kwaa: 'hello', nightfall: 'smug', asante: 'gotcha', freeshs: 'gotcha', static: 'gotcha' }
 
 interface Show {
   n: number
@@ -436,6 +439,15 @@ function Play({ s }: { s: Show }) {
       })
       later(1700, () => play('whoosh'))
     }
+    if (s.ult === 'freeshs') {
+      // the school bell, the board thuds down, the caps fly
+      for (let i = 0; i < 6; i++) later(i * 90, () => play('ping'))
+      later(IMPACT_MS.freeshs, () => {
+        play('boom')
+        navigator.vibrate?.(50)
+      })
+      later(1500, () => play('start'))
+    }
     if (s.ult === 'static') {
       play('buzz')
       navigator.vibrate?.([30, 30, 30, 30, 30])
@@ -618,6 +630,19 @@ function Play({ s }: { s: Show }) {
           {Array.from({ length: 7 }, (_, i) => (
             <span key={i} className="ult__warrior" style={{ '--i': i, '--row': i % 2 } as CSSProperties}>
               <WarriorArt size={Math.min(56, innerWidth * 0.13)} />
+            </span>
+          ))}
+        </>
+      )}
+      {s.ult === 'freeshs' && (
+        <>
+          {/* the chalkboard drops over the board, then the caps are tossed up all round it */}
+          <span className="ult__chalk">
+            <ChalkboardArt width={Math.min(geo.span * 0.9, 280)} />
+          </span>
+          {Array.from({ length: 12 }, (_, i) => (
+            <span key={i} className="ult__cap" style={{ '--i': i, '--cx': `${((i * 41) % 100) / 100 - 0.5}`, '--rot': `${((i * 67) % 90) - 45}deg` } as CSSProperties}>
+              <CapArt size={Math.min(44, innerWidth * 0.11)} />
             </span>
           ))}
         </>

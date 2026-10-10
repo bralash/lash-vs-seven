@@ -27,7 +27,7 @@ import { PlayerCode } from '../components/PlayerCode'
 const short = (s: string) => s.split(/(?<=\.)\s/)[0]
 const SHELF_KEY = 'lvs_shop_shelf'
 /** what each character throws, for the "your own throw" card */
-const OWN_NAME: Partial<Record<Item, string>> = { axe: 'his axe', stone: 'a stone', web: 'a ball of web', cube: 'an Energon cube', rubble: 'rubble', flash: 'a flashbang', gum: 'a ball of gum', coins: 'small-small coins', batarang: 'a batarang', stool: 'an Asante stool' }
+const OWN_NAME: Partial<Record<Item, string>> = { axe: 'his axe', stone: 'a stone', web: 'a ball of web', cube: 'an Energon cube', rubble: 'rubble', flash: 'a flashbang', gum: 'a ball of gum', coins: 'small-small coins', batarang: 'a batarang', stool: 'an Asante stool', book: 'a Free SHS textbook' }
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 
 /** a face to throw at, on a throwable's card: tap it and one comes flying from the bottom of the screen */

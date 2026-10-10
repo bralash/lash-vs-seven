@@ -61,7 +61,7 @@ const FIGHTS: Record<string, Fight> = {
 
 const NAMES: Partial<Record<OpsStyle, string>> = {
   bot: 'Bot', cyclops: 'Cyclops', die: 'Die', prime: 'Opstimus', warrior: 'Kratops', titan: 'Thanops', spider: 'Spidops',
-  brute: 'Hulkops', ghost: 'Ghops', anansi: 'Anansops', trotro: 'Trotrops', bat: 'Batops', queen: 'Yaa Asantewops',
+  brute: 'Hulkops', ghost: 'Ghops', anansi: 'Anansops', trotro: 'Trotrops', bat: 'Batops', queen: 'Yaa Asantewops', addo: 'Addo D',
 }
 const LEVELS: Level[] = ['easy', 'medium', 'medium', 'medium', 'medium', 'hard', 'hard', 'hard', 'hard']
 const REWARDS = [10, 20, 30, 40, 50, 60, 70, 85, 100]

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } from 'react'
 import { GumArt } from '../components/faces/anansops'
+import { BookArt } from '../components/faces/addod'
 import { StoolArt } from '../components/faces/asantewops'
 import { BatarangArt } from '../components/faces/batops'
 import { CoinsArt } from '../components/faces/trotrops'
@@ -21,7 +22,7 @@ import { load, save } from '../lib/storage'
  * of web that wraps whoever it hits; Opstimus throws a glowing Energon cube that zaps the face pink; Hulkops hurls a chunk of rubble that
  * squashes the face flat for a moment; Ghops lobs a flashbang that blinds the face white; Anansops flings a
  * ball of sticky gum that gums the face up and stretches it; Trotrops pelts it with small-small coins;
- * Batops' batarang spins in and sticks, quivering; Yaa Asantewops' stool lands on the head and sits there.
+ * Batops' batarang spins in and sticks, quivering; Yaa Asantewops' stool lands on the head and sits there; Addo D's Free SHS textbook thwacks the face.
  *
  * The shop sells throwables (SHOP_THROWS) that anyone can throw instead: a chalewote slipper that
  * slaps the face round, a water balloon that soaks it, a custard pie that covers it, a Fan Ice that
@@ -29,7 +30,7 @@ import { load, save } from '../lib/storage'
  * (useThrowPick); the thrower's phone decides, so the others just see what comes flying.
  */
 
-export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble', 'flash', 'gum', 'coins', 'batarang', 'stool', 'slipper', 'balloon', 'pie', 'fanice', 'kenkey'] as const
+export const ITEMS = ['tomato', 'rock', 'paper', 'axe', 'stone', 'web', 'cube', 'rubble', 'flash', 'gum', 'coins', 'batarang', 'stool', 'book', 'slipper', 'balloon', 'pie', 'fanice', 'kenkey'] as const
 /** what anyone but the characters picks from */
 const JUNK: Item[] = ['tomato', 'rock', 'paper']
 export type Item = (typeof ITEMS)[number]
@@ -49,7 +50,7 @@ const SHOP_IDS = new Set<string>(SHOP_THROWS.map((t) => t.id))
 export const isShopThrow = (v: unknown): v is ShopThrow => typeof v === 'string' && SHOP_IDS.has(v)
 
 /** each character's own throw (anyone else grabs a tomato, a rock or a paper ball) */
-const OWN: Partial<Record<OpsStyle, Item>> = { warrior: 'axe', titan: 'stone', spider: 'web', prime: 'cube', brute: 'rubble', ghost: 'flash', anansi: 'gum', trotro: 'coins', bat: 'batarang', queen: 'stool' }
+const OWN: Partial<Record<OpsStyle, Item>> = { warrior: 'axe', titan: 'stone', spider: 'web', prime: 'cube', brute: 'rubble', ghost: 'flash', anansi: 'gum', trotro: 'coins', bat: 'batarang', queen: 'stool', addo: 'book' }
 export const ownThrow = (look: OpsStyle | null | undefined): Item | null => (look && OWN[look]) || null
 
 const PICK_KEY = 'lvs_throw'
@@ -152,7 +153,7 @@ function land(f: Flight) {
   landers.forEach((l) => l(f))
 }
 
-/** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, Hulkops rubble, Ghops a flashbang, Anansops gum, Trotrops coins, Batops a batarang, Yaa Asantewops a stool, anyone else whatever comes to hand. */
+/** What this card throws: Kratops his axe, Thanops a stone, Spidops a web, Opstimus a cube, Hulkops rubble, Ghops a flashbang, Anansops gum, Trotrops coins, Batops a batarang, Yaa Asantewops a stool, Addo D a textbook, anyone else whatever comes to hand. */
 export function itemFrom(id: string | null): Item {
   const el = faceEl(id)
   const own = el instanceof HTMLElement ? ownThrow(el.dataset.opsLook as OpsStyle) : null
@@ -278,7 +279,7 @@ function Flying({ f }: { f: Flight }) {
 }
 
 /** how far each thing turns on its way (degrees) */
-const SPIN: Partial<Record<Item, number>> = { axe: 1080, stone: 720, web: 160, cube: 450, rubble: 380, flash: 600, gum: 260, coins: 700, batarang: 1440, stool: 500, paper: 300, rock: 540, slipper: 900, balloon: 40, pie: 0, fanice: 420, kenkey: 300 }
+const SPIN: Partial<Record<Item, number>> = { axe: 1080, stone: 720, web: 160, cube: 450, rubble: 380, flash: 600, gum: 260, coins: 700, batarang: 1440, stool: 500, book: 620, paper: 300, rock: 540, slipper: 900, balloon: 40, pie: 0, fanice: 420, kenkey: 300 }
 
 const INK = 'var(--ink)'
 
@@ -331,6 +332,7 @@ export function ItemArt({ item, size = 34, id }: { item: Item; size?: number; id
       {item === 'coins' && <CoinsArt />}
       {item === 'batarang' && <BatarangArt />}
       {item === 'stool' && <StoolArt />}
+      {item === 'book' && <BookArt />}
       {item === 'axe' && (
         <>
           <path d="M9 33L29 13" stroke="#7a4a26" strokeWidth="4.5" strokeLinecap="round" />
@@ -412,6 +414,15 @@ export function Splat({ hit }: { hit: Hit }) {
               <BatarangArt />
             </g>
             <path d="M4 8l5 3M36 8l-5 3M6 32l5-2" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
+          </g>
+        )}
+        {hit.item === 'book' && (
+          <g>
+            {/* the textbook smacked flat on the face, with whack lines */}
+            <g className="throw__smack" transform="translate(4 2) scale(.9)">
+              <BookArt />
+            </g>
+            <path d="M3 6l4 4M37 6l-4 4M3 34l4-3M37 34l-4-3" stroke={INK} strokeWidth="2.2" strokeLinecap="round" />
           </g>
         )}
         {hit.item === 'stool' && (
