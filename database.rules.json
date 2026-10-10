@@ -3,6 +3,7 @@
     ".read": false,
     ".write": false,
     "matches": {
+      ".read": "auth != null && auth.token.email === 'emmanuelasaber@gmail.com' && auth.token.email_verified === true",
       "$game": {
         "$code": {
           ".read": "auth != null",
@@ -241,12 +242,22 @@
       }
     },
     "wallets": {
+      ".read": "auth != null && auth.token.email === 'emmanuelasaber@gmail.com' && auth.token.email_verified === true",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.hasChild('chips') && newData.child('chips').isNumber() && newData.child('chips').val() >= 0 && newData.child('chips').val() <= (data.exists() ? data.child('chips').val() : 0) + 600",
         "chips": {
           ".validate": "newData.isNumber()"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+        },
+        "seen": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "first": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() || newData.val() === data.val())"
         },
         "owned": {
           "$look": {

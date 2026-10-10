@@ -29,6 +29,8 @@ import { TowerPage } from './pages/Tower'
 import { Shop } from './pages/Shop'
 
 // Dev-only sandbox; the DEV guard lets the bundler drop it from production builds.
+// the admin page loads on its own, so players never download it
+const AdminPage = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminPage })))
 const BoardLab = import.meta.env.DEV ? lazy(() => import('./dev/BoardLab')) : null
 const TttLab = import.meta.env.DEV ? lazy(() => import('./dev/TttLab')) : null
 const ShareLab = import.meta.env.DEV ? lazy(() => import('./dev/ShareLab')) : null
@@ -51,6 +53,7 @@ const routes: RouteObject[] = [
   { path: '/missions', element: <MissionsPage /> },
   { path: '/tower', element: <TowerPage /> },
   { path: '/shop', element: <Shop /> },
+  { path: '/admin', element: <Suspense><AdminPage /></Suspense> },
   { path: '/wordhunt', element: <WordHunt /> },
   { path: '/anagram', element: <Anagram /> },
   { path: '/tictactoe', element: <TicTacToe /> },

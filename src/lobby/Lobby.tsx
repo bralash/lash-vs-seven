@@ -51,6 +51,7 @@ import { UltEarn, UltLayer } from '../match/Ultimates'
 import { VoiceNotes } from '../match/Voice'
 import { useRoom } from './useRoom'
 import '../styles/lobby.css'
+import { touchProfile } from '../lib/profile'
 
 export interface MatchOption {
   label: string
@@ -546,7 +547,10 @@ function useSavedName() {
   const [name, setName] = useState(() => load(KEYS.name) ?? '')
   const commit = () => {
     const clean = name.trim().slice(0, 16)
-    if (clean) save(KEYS.name, clean)
+    if (clean) {
+      save(KEYS.name, clean)
+      touchProfile()
+    }
     return clean
   }
   return { name, setName, commit }

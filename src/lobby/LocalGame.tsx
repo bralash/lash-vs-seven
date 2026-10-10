@@ -17,6 +17,7 @@ import { SCORED } from '../tower/barrage'
 import { unleash } from '../match/Ultimates'
 import { settleFloor } from '../tower/tower'
 import { TowerSheet, type SheetState } from '../tower/TowerSheet'
+import { touchProfile } from '../lib/profile'
 
 /** A pass-and-play match: the names (two, or up to four in games for more), the host's option, and the whole game state, all on this device. */
 export interface LocalMatch {
@@ -90,7 +91,10 @@ export function LocalSetup({
   const start = (e: FormEvent) => {
     e.preventDefault()
     const clean = names.slice(0, vsBot ? 2 : count).map((n, i) => n.trim().slice(0, 16) || `Player ${i + 1}`)
-    if (names[0].trim()) save(KEYS.name, clean[0])
+    if (names[0].trim()) {
+      save(KEYS.name, clean[0])
+      touchProfile()
+    }
     if (vsBot) {
       save(KEYS.botLevel, level)
       clean[1] = BOT_NAME
