@@ -8,8 +8,9 @@ import type { Level } from './bot'
  * and collected. The week turns over on Monday 00:00 UTC (Ghana time); the three are picked from
  * the week number, so every phone shows the same ones with no server.
  *
- * What counts: online matches with friends count for everything; against Ops only her missions;
- * pass & play and watching count for nothing. Matches tick missions from payOut (chips.ts), so a
+ * What counts: online matches with friends count for everything; against Ops only her missions and
+ * Ultimates (they take a win to charge, so they can't be farmed alone the way throws can); pass &
+ * play and watching count for nothing. Matches tick missions from payOut (chips.ts), so a
  * match only counts when it paid: not under 20 seconds, and a win over the day's limit against the
  * same rival counts as played, not won (so two friends can't farm quick wins).
  *

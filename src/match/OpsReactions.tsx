@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { mission } from './missions'
 import { OPS_LOOK, type OpsMood, type OpsStyle } from '../components/OpsFace'
 import { useSound } from '../lib/sound'
 import { BOT_NAME, type Level, type Moment, type OpsSense } from './bot'
@@ -298,7 +299,8 @@ export function OpsReactions({ sense, state, level, as }: { sense: OpsSense; sta
       <Pops pops={pops} other={as?.name ?? BOT_NAME} />
       <ThrowLayer me="p0" onHit={onHit} />
       <TauntLayer me="p0" onArrive={onArrive} />
-      <UltLayer me="p0" />
+      {/* an Ultimate takes a win to charge, so firing one at her counts for the missions (throws and stickers don't: anyone could spam those alone) */}
+      <UltLayer me="p0" deliver={() => mission({ k: 'ult' })} />
     </div>
   )
 }

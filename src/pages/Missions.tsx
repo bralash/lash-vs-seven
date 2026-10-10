@@ -173,7 +173,7 @@ export function MissionsPage() {
               <b>Online with friends</b> everything counts
             </li>
             <li>
-              <b>Against Ops</b> only Ops missions
+              <b>Against Ops</b> Ops missions and Ultimates
             </li>
             <li>
               <b>Pass &amp; play, watching</b> nothing
