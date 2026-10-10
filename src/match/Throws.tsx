@@ -14,7 +14,7 @@ import { load, save } from '../lib/storage'
  * Tap someone's Ops on their score card and something flies at it: a tomato, a rock or a paper
  * ball, picked at random. It lands with a splat and the face winces for a moment. Online it goes
  * over the reactions channel so every phone sees it fly from the thrower's card; against Ops she
- * takes it personally. Race games leave it out (no pelting someone mid-sprint). Whoever wears the
+ * takes it personally. Word Hunt and Sudoku leave it out (no pelting someone mid-sprint); Anagram keeps it. Whoever wears the
  * Kratops look throws his axe instead, and it spins back to their card; Thanops snaps and throws
  * a stone from his gauntlet, and whoever it hits turns to dust for a moment; Spidops shoots a ball
  * of web that wraps whoever it hits; Opstimus throws a glowing Energon cube that zaps the face pink; Hulkops hurls a chunk of rubble that
@@ -73,7 +73,8 @@ export function setThrowPick(id: ShopThrow | null) {
 }
 
 /** games played as a race against the clock: nothing to throw */
-const RACES = new Set(['wordhunt', 'anagram', 'sudoku'])
+// Anagram is in: the user wants rivals pelted mid-round (2026-10-10)
+const RACES = new Set(['wordhunt', 'sudoku'])
 export const throwsIn = (game: string) => !RACES.has(game)
 
 /** one throw per this long */

@@ -6,6 +6,7 @@ import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
 import type { MatchExit, Me } from '../../lobby/Lobby'
+import type { OpsSense } from '../../match/bot'
 import { playersBySeat, roomPath, startMatch, type Room } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { shareLink, shareMessage } from '../../match/share'
@@ -55,6 +56,24 @@ export function initialAnagramState(match = 1): AnagramState {
 }
 
 const path = (code: string, rest: string) => `${roomPath(GAME, code)}/${rest}`
+
+/**
+ * What the Ultimates need to know: Anagram is a race, so nobody has a turn, and every round won
+ * charges the winner's Ultimate. The latest solved round stays the "game that ended" until the
+ * next one is solved; its tag tells the rounds apart.
+ */
+export const anagramSense: OpsSense = {
+  turn: () => null,
+  standing: () => null,
+  ended: (state) => {
+    const st = state as unknown as AnagramState
+    for (let r = ROUNDS - 1; r >= 0; r--) {
+      const solve = st.solved?.[roundKey(r)]
+      if (solve) return { winner: 0, by: solve.by, tag: `${st.match}:${r}`, final: r === ROUNDS - 1 }
+    }
+    return null
+  },
+}
 
 export function AnagramMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }) {
   const st = room.state as unknown as AnagramState
@@ -276,7 +295,7 @@ export function AnagramMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
           </div>
 
           {/* the jumbled letters */}
-          <div className="ag-pool" style={{ ['--n' as string]: scrambled.length }}>
+          <div className="ag-pool" style={{ ['--n' as string]: scrambled.length }} data-ult-board>
             {order.map((i) => {
               const used = picked.includes(i)
               return (

@@ -44,8 +44,12 @@ export interface OpsSense {
   turn: (state: Record<string, unknown>) => 0 | 1 | null
   /** her feel for the game in play, from −1 (you're well ahead) to 1 (she is); null when no game is on */
   standing: (state: Record<string, unknown>) => number | null
-  /** the game that just finished, if one did: who won it, and whether that settles the match */
-  ended: (state: Record<string, unknown>) => { winner: 0 | 1 | -1; final: boolean } | null
+  /**
+   * the game that just finished, if one did: who won it, and whether that settles the match.
+   * `tag` names which game it was, for games whose state doesn't reset between games (Anagram's
+   * rounds), so each one counts; `by` is the winner's id when the state knows ids, not seats.
+   */
+  ended: (state: Record<string, unknown>) => { winner: 0 | 1 | -1; final: boolean; tag?: string; by?: string } | null
   /** a capture, a lucky roll… that the move from `prev` to `next` made; games without them leave it out */
   moment?: (prev: Record<string, unknown>, next: Record<string, unknown>) => Moment | Said | null
 }

@@ -109,7 +109,7 @@ function faceEl(id: string): HTMLElement | null {
 
 /**
  * Fills the meter of whoever wins a game in this match. Mounted by the match's room (online, pass &
- * play and against Ops); games without a sense, and race games, have no ultimates.
+ * play and against Ops); games without a sense, and the race games Word Hunt and Sudoku, have no ultimates.
  */
 export function useUltEarn(room: Room, sense: OpsSense | undefined) {
   const live = !!sense && throwsIn(room.game)
@@ -130,17 +130,18 @@ export function useUltEarn(room: Room, sense: OpsSense | undefined) {
   }, [key, live])
 
   const end = live && room.state ? sense!.ended(room.state) : null
-  const winner = end && end.winner >= 0 ? Object.entries(room.players ?? {}).find(([, p]) => p.seat === end.winner)?.[0] : undefined
-  const seen = useRef<boolean | null>(null)
+  const winner = end && end.winner >= 0 ? (end.by ?? Object.entries(room.players ?? {}).find(([, p]) => p.seat === end.winner)?.[0]) : undefined
+  const tag = end ? (end.tag ?? 'end') : null
+  const seen = useRef<string | null | undefined>(undefined)
   useEffect(() => {
     const was = seen.current
-    seen.current = !!end
+    seen.current = tag
     // only a game seen ending (not one that had already ended when this phone arrived)
-    if (was === false && end && winner && !charged.has(winner)) {
+    if (was !== undefined && tag && tag !== was && winner && !charged.has(winner)) {
       charged.add(winner)
       notify()
     }
-  }, [end, winner])
+  }, [tag, winner])
 }
 
 /** useUltEarn as a component, for screens that return early. */

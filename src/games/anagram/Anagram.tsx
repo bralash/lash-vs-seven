@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { loadDictionary } from '../../lib/dictionary'
 import { Lobby } from '../../lobby/Lobby'
 import { gameBySlug } from '../registry'
-import { AnagramMatch, initialAnagramState } from './AnagramMatch'
+import { AnagramMatch, anagramSense, initialAnagramState } from './AnagramMatch'
 
 const game = gameBySlug('anagram')!
 
@@ -16,6 +16,7 @@ export function Anagram() {
     <Lobby
       game={game}
       initialState={() => ({ ...initialAnagramState() })}
+      sense={anagramSense}
       renderGame={(room, me, exit) => <AnagramMatch room={room} me={me} exit={exit} />}
     />
   )
