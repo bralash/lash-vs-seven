@@ -12,6 +12,7 @@ import { Oware } from './games/oware/Oware'
 import { Ludo } from './games/ludo/Ludo'
 import { Battleship } from './games/battleship/Battleship'
 import { Spar } from './games/spar/Spar'
+import { Uno } from './games/uno/Uno'
 import { Checkers } from './games/checkers/Checkers'
 import { Quoridor } from './games/quoridor/Quoridor'
 import { Battleword } from './games/battleword/Battleword'
@@ -54,6 +55,7 @@ const routes: RouteObject[] = [
   { path: '/oware', element: <Oware /> },
   { path: '/hangman', element: <Hangman /> },
   { path: '/spar', element: <Spar /> },
+  { path: '/uno', element: <Uno /> },
   { path: '/ludo', element: <Ludo /> },
   { path: '/battleship', element: <Battleship /> },
   { path: '/sudoku', element: <Sudoku /> },

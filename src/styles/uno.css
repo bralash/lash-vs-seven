@@ -1,0 +1,228 @@
+/* Uno: the app's own card design (flat colour, ink edge, hard shadow, Bowlby numerals). */
+:root {
+  --u0: #e8291c;  /* red */
+  --u1: #ffd23f;  /* yellow */
+  --u2: #1f9d55;  /* green */
+  --u3: #2d5bff;  /* blue */
+}
+
+.unom { gap: 12px; }
+
+/* ── Cards ─────────────────────────────────────────────── */
+.uno-card {
+  --w: 56px;
+  --c: var(--board);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--w);
+  aspect-ratio: 5 / 7;
+  border: 2px solid var(--ink);
+  background: var(--c);
+  color: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: var(--display);
+  line-height: 1;
+  user-select: none;
+}
+.uno-card--sm { --w: 20px; box-shadow: 2px 2px 0 var(--ink); border-width: 2px; }
+.uno-card--lg { --w: clamp(54px, 15vw, 78px); }
+.uno-card--c0 { --c: var(--u0); }
+.uno-card--c1 { --c: var(--u1); color: var(--ink); }
+.uno-card--c2 { --c: var(--u2); }
+.uno-card--c3 { --c: var(--u3); }
+
+/* the face: a paper panel with the mark in the card's colour */
+.uno-card__face {
+  display: grid;
+  place-items: center;
+  width: 68%;
+  aspect-ratio: 1;
+  background: var(--slot);
+  border: 2px solid var(--ink);
+  color: var(--c);
+  font-size: calc(var(--w) * .46);
+  letter-spacing: -.04em;
+  -webkit-text-stroke: 1px var(--ink);
+}
+.uno-card--c1 .uno-card__face { color: var(--hit-deep); }
+.uno-card--wide .uno-card__face { font-size: calc(var(--w) * .34); }
+.uno-card__under { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.uno-card__corner {
+  position: absolute;
+  top: 4%;
+  left: 7%;
+  font-size: calc(var(--w) * .2);
+  letter-spacing: -.04em;
+}
+.uno-card__corner--end { top: auto; left: auto; right: 7%; bottom: 4%; transform: rotate(180deg); }
+.uno-card--sm .uno-card__corner, .uno-card--sm .uno-card__face { display: none; }
+
+/* Wilds: ink card, the four colours in quarters behind the mark */
+.uno-card--wild .uno-card__face {
+  background: conic-gradient(var(--u0) 0 25%, var(--u3) 0 50%, var(--u2) 0 75%, var(--u1) 0);
+  color: var(--paper);
+  -webkit-text-stroke: 1.5px var(--ink);
+}
+.uno-card__named {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 14%;
+  background: var(--named);
+  border-top: 2px solid var(--ink);
+}
+
+.uno-card--back {
+  background:
+    repeating-linear-gradient(45deg, transparent 0 5px, color-mix(in srgb, var(--hit) 55%, transparent) 5px 7px),
+    var(--tile-hi);
+  border-color: var(--paper-2);
+  box-shadow: none;
+}
+
+/* ── The table ─────────────────────────────────────────── */
+.uno-table { gap: 12px; }
+.uno-opps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; min-height: 44px; }
+.uno-opp {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 4px 8px 6px;
+  border-top: 4px solid var(--dim);
+  background: var(--tile);
+  min-width: 84px;
+}
+.uno-opp--0 { border-top-color: var(--lash); }
+.uno-opp--1 { border-top-color: var(--seven); }
+.uno-opp--2 { border-top-color: var(--p3); }
+.uno-opp--3 { border-top-color: var(--p4); }
+.uno-opp.is-turn { outline: 2px solid var(--hit); outline-offset: 2px; }
+.uno-opp__who { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.uno-opp__backs { display: flex; align-items: center; padding-left: 8px; min-height: 30px; }
+.uno-opp__backs .uno-card { margin-left: -8px; }
+.uno-opp__more { margin-left: 6px; font-size: 12px; color: var(--paper-2); }
+.uno-opp__uno { padding: 1px 6px; background: var(--hit); color: var(--ink); font-family: var(--display); font-size: 12px; text-transform: uppercase; }
+.uno-opp__uno--open { background: var(--strike); color: var(--paper); animation: uno-pulse .9s ease-in-out infinite alternate; }
+
+.uno-centre {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 5vw, 32px);
+  padding: 6px 0;
+}
+.uno-deck {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--paper-2);
+  cursor: default;
+}
+.uno-deck .uno-card { box-shadow: 3px 3px 0 var(--tile-hi), 6px 6px 0 var(--ink); }
+.uno-deck--go { cursor: pointer; color: var(--hit); }
+.uno-deck--go .uno-card { outline: 3px solid var(--hit); outline-offset: 3px; }
+.uno-deck--go:active .uno-card { transform: translate(2px, 2px); }
+.uno-deck__n { position: absolute; top: 34%; font-family: var(--display); font-size: 18px; color: var(--paper); text-shadow: 2px 2px 0 var(--ink); }
+.uno-deck__label { font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
+
+.uno-pile { position: relative; display: grid; place-items: center; }
+.uno-pile > * { grid-area: 1 / 1; }
+.uno-pile__under { transform: rotate(-8deg) translate(-6px, 2px); opacity: .9; }
+.uno-pile__top { animation: uno-land .28s var(--ease-snap) both; }
+
+.uno-info { display: grid; justify-items: center; gap: 8px; }
+.uno-colour {
+  min-width: 64px;
+  padding: 4px 8px;
+  border: 2px solid var(--paper);
+  background: var(--tile-hi);
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.uno-colour--0 { background: var(--u0); }
+.uno-colour--1 { background: var(--u1); color: var(--ink); }
+.uno-colour--2 { background: var(--u2); }
+.uno-colour--3 { background: var(--u3); }
+.uno-dir { font-size: 26px; line-height: 1; color: var(--paper-2); }
+.uno-owe { padding: 2px 8px; background: var(--strike); color: var(--paper); font-family: var(--display); font-size: 18px; animation: stamp-in .3s var(--ease-snap) both; }
+.uno-last { margin: 0; text-align: center; font-size: 13px; color: var(--paper-2); }
+
+/* ── Your hand ─────────────────────────────────────────── */
+.uno-mine { gap: 8px; }
+.uno-hand {
+  --cw: clamp(54px, 15vw, 78px);
+  --room: min(100vw - 2 * var(--gutter), 640px);
+  display: flex;
+  justify-content: center;
+  padding: 22px 6px 6px;
+  min-height: calc(var(--cw) * 1.4 + 28px);
+}
+.uno-hand__card {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: transform .14s var(--ease-out);
+}
+/* the cards overlap just enough to fit the row */
+.uno-hand__card + .uno-hand__card { margin-left: min(4px, calc((var(--room) - 12px - var(--cw)) / (var(--n) - 1) - var(--cw) - 3px)); }
+.uno-hand__card:disabled { cursor: default; }
+.uno-hand__card:not(:disabled):hover { transform: translateY(-6px); }
+.uno-hand__card--up, .uno-hand__card--up:not(:disabled):hover { transform: translateY(-18px); position: relative; z-index: 2; }
+.uno-hand__card--up .uno-card { outline: 3px solid var(--hit); outline-offset: 2px; }
+.uno-hand__card--no .uno-card { filter: saturate(.35) brightness(.85); }
+.uno-hand__card--coming { opacity: .55; }
+
+.uno-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.uno-call { background: var(--hit); font-family: var(--display); font-size: 18px; text-transform: uppercase; }
+.uno-call--now { background: var(--strike); color: var(--paper); animation: uno-pulse .7s ease-in-out infinite alternate; }
+.uno-catch { background: var(--strike); color: var(--paper); font-family: var(--display); text-transform: uppercase; }
+
+.uno-pick { display: grid; justify-items: center; gap: 8px; padding: 10px; border: var(--edge) solid var(--ink); background: var(--slot); box-shadow: var(--shadow-sm); }
+.uno-pick__row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.uno-pick__c {
+  min-height: 52px;
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  color: var(--paper);
+  font-family: var(--display);
+  font-size: clamp(12px, 3.4vw, 16px);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.uno-pick__c:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.uno-pick__c--0 { background: var(--u0); }
+.uno-pick__c--1 { background: var(--u1); color: var(--ink); }
+.uno-pick__c--2 { background: var(--u2); }
+.uno-pick__c--3 { background: var(--u3); }
+.uno-pick__cancel { border: 0; background: none; font-size: 13px; text-decoration: underline; color: var(--ink-soft); cursor: pointer; }
+
+.uno-results__check { text-align: center; }
+
+@keyframes uno-land {
+  from { transform: translateY(-24px) rotate(6deg) scale(1.08); }
+  to { transform: none; }
+}
+@keyframes uno-pulse {
+  to { transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uno-pile__top, .uno-opp__uno--open, .uno-call--now { animation: none; }
+}
+
+/* ── Phones during a match: everything on one screen, the table filling the middle ── */
+@media (width < 900px) {
+  html.scroll-locked .spm.unom { grid-template-rows: auto auto minmax(0, 1fr) auto; }
+  html.scroll-locked .unom .uno-table { align-self: stretch; align-content: space-evenly; }
+}
