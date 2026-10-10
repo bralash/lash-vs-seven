@@ -1,10 +1,14 @@
+import { ref as dbRef, set } from 'firebase/database'
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { db } from '../../lib/firebase'
+import { useServerOffset } from '../../lib/serverTime'
 import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
 import type { MatchExit, Me } from '../../lobby/Lobby'
-import { playersBySeat, type Room } from '../../lobby/rooms'
+import { playersBySeat, roomPath, type Room } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
+import { MatchEnded } from '../../match/MatchEnded'
 import { ResultActions } from '../../match/ResultActions'
 import { ResultMark } from '../../match/ResultMark'
 import { RivalryLine } from '../../match/RivalryLine'
@@ -14,6 +18,7 @@ import { shareLink, shareMessage } from '../../match/share'
 import type { CardInput } from '../../match/shareCard'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
+import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
 import {
   BAT_REACH,
@@ -32,15 +37,19 @@ import {
   batErr,
   contact,
   freshLive,
+  mirror,
   nextGame,
   opsReturn,
   opsServe,
   plan,
+  pointKey,
   readStroke,
   readSwipe,
+  rebase,
   serverOf,
   type Flight,
   type Live,
+  type ShotMsg,
   type Side,
   type Why,
 } from './engine'
@@ -54,7 +63,7 @@ export interface PPState {
   /** games needed to win the match */
   target: number
   match: number
-  live: Live
+  live: Live & { shot?: ShotMsg }
   ready?: Record<string, boolean>
 }
 
@@ -88,21 +97,44 @@ const corner = (x: number, y: number) => {
 
 const WHY_SAID: Record<Why, string> = { miss: 'Missed it', net: 'Into the net', long: 'Long', wide: 'Wide', winner: 'Winner' }
 
-type Phase = 'serve-me' | 'serve-ops' | 'flight' | 'point' | 'idle'
+/** an apostrophe-s that reads right after any name: "Ops’ point", "Kofi’s point" */
+const poss = (n: string) => (n.endsWith('s') ? `${n}’` : `${n}’s`)
 
+type Phase = 'serve-me' | 'serve-them' | 'flight' | 'point' | 'idle'
+
+/*
+ * The rally is played in this phone's own view: you're side 0 at the near end, the other player
+ * (Ops, or a friend on their phone) side 1 at the far end. The match state counts by seat, so seat 1
+ * online sees everything turned round (`seatOf` swaps the two both ways).
+ *
+ * Online, each shot is one message: the hitter's phone plans the flight and sends it; the other
+ * phone plays it on its own clock and is the only one to judge it (a return, a miss, a fault), so a
+ * point is never argued over by two phones.
+ */
 export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }) {
   const st = room.state as unknown as PPState
   const live = st.live
   const session = useSession(GAME, room.code)
+  const vsOps = !!session.bot
+  const online = !session.local && !vsOps
   const level = session.level ?? 'medium'
   const { play: sound } = useSound()
   const seats = playersBySeat(room)
+  const flip = me.seat === 1
+  const seatOf = useCallback((s: Side): Side => (flip ? ((1 - s) as Side) : s), [flip])
+  const opp = seats[seatOf(1)]
+  const oppName = opp?.name ?? 'Ops'
 
   const seriesOver = live.games[0] >= st.target || live.games[1] >= st.target
   const showResults = useHold(seriesOver, RESULT_MS)
-  const inMatch = !seriesOver
+  const abandoned = room.status === 'abandoned'
+  const inMatch = !abandoned && !seriesOver
   useBeforeUnload(inMatch)
   useScrollLock(inMatch)
+  const awaySecs = useOpponentAway(GAME, room.code, online ? opp : null, inMatch)
+  const offset = useServerOffset()
+  const offsetRef = useRef(offset)
+  offsetRef.current = offset
 
   // the rally lives here, outside React: a clock that only runs while the page is showing
   const liveRef = useRef(live)
@@ -136,6 +168,12 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     sitter: false,
     /** the last swing was a smash: a bigger swing */
     big: false,
+    /** online: the other phone's latest shot, waiting to be played here */
+    inbox: null as ShotMsg | null,
+    /** where the ball was last drawn, so a shot arriving online starts from there */
+    shown: null as { x: number; y: number } | null,
+    /** how near the net the far racket is (a friend online can step in) */
+    oppY: HIT_Y[1],
   })
   const faceEl = useRef<SVGCircleElement>(null)
   const [pow, setPow] = useState<{ n: number; mine: boolean } | null>(null)
@@ -173,33 +211,78 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     }
     r.flight = null
     r.late = null
-    if (serverOf(l) === 0) {
+    r.oppY = HIT_Y[1]
+    if (seatOf(serverOf(l)) === 0) {
       r.phase = 'serve-me'
       setPrompt('Your serve · flick up')
     } else {
-      r.phase = 'serve-ops'
+      // Ops serves after a moment; a friend's serve arrives as a message
+      r.phase = 'serve-them'
       r.serveAt = r.clock + 900
-      setPrompt('Ops to serve')
+      setPrompt(`${oppName} to serve`)
     }
-  }, [])
+  }, [seatOf, oppName])
 
+  /** this phone judged the point (side 0 is you): it goes in, and both phones show it when it lands */
   const point = useCallback(
     (winner: Side, why: Why) => {
       const r = rally.current
       if (r.phase === 'point') return
       r.phase = 'point'
-      const mine = winner === 0
-      sound(mine ? 'find' : 'error')
-      const n = Date.now()
-      setBanner({ text: `${mine ? 'Your point' : 'Ops’ point'} · ${why === 'winner' ? (mine ? 'Ops missed it' : 'Winner') : mine ? `Ops: ${WHY_SAID[why].toLowerCase()}` : WHY_SAID[why]}`, mine, n })
       setPrompt('')
-      session.move<Live>((cur) => awardPoint(cur, winner, why, st.target)).catch(() => {})
-      setTimeout(() => {
-        setBanner((b) => (b?.n === n ? null : b))
-        if (rally.current.phase === 'point') nextServe()
-      }, 1100)
+      const key = pointKey(liveRef.current)
+      session.move<Live>((cur) => (pointKey(cur) === key ? awardPoint(cur, seatOf(winner), why, st.target) : undefined)).catch(() => {})
     },
-    [session, sound, st.target, nextServe],
+    [session, st.target, seatOf],
+  )
+
+  // a point landed (judged here or on the other phone): the banner, then the next serve
+  const pointSeen = useRef(`${live.game}:${live.last?.n ?? 0}`)
+  useEffect(() => {
+    const key = `${live.game}:${live.last?.n ?? 0}`
+    if (key === pointSeen.current || !live.last) return
+    pointSeen.current = key
+    const r = rally.current
+    r.phase = 'point'
+    r.inbox = r.inbox && r.inbox.pt === pointKey(live) ? r.inbox : null
+    const { why } = live.last
+    const mine = seatOf(live.last.winner) === 0
+    sound(mine ? 'find' : 'error')
+    const n = Date.now()
+    const text = mine
+      ? `Your point · ${why === 'winner' || why === 'miss' ? `${oppName} missed it` : `${oppName}: ${WHY_SAID[why].toLowerCase()}`}`
+      : `${poss(oppName)} point · ${why === 'winner' ? 'Winner' : WHY_SAID[why]}`
+    setBanner({ text, mine, n })
+    setPrompt('')
+    // (not cleared when the room changes again: the other phone's serve can land within the second)
+    setTimeout(() => {
+      setBanner((b) => (b?.n === n ? null : b))
+      if (rally.current.phase === 'point') nextServe()
+    }, 1100)
+  }, [live, seatOf, oppName, sound, nextServe])
+
+  // online: the other phone's shot comes in, to be played on the next frame
+  const shotSeen = useRef(live.shot?.id)
+  useEffect(() => {
+    const s = live.shot
+    if (!online || !s || s.id === shotSeen.current) return
+    shotSeen.current = s.id
+    if (s.by !== me.seat) rally.current.inbox = s
+  }, [online, live.shot, me.seat])
+
+  /** online: your shot goes to the other phone, seen from its end, its times counted from the hit */
+  const send = useCallback(
+    (f: Flight) => {
+      if (!online) return
+      const w = flip ? mirror(f) : f
+      const rel: Flight = { ...w, t0: 0, tb: w.tb - w.t0, t1: w.t1 - w.t0 }
+      // the database won't take an undefined
+      const clean = JSON.parse(JSON.stringify(rel)) as Flight
+      const msg: ShotMsg = { id: Math.random().toString(36).slice(2, 10), by: me.seat as Side, at: Date.now() + offsetRef.current, pt: pointKey(liveRef.current), f: clean }
+      shotSeen.current = msg.id
+      set(dbRef(db, `${roomPath(GAME, room.code)}/state/live/shot`), msg).catch(() => {})
+    },
+    [online, flip, me.seat, room.code],
   )
 
   // a new game (or a fresh match): get the first serve ready
@@ -217,9 +300,9 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   useEffect(() => {
     if (live.result) {
       rally.current.phase = 'idle'
-      setPrompt(live.result.final ? '' : `${live.result.winner === 0 ? 'You take' : 'Ops takes'} game ${live.game}`)
+      setPrompt(live.result.final ? '' : `${seatOf(live.result.winner) === 0 ? 'You take' : `${oppName} takes`} game ${live.game}`)
     }
-  }, [live.result, live.game])
+  }, [live.result, live.game, seatOf, oppName])
 
   /* ── your bat: moved like a trackpad, it hits whatever it meets ── */
   /** the thumb's (or mouse's) recent path, in screen px and event times */
@@ -253,12 +336,13 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       shot.err = Math.max(shot.err, batErr(off) * 0.85)
       setHint(false)
       r.flight = plan(0, b.x, shot, r.clock, Math.random, b.y)
+      send(r.flight)
       r.swingAt = r.clock
       r.big = smash
       if (smash) smashed(true)
       else sound('pong')
     },
-    [sound, smashed],
+    [sound, smashed, send],
   )
 
   const down = (e: ReactPointerEvent) => {
@@ -317,6 +401,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     if (!shot || r.phase !== 'serve-me') return
     setHint(false)
     r.flight = plan(0, r.myX, shot, r.clock, Math.random, r.myY)
+    send(r.flight)
     r.swingAt = r.clock
     r.big = false
     r.phase = 'flight'
@@ -339,17 +424,38 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const t = r.clock
       const f = r.flight
 
-      if (r.phase === 'serve-ops' && t >= r.serveAt) {
+      if (vsOps && r.phase === 'serve-them' && t >= r.serveAt) {
         r.flight = plan(1, r.opsX, opsServe(level), t)
         r.opsSwingAt = t
         r.phase = 'flight'
         sound('pong')
         setPrompt('')
       }
-      if (r.phase === 'flight' && f) {
+      // online: the other phone's shot (or serve) for this point starts flying here, from where the ball is showing
+      const msg = r.inbox
+      if (msg && msg.pt === pointKey(liveRef.current) && (r.phase === 'serve-them' || (r.phase === 'flight' && f?.by === 0))) {
+        r.inbox = null
+        const mine = flip ? mirror(msg.f) : msg.f
+        const late = Math.max(0, Math.min(1500, Date.now() + offsetRef.current - msg.at))
+        r.flight = rebase(mine, t, late, r.shown ?? mine.from)
+        // their racket is where they met it
+        r.opsX = mine.from.x
+        r.oppY = Math.max(0.6, mine.from.y)
+        r.opsSwingAt = t
+        r.phase = 'flight'
+        if (mine.smash) smashed(false)
+        else sound('pong')
+        setPrompt('')
+      }
+      const g = r.flight
+      if (r.phase === 'flight' && g) {
+        const f = g
         const b = ballAt(f, t)
-        if (f.fault && t >= f.tb + (f.fault === 'net' ? 320 : 180)) point((1 - f.by) as Side, f.fault)
-        else if (!f.fault && f.by === 0 && r.late === f) {
+        // only the phone the ball is heading to calls a fault (online the hitter waits to hear)
+        if (f.fault && (vsOps || f.by === 1) && t >= f.tb + (f.fault === 'net' ? 320 : 180)) point((1 - f.by) as Side, f.fault)
+        else if (!vsOps && f.by === 0) {
+          // online: your shot is on its way; their phone answers it
+        } else if (!f.fault && f.by === 0 && r.late === f) {
           // she lunged and missed: let it fly past her before the point goes to you
           if (b.y > 1.16) point(0, 'winner')
         } else if (!f.fault && f.by === 0 && t >= f.t1 - 20) {
@@ -386,15 +492,16 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       // where the ball is, and the rackets following it
       const fl = r.flight
       if (r.phase === 'serve-me') r.myY = Math.min(r.myY, SERVE_Y)
-      const held = r.phase === 'serve-me' ? { x: r.myX, y: r.myY + 0.03, z: 0.35 } : r.phase === 'serve-ops' ? { x: r.opsX, y: HIT_Y[1] - 0.03, z: 0.35 } : null
+      const held = r.phase === 'serve-me' ? { x: r.myX, y: r.myY + 0.03, z: 0.35 } : r.phase === 'serve-them' ? { x: r.opsX, y: r.oppY - 0.03, z: 0.35 } : null
       const ball = held ?? (fl ? ballAt(fl, t) : null)
+      r.shown = ball ? { x: ball.x, y: ball.y } : null
       const comingToMe = fl?.by === 1 && r.phase === 'flight'
       const comingToOps = fl?.by === 0 && r.phase === 'flight'
       const target = (side: Side) => (fl && ((side === 0 && comingToMe) || (side === 1 && comingToOps)) ? fl.to.x * 0.85 + fl.bounce.x * 0.15 : 0)
       const follow = (cur: number, to: number, rate: number) => cur + (to - cur) * Math.min(1, rate)
-      const opsSpeed = level === 'hard' ? 0.14 : level === 'medium' ? 0.1 : 0.07
+      const opsSpeed = !vsOps ? 0.12 : level === 'hard' ? 0.14 : level === 'medium' ? 0.1 : 0.07
       if (r.late && r.late === fl) r.opsX = follow(r.opsX, r.lunge, 0.22) // the lunge
-      else if (r.phase !== 'serve-ops') r.opsX = follow(r.opsX, comingToOps ? Math.max(-1.1, Math.min(1.1, target(1))) : 0, opsSpeed)
+      else if (r.phase !== 'serve-them') r.opsX = follow(r.opsX, comingToOps ? Math.max(-1.1, Math.min(1.1, target(1))) : 0, opsSpeed)
 
       // the spin on the ball: sidespin turns the seam, top/backspin tumbles it
       if (fl && r.phase === 'flight') {
@@ -474,13 +581,13 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         myPad.current.setAttribute('transform', `translate(${p.px} ${p.py + 6}) rotate(${(r.big ? -60 : -30) * swing(r.swingAt)}) scale(${(1.65 * p.s).toFixed(3)})`)
       }
       if (opsPad.current) {
-        const p = proj(r.opsX, HIT_Y[1] + 0.02)
+        const p = proj(r.opsX, r.oppY + 0.02)
         opsPad.current.setAttribute('transform', `translate(${p.px} ${p.py - 10}) rotate(${180 + (fl?.smash && fl.by === 1 ? 60 : 30) * swing(r.opsSwingAt)}) scale(1)`)
       }
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [showResults, level, point, sound, meet, smashed])
+  }, [showResults, level, point, sound, meet, smashed, vsOps, flip])
 
   /* ── screens ── */
 
@@ -490,6 +597,23 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     <ScoreCard p={seats[s]} you={s === me.seat && !session.local} turn={server === s} value={score(s)} meta={`Games ${live.games[s]} · first to ${st.target}`} />
   )
 
+  if (abandoned && !seriesOver) {
+    return (
+      <MatchEnded
+        room={room}
+        me={me}
+        seats={seats}
+        exit={exit}
+        scoreboard={
+          <>
+            {card(0)}
+            <span className="mt-ended__vs" aria-hidden="true">vs</span>
+            {card(1)}
+          </>
+        }
+      />
+    )
+  }
   if (showResults) return <Results room={room} me={me} st={st} seats={seats} exit={exit} />
 
   return (
@@ -528,9 +652,9 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
             </pattern>
           </defs>
 
-          {/* Ops' racket at the far end, the ball and its shadow, yours at the near end */}
+          {/* their racket at the far end, the ball and its shadow, yours at the near end (each in its seat's colour) */}
           <g ref={opsPad} className="ppm-pad ppm-pad--ops">
-            <Racket colour="var(--seven)" />
+            <Racket colour={flip ? 'var(--lash)' : 'var(--seven)'} />
           </g>
           <ellipse ref={guideEl} rx="14" ry="8" fill="none" stroke="#fbf7ee" strokeWidth="2" strokeDasharray="4 4" style={{ opacity: 0 }} />
           <circle ref={puffEl} r="4" fill="none" stroke="#fbf7ee" strokeWidth="2" style={{ opacity: 0 }} />
@@ -547,7 +671,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
             <circle cx="-2" cy="-2.6" r="1.5" fill="#fff" />
           </g>
           <g ref={myPad} className="ppm-pad">
-            <Racket colour="var(--lash)" />
+            <Racket colour={flip ? 'var(--seven)' : 'var(--lash)'} />
           </g>
         </svg>
 
@@ -568,6 +692,11 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           </div>
         )}
       </div>
+      {awaySecs !== null && opp && (
+        <p className="mt-banner" role="status">
+          {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back
+        </p>
+      )}
     </main>
   )
 }
@@ -651,7 +780,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: PPStat
         oppName={opp?.name}
         imReady={imReady}
         oppReady={oppReady}
-        oppGone={false}
+        oppGone={!session.bot && (room.status === 'abandoned' || !opp?.online)}
         onReady={() => {
           sound('tap')
           session.ready(me.id)

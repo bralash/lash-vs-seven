@@ -341,3 +341,41 @@ export function opsServe(level: Level, rand: () => number = Math.random): Shot {
   const k = SKILL[level]
   return { aim: (rand() * 2 - 1) * k.aim * 0.8, power: lerp(0.15, k.power[1] * 0.7, rand()), curl: (rand() * 2 - 1) * k.curl * 0.6, top: (rand() * 2 - 1) * k.curl * 0.6, err: rand() * 0.08 }
 }
+
+/* ── online: one message per shot ── */
+
+/**
+ * The same flight seen from the other end of the table. Each phone draws its own player at the near
+ * end, so a shot crossing to the other phone is turned round: across and along both flip, and so
+ * does the curl (top and backspin look the same from either end).
+ */
+export function mirror(f: Flight): Flight {
+  const m = (p: { x: number; y: number }) => ({ x: -p.x, y: 1 - p.y })
+  return { ...f, by: (1 - f.by) as Side, from: m(f.from), bounce: m(f.bounce), to: m(f.to), curl: -f.curl }
+}
+
+/** A shot as it goes over the wire: the flight with its times counted from the hit, and when (server clock) it was hit. */
+export interface ShotMsg {
+  id: string
+  /** the seat that hit it */
+  by: Side
+  /** server time of the hit */
+  at: number
+  /** which point it belongs to, so a stray shot from the last rally is never played */
+  pt: string
+  f: Flight
+}
+
+/** Which point of the match is being played: a shot for any other point is ignored. */
+export const pointKey = (l: Live) => `${l.game}.${l.points[0] + l.points[1]}`
+
+/**
+ * A shot that arrived `late` ms after it was hit, rebased onto this phone's clock at `now`. It keeps
+ * its bounce and arrival on schedule by flying the first stretch a little quicker (never quicker than
+ * a blink), and it starts from wherever the ball is showing here, so it never jumps.
+ */
+export function rebase(f: Flight, now: number, late: number, from: { x: number; y: number }): Flight {
+  const pre = Math.max(140, f.tb - f.t0 - late)
+  const post = f.t1 - f.tb
+  return { ...f, from, t0: now, tb: now + pre, t1: now + pre + post }
+}

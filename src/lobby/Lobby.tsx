@@ -410,7 +410,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         game={game}
         onEnter={enterRoom}
         onWatch={game.watch ? enterWatch : undefined}
-        onLocal={canLocal && game.modes !== 'vs Ops' ? () => setSetup('local') : undefined}
+        onLocal={canLocal && game.modes !== 'vs Ops' && game.modes !== 'online + Ops' ? () => setSetup('local') : undefined}
         onBot={canLocal && bot ? () => setSetup('bot') : undefined}
       />
     )
@@ -657,13 +657,15 @@ function StartScreen({
         </>
       )}
 
-      {onLocal && game.modes !== 'local' && (
+      {(onLocal || onBot) && game.modes !== 'local' && game.modes !== 'vs Ops' && (
         <>
-          <div className="divider" role="separator"><span>or on one device</span></div>
-          <div className={onBot ? 'lobby__solo' : undefined}>
-            <button type="button" className="btn btn--block lobby__local" onClick={onLocal}>
-              Pass &amp; play
-            </button>
+          <div className="divider" role="separator"><span>{onLocal ? 'or on one device' : 'or on your own'}</span></div>
+          <div className={onBot && onLocal ? 'lobby__solo' : undefined}>
+            {onLocal && (
+              <button type="button" className="btn btn--block lobby__local" onClick={onLocal}>
+                Pass &amp; play
+              </button>
+            )}
             {onBot && (
               <button type="button" className="btn btn--block lobby__local lobby__ops" onClick={onBot}>
                 <OpsFace size={28} /> Play {BOT_NAME}
