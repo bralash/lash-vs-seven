@@ -294,3 +294,30 @@
   html.scroll-locked .wh-found .chip { flex: none; }
 }
 
+
+/* ── Three or four players ────────────────────────────── */
+/* phones: the cards two by two either side of the clock; wide screens: one row with the clock in the middle */
+.mt-hud.wh-hud { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.wh-hud > .mt-clock { grid-column: 2; grid-row: 1 / span 2; }
+.wh-hud .mt-score { text-align: left; }
+.wh-hud .mt-score__row { flex-direction: row; }
+@media (width >= 900px) {
+  .mt-hud.wh-hud--3 { grid-template-columns: repeat(2, minmax(0, 1fr)) auto minmax(0, 1fr); }
+  .mt-hud.wh-hud--4 { grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr)); }
+  .wh-hud > .mt-clock { grid-column: 3; grid-row: 1; }
+}
+@media (width < 900px) {
+  /* the second row of cards costs the board some height */
+  html.scroll-locked .wh--many { gap: 8px; }
+  html.scroll-locked .wh--many .wh-hud { gap: 6px 8px; }
+  html.scroll-locked .wh--many .mt-score { padding-block: 4px 6px; }
+  html.scroll-locked .wh--many .mt-score__n { font-size: 22px; }
+  html.scroll-locked .wh--many .wh-board { width: min(100% - 10px, max(220px, 100svh - 400px)); }
+}
+.wh-col--2 header { background: var(--p3); }
+.wh-col--3 header { background: var(--p4); }
+.wh-results__n { white-space: nowrap; }
+.wh-results__n > span { margin: 0 .3em; }
+/* the "match ended" scoreboard for three or four */
+.sp-hud-many { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.sp-hud-many .mt-score { text-align: left; padding-inline: 8px; }

@@ -133,6 +133,8 @@ html.scroll-locked .mt-banner.mt-banner--self {
 }
 .mt-countdown__vs .p0 { color: var(--lash); }
 .mt-countdown__vs .p1 { color: #8fa8ff; }
+.mt-countdown__vs .p2 { color: var(--p3); }
+.mt-countdown__vs .p3 { color: var(--p4); }
 .mt-countdown__vs i { font-style: normal; font-family: var(--mono); font-size: 14px; letter-spacing: .14em; color: var(--paper-2); }
 .mt-countdown__n {
   display: block;

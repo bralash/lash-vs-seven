@@ -44,9 +44,10 @@ export const GAMES: GameMeta[] = [
     length: '80 sec',
     modes: 'online',
     status: 'live',
-    tagline: 'Same grid · 80 seconds · most points wins',
+    players: [2, 4],
+    tagline: 'Same grid · 80 seconds · most points wins · 2–4 players',
     rules: [
-      { title: 'Same grid, both of you', body: 'You and your opponent get the same 4×4 letter grid at the same moment.' },
+      { title: 'Same grid, all of you', body: 'Two to four players get the same 4×4 letter grid at the same moment.' },
       { title: 'Drag to spell', body: 'Swipe through letters that touch — across, down or diagonal. Each tile once per word, 3 letters minimum.' },
       { title: 'Longer is better', body: '3 letters = 100, 4 = 400, 5 = 800, 6 = 1400, 7 = 1800, 8+ = 2200.' },
       { title: 'Beat the clock', body: 'After 80 seconds the board locks. Highest score wins — words only you found are marked.' },
