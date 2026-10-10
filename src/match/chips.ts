@@ -67,6 +67,8 @@ interface Wallet {
   paid?: Record<string, Paid>
   /** what's been bought, by id: faces (or kept: whoever already wore one when they went on sale) and wardrobe items */
   owned?: Owned
+  /** the item the last purchase was for (the rules check its price against the chips spent) */
+  bought?: string
 }
 
 /** what a player owns, by face or item id */
@@ -278,7 +280,8 @@ async function buy(id: string, price: number): Promise<'ok' | 'short' | 'error'>
         return
       }
       short = false
-      return { ...w, chips: w.chips - price, owned: { ...w.owned, [id]: true } }
+      // `bought` names the item: the rules let it in only when the chips drop by exactly its price
+      return { ...w, chips: w.chips - price, bought: id, owned: { ...w.owned, [id]: true } }
     })
     return res.committed ? 'ok' : short ? 'short' : 'ok'
   } catch {

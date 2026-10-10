@@ -266,12 +266,15 @@
             "$other": { ".validate": false }
           }
         },
+        "bought": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
         "first": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && (!data.exists() || newData.val() === data.val())"
         },
         "owned": {
           "$look": {
-            ".validate": "newData.val() === true && ($look.matches(/^(prime|warrior|titan|spider|brute|ghost|anansi|trotro|bat|queen|addo|snapback|kufi|crown|kente|jersey|tux|fugu|gold|slipper|balloon|pie|fanice|kenkey|ghana|football|trash|chopbar|pidgin|church|gamenight|faces)$/) || ($look === 'towercrown' && (data.exists() || newData.parent().parent().child('tower/champ').val() === true)))"
+            ".validate": "newData.val() === true && (data.exists() || (auth.token.email === 'emmanuelasaber@gmail.com' && auth.token.email_verified === true) || ($look === 'towercrown' && newData.parent().parent().child('tower/champ').val() === true) || ($look.matches(/^(prime|warrior|titan|spider|brute|ghost)$/) && now < 1792195200000) || (newData.parent().parent().child('bought').val() === $look && (($look.matches(/^(snapback|kufi|ghana|football|trash|chopbar|pidgin|church|gamenight)$/) && (data.parent().parent().child('chips').val() - newData.parent().parent().child('chips').val()) === 200) || ($look.matches(/^(slipper|balloon|pie|fanice|kenkey)$/) && (data.parent().parent().child('chips').val() - newData.parent().parent().child('chips').val()) === 250) || ($look.matches(/^(warrior)$/) && (data.parent().parent().child('chips').val() - newData.parent().parent().child('chips').val()) === 300) || ($look.matches(/^(prime|titan|trotro|kente|fugu|faces)$/) && (data.parent().parent().child('chips').val() - newData.parent().parent().child('chips').val()) === 400) || ($look.matches(/^(spider|anansi|jersey|tux)$/) && (data.parent().parent().child('chips').val() - newData.parent().parent().child('chips').val()) === 500) || ($look.matches(/^(brute|bat|queen|crown)$/) && (data.parent().parent().child('chips').val() - newData.parent().parent().child('chips').val()) === 600) || ($look.matches(/^(ghost|addo|gold)$/) && (data.parent().parent().child('chips').val() - newData.parent().parent().child('chips').val()) === 800))))"
           }
         },
         "paid": {
