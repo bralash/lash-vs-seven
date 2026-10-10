@@ -103,6 +103,13 @@ export function WordHuntMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const [live, setLive] = useState<number[]>([])
   const [flash, setFlash] = useState<Flash | null>(null)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
+  // A new grid (next game, rematch) starts clean: the last word's flash would otherwise replay on
+  // the same squares once the new letters finish flipping in, lighting random letters green.
+  const gridKey = grid.join('')
+  useEffect(() => {
+    setFlash(null)
+    setFeedback(null)
+  }, [gridKey])
 
   useEffect(() => {
     if (!feedback) return
