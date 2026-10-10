@@ -9,6 +9,22 @@ html, body { overflow-x: hidden; }
   html, body { overflow-x: clip; }
 }
 
+/* A game, not a document: a long press never selects text, pops the copy / look-up menu or flashes a
+   grey highlight anywhere (holding a face to taunt, holding to talk, dragging pieces). Text boxes
+   stay selectable so typing, pasting and moving the caret still work. */
+html {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+input, textarea, [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+img, svg { -webkit-user-drag: none; }
+
 /* Set by useScrollLock during a live round: no scrolling, panning, bounce or pull-to-refresh. */
 html.scroll-locked,
 html.scroll-locked body {
