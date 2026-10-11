@@ -17,7 +17,7 @@ import { useSession, useVsOps } from '../../match/session'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useAwayPlayers } from '../../match/useOpponentAway'
-import { Backs, Card, Hand, PlayedStack, TrickPips } from './Cards'
+import { Backs, Card, Hand, TrickPips } from './Cards'
 import { HAND, lockDeck, newKey, readHand, relockDeck, stripLocks, verifyDeal } from './deal'
 import { sparFeats } from './feats'
 import {
@@ -98,12 +98,6 @@ function saveKey(id: string, k: string) {
   } catch {
     /* storage blocked: the key lives in memory for this page only */
   }
-}
-
-/** `seats` starting with `from`, round the table */
-const rotate = (seats: number[], from: number) => {
-  const i = Math.max(0, seats.indexOf(from))
-  return [...seats.slice(i), ...seats.slice(0, i)]
 }
 
 export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }) {
@@ -262,10 +256,6 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
   /* ── playing a card: tap to lift, tap again to play ── */
   const [picked, setPicked] = useState<number | null>(null)
-  /** going through the stack (the tricks played so far) */
-  const [stackOpen, setStackOpen] = useState(false)
-  // a new deal starts a new stack
-  useEffect(() => setStackOpen(false), [deals])
   useEffect(() => setPicked(null), [plays.length, deals])
   const canPlay = toPlay(live)
   const myTurn = canPlay.includes(view) && !!myCards
@@ -322,9 +312,17 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     const t = setTimeout(() => setSlowCheck(true), 3000)
     return () => clearTimeout(t)
   }, [d, live.phase])
-  // the dropped cards on the table: stacked, or spread out to read
-  const [spread, setSpread] = useState(false)
-  useEffect(() => setSpread(false), [deals])
+  // the stack opened up to read (by seat); tapping it again or anywhere else closes it
+  const [openPile, setOpenPile] = useState<number | null>(null)
+  useEffect(() => setOpenPile(null), [deals])
+  useEffect(() => {
+    if (openPile === null) return
+    const close = (e: PointerEvent) => {
+      if (!(e.target as Element | null)?.closest?.(`.sp-slot--${openPile} .sp-pile`)) setOpenPile(null)
+    }
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [openPile])
   const gbaCount = r.gba?.length ?? 0
   const seenGba = useRef(gbaCount)
   useEffect(() => {
@@ -398,7 +396,6 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const partial = plays.length % n
   const shown: Play[] = partial ? plays.slice(plays.length - partial) : plays.slice(-n)
   const shownWinner = shown.length === n ? trickWinner(shown) : null
-  const order = rotate(dealtIn, shown[0]?.s ?? live.turn)
   const winners = Array.from({ length: trickNo }, (_, t) => trickWinner(trickAt(plays, t, n)))
   const leading = partial === 0
   const ledSuit = leading ? null : suitOf(plays[plays.length - partial].c)
@@ -406,11 +403,24 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
   // a Gba that's just happened: nothing has been played since
   const caught = live.phase === 'play' && r.gba?.length && r.gba[r.gba.length - 1].at === plays.length ? r.gba[r.gba.length - 1] : null
-  // the cards laid down: a drop being checked, one that won, or one just caught
   const lastGba = r.gba?.[r.gba.length - 1]
-  const onTable = d ?? caught ?? (live.phase === 'done' && (live.past ?? []).at(-1)?.gba !== undefined ? lastGba : null)
-  // in the order they'd be played (a winning drop is already laid out that way), so the last trick's card ends up on top
-  const pile = !onTable ? [] : onTable === d && live.phase === 'done' ? onTable.cards : dropOrder(onTable.cards).order
+  // one-on-one Gba ended the round
+  const gbaEnded = live.phase === 'done' && (live.past ?? []).at(-1)?.gba !== undefined
+  /**
+   * Each player's stack this round, as on a real table: every card they've played, the latest on top.
+   * A drop adds its cards in the order they'd be played (a winning one is laid out that way already),
+   * so the card for the last trick ends up on top.
+   */
+  const pileOf = (s: number) => {
+    const own = plays.filter((p) => p.s === s && !p.x).map((p) => p.c)
+    const dr = d?.s === s ? d : r.gba?.find((g) => g.s === s)
+    if (!dr) return own
+    return [...own, ...(dr === d && live.phase === 'done' ? dr.cards : dropOrder(dr.cards).order)]
+  }
+  // who led the trick on now
+  const leadNow = partial ? plays[plays.length - partial].s : live.turn
+  // the trick's "takes it" stamp, unless a drop or a Gba is what the table's showing
+  const trickStamp = !d && !caught && !gbaEnded
 
   const status = (() => {
     if (live.phase === 'deal') {
@@ -458,62 +468,43 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
             </div>
           )}
           <div className="sp-table__right">
-            {/* go through the stack: every finished trick this round */}
-            {live.phase !== 'deal' && trickNo > 0 && (
-              <button type="button" className="sp-stackbtn" onClick={() => (sound('tap'), setStackOpen(true))} aria-label={`See the ${trickNo} trick${trickNo === 1 ? '' : 's'} played so far`}>
-                Played · {trickNo}
-              </button>
-            )}
             <TrickPips winners={winners} current={live.phase === 'play' ? trickNo : -1} />
           </div>
         </div>
 
         {live.phase === 'deal' && !open ? (
           <DealSteps live={live} name={name} slow={slow} />
-        ) : onTable ? (
-          <div className={`sp-dropped sp-slot--${onTable.s}`}>
-            <span className="sp-slot__who">
-              {name(onTable.s)} <em>· drops all</em>
-            </span>
-            {/* stacked in the order they'd be played, the last trick's card on top; tap to spread them out */}
-            <button
-              type="button"
-              className={`sp-dropped__cards${spread ? ' is-spread' : ''}`}
-              onClick={() => (sound('tap'), setSpread((v) => !v))}
-              aria-label={`${pile.length} cards, last on top: ${pile.map(cardLabel).join(', ')}. Tap to ${spread ? 'stack' : 'spread'} them.`}
-            >
-              {pile.map((c, i, all) => (
-                <span key={c} className="sp-dropped__card" style={{ '--i': i - (all.length - 1) / 2 } as CSSProperties}>
-                  <Card k={c} size="lg" />
-                </span>
-              ))}
-            </button>
-            {onTable !== d && lastGba ? (
-              <p className="sp-dropped__gba">
-                <span className="sp-slot__stamp">Gba</span>
-                {name(lastGba.by)} holds <Card k={lastGba.c} size="sm" />
-              </p>
-            ) : (
-              live.phase === 'done' && <span className="sp-slot__stamp">wins</span>
-            )}
-          </div>
         ) : (
-          <div className={`sp-trick sp-trick--${n}`}>
-            {order.map((who, i) => {
-              const p = shown.find((x) => x.s === who)
-              const won = p && shownWinner === p.s
-              return (
-                <div key={i} className={`sp-slot sp-slot--${who}${won ? ' sp-slot--won' : ''}`}>
-                  <span className="sp-slot__who">
-                    {name(who)}
-                    <em>{i === 0 ? ' · lead' : ''}</em>
-                  </span>
-                  {p ? <Card key={`${p.c}`} k={p.c} size="lg" className="sp-slot__card" /> : <span className="sp-slot__empty" />}
-                  {won && <span className="sp-slot__stamp">{live.phase === 'done' ? 'wins' : 'takes it'}</span>}
-                </div>
-              )
-            })}
-          </div>
+          <>
+            <div className={`sp-trick sp-trick--${n}`}>
+              {dealtIn.map((who) => {
+                const p = shown.find((x) => x.s === who)
+                const won = trickStamp && p && shownWinner === p.s
+                const dropped = d?.s === who ? (live.phase === 'done' ? 'wins' : 'drops all') : r.gba?.some((g) => g.s === who) ? 'Gba' : null
+                // still to play to the trick on now: their stack shows what they played before
+                const waiting = live.phase === 'play' && partial > 0 && !p && !outs.includes(who)
+                return (
+                  <div key={who} className={`sp-slot sp-slot--${who}${won || dropped === 'wins' ? ' sp-slot--won' : ''}${waiting ? ' sp-slot--waiting' : ''}`}>
+                    <span className="sp-slot__who">
+                      {name(who)}
+                      <em>{outs.includes(who) ? ' · out' : live.phase === 'play' && !d && who === leadNow ? ' · lead' : ''}</em>
+                    </span>
+                    <Pile cards={pileOf(who)} open={openPile === who} onToggle={() => (sound('tap'), setOpenPile((o) => (o === who ? null : who)))} />
+                    {dropped ? (
+                      <span className={`sp-slot__stamp${dropped === 'Gba' ? ' sp-slot__stamp--gba' : ''}`}>{dropped}</span>
+                    ) : (
+                      won && <span className="sp-slot__stamp">{live.phase === 'done' ? 'wins' : 'takes it'}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {(caught || gbaEnded) && lastGba && (
+              <p className="sp-gbaline">
+                {name(lastGba.by)} holds <Card k={lastGba.c} size="sm" />, so {name(lastGba.s)}’s drop fails
+              </p>
+            )}
+          </>
         )}
       </section>
 
@@ -594,14 +585,35 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         )}
       </div>
 
-      {stackOpen && live.phase !== 'deal' && <PlayedStack plays={plays} n={n} name={name} onClose={() => setStackOpen(false)} />}
-
       {away.map((a) => (
         <p key={a.id} className="mt-banner" role="status">
           {a.name} disconnected · {carryOn ? 'dealt out' : 'ending the match'} in {a.secs}s unless they’re back
         </p>
       ))}
     </main>
+  )
+}
+
+/**
+ * A player's stack: slanted, the latest card on top and straight. Opened, it fans down so every card
+ * can be read, first played at the top.
+ */
+function Pile({ cards, open, onToggle }: { cards: number[]; open: boolean; onToggle: () => void }) {
+  if (!cards.length) return <span className="sp-slot__empty" />
+  return (
+    <button
+      type="button"
+      className={`sp-pile${open ? ' is-open' : ''}`}
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-label={`Played: ${cards.map(cardLabel).join(', ')}, last on top. Tap to ${open ? 'close' : 'open'} the stack.`}
+    >
+      {cards.map((c, i) => (
+        <span key={c} className="sp-pile__card" style={{ '--i': i, '--k': cards.length - 1 - i } as CSSProperties}>
+          <Card k={c} size="lg" />
+        </span>
+      ))}
+    </button>
   )
 }
 

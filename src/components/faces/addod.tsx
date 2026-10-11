@@ -162,7 +162,7 @@ export function AddoD({ mood }: { mood: OpsMood }) {
 
 /** What Addo D says: the statesman, formal and warm, with the lines Ghana knows him for. */
 export const ADDOD_LINES: Lines = {
-  taunt: ['Fellow Ghanaians…', 'The battle is in our hands', 'Year of Return? Return to your seat'],
+  taunt: ['Fellow Ghanaians'],
   taunted: ['I have been through tougher campaigns', 'Order, order'],
   ulted: ['Noted, my brother', 'I have survived worse'],
   hello_easy: ['Akwaaba, my good friend', 'Let us play in peace'],

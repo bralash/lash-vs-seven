@@ -115,7 +115,6 @@
 .sp-trick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .sp-trick--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .sp-trick--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.sp-trick--4 .sp-card--lg { --w: clamp(46px, 13vw, 76px); }
 .sp-trick--4 .sp-slot__empty { width: clamp(46px, 13vw, 76px); }
 .sp-trick--3 .sp-slot, .sp-trick--4 .sp-slot { padding-inline: 2px; }
 .sp-slot {
@@ -147,10 +146,9 @@
   aspect-ratio: 5 / 7;
   border: 2px dashed var(--dim);
 }
-.sp-slot__card { animation: sp-land .3s var(--ease-snap) both; }
 @keyframes sp-land { from { opacity: 0; transform: translateY(18px) rotate(-6deg) scale(.9); } }
 .sp-slot--won { background: var(--tile-hi); }
-.sp-slot--won .sp-card { outline: 3px solid var(--hit); outline-offset: 3px; }
+.sp-slot--won .sp-pile__card:last-child .sp-card { outline: 3px solid var(--hit); outline-offset: 3px; }
 .sp-slot__stamp {
   position: absolute;
   bottom: -10px;
@@ -164,40 +162,38 @@
   animation: stamp-in .35s .15s var(--ease-snap) both;
 }
 
-/* ── Drop all ──────────────────────────────────────────── */
-.sp-dropped {
+/* ── The stacks: every card each player has played this round, the latest on top ── */
+.sp-pile {
+  --cw: clamp(58px, 16vw, 84px);
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 10px;
-  padding: 10px 6px 18px;
-  border-top: 4px solid var(--dim);
-  background: var(--tile);
-}
-/* a pile: every card in the same spot, fanned a little, the last one on top; .is-spread lays them out */
-.sp-dropped__cards {
-  --cw: clamp(46px, 13vw, 70px);
-  display: grid;
-  justify-items: center;
-  margin: 4px 0 2px;
-  padding: 6px 0 10px;
+  padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.sp-dropped__cards .sp-card--lg { --w: var(--cw); }
-.sp-dropped__card {
+.sp-trick--4 .sp-pile { --cw: clamp(46px, 13vw, 76px); }
+.sp-pile .sp-card--lg { --w: var(--cw); }
+/* slanted: each card under the top one turned a little further and nudged left */
+.sp-pile__card {
   grid-area: 1 / 1;
-  transform: translateX(calc(var(--i) * var(--cw) * .22)) rotate(calc(var(--i) * 7deg));
-  transform-origin: 50% 120%;
-  transition: transform .28s var(--ease-snap);
-  /* backwards only, so the transform stays free to transition when spreading */
+  transform: translateX(calc(var(--k) * var(--cw) * -.09)) rotate(calc(var(--k) * -8deg));
+  transform-origin: 50% 115%;
+  transition: transform .25s var(--ease-snap);
+  /* backwards only, so the transform stays free to transition when the stack opens */
   animation: sp-land .3s var(--ease-snap) backwards;
 }
-.sp-dropped__cards.is-spread .sp-dropped__card { transform: translateX(calc(var(--i) * var(--cw) * 1.08)) rotate(calc(var(--i) * 2deg)); }
-.sp-dropped__gba { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; font-size: 13px; color: var(--paper-2); }
-.sp-dropped__gba .sp-slot__stamp { position: static; background: var(--strike); color: var(--paper); }
+/* opened: fanned downwards over the table, the first card played at the top */
+.sp-table:has(.sp-pile.is-open) { position: relative; z-index: 6; }
+.sp-slot:has(.sp-pile.is-open) { z-index: 5; }
+.sp-slot:has(.sp-pile.is-open) .sp-slot__stamp { visibility: hidden; }
+.sp-pile.is-open .sp-pile__card { transform: translateY(calc(var(--i) * var(--cw) * .62)); }
+.sp-pile.is-open .sp-card { box-shadow: 0 -2px 0 var(--ink); }
+.sp-slot--waiting .sp-pile { opacity: .45; }
+.sp-slot__stamp--gba { background: var(--strike); color: var(--paper); }
+.sp-gbaline { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 0 0; font-size: 13px; color: var(--paper-2); }
 .sp-hintrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; }
 .sp-dropbtn { min-height: 0; padding: 4px 12px; font-size: 13px; box-shadow: var(--shadow-sm); }
 
@@ -300,7 +296,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sp-slot__card, .sp-slot__stamp, .is-now .sp-deal__mark { animation: none !important; }
+  .sp-pile__card, .sp-slot__stamp, .is-now .sp-deal__mark { animation: none !important; transition: none !important; }
 }
 
 /* ── Three or four players ─────────────────────────────── */
@@ -351,25 +347,5 @@
 .sp-standings__who em { font-style: normal; font-weight: 400; color: var(--ink-soft); }
 .sp-standings__row strong { font-family: var(--display); font-weight: 400; font-size: 28px; }
 
-/* ── The stack: tap "Played" to go through the tricks so far ── */
+/* ── Over the table ── */
 .sp-table__right { display: flex; align-items: center; gap: 10px; flex: none; }
-.sp-stackbtn { padding: 5px 9px; border: 2px solid var(--paper-2); background: transparent; color: var(--paper); font: 500 11px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
-.sp-stackbtn:hover, .sp-stackbtn:focus-visible { border-color: var(--hit); color: var(--hit); outline: none; }
-.sp-stack { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; }
-.sp-stack__trick { display: grid; gap: 10px; padding-bottom: 16px; border-bottom: 2px dashed var(--line, var(--dim)); }
-.sp-stack__trick:last-child { padding-bottom: 0; border-bottom: 0; }
-.sp-stack__head { display: flex; justify-content: space-between; gap: 12px; margin: 0; font: 500 12px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
-.sp-stack__dot { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; }
-.sp-stack__dot--0 { background: var(--lash); }
-.sp-stack__dot--1 { background: var(--seven); }
-.sp-stack__dot--2 { background: var(--p3); }
-.sp-stack__dot--3 { background: var(--p4); }
-.sp-stack__plays { display: flex; flex-wrap: wrap; gap: 14px; }
-.sp-stack__play { display: grid; justify-items: center; gap: 6px; padding: 8px 8px 6px; border-top: 4px solid var(--dim); }
-.sp-stack__play--0 { border-top-color: var(--lash); }
-.sp-stack__play--1 { border-top-color: var(--seven); }
-.sp-stack__play--2 { border-top-color: var(--p3); }
-.sp-stack__play--3 { border-top-color: var(--p4); }
-.sp-stack__play--won { background: var(--hit); }
-.sp-stack__who { max-width: 72px; overflow: hidden; font: 500 11px/1.2 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
-.sp-stack__who em { font-style: normal; opacity: .65; }
