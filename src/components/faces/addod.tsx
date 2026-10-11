@@ -4,7 +4,7 @@ import { BLUSH, DROP, HEARTS, Head, INK, RAIN, SPARKLE, STEAM, VEIN, ZZ, brows, 
 
 /*
  * Addo D (he), after Nana Addo Dankwa Akufo-Addo, president of Ghana 2017–2025. A clean bald head,
- * his big dark-rimmed glasses, a dark suit with a gold tie and a little
+ * his big round dark-rimmed glasses, a dark suit with a gold tie and a little
  * Ghana flag on the lapel. While he thinks he looks at you over the top of his glasses, when he
  * wins he flashes his V for victory, and when he loses his glasses go crooked and crack. He throws
  * a Free SHS textbook.
@@ -136,14 +136,14 @@ export function AddoD({ mood }: { mood: OpsMood }) {
         {brows(f.brow, 4)}
         <g className="opsf-eyes">{eyes(f.eyes, IRIS)}</g>
         {mouth(f.mouth, LIP)}
-        {/* his big dark-rimmed glasses */}
+        {/* his big round dark-rimmed glasses */}
         <g transform={specs}>
-          <g fill="rgb(255 255 255 / .08)" stroke={FRAME} strokeWidth="3.2" strokeLinejoin="round">
-            <rect x="22" y="33" width="20" height="14" rx="2" />
-            <rect x="52" y="33" width="20" height="14" rx="2" />
+          <g fill="rgb(255 255 255 / .08)" stroke={FRAME} strokeWidth="3.2">
+            <circle cx="32" cy="41" r="9" />
+            <circle cx="62" cy="41" r="9" />
           </g>
-          <path d="M42 38q5-3 10 0M22 37l-13-2M72 37l13-2" stroke={FRAME} strokeWidth="3" fill="none" />
-          {own.cracked && <path d="M56 34l5 6-3 3 6 4" stroke="#fbf7ee" strokeWidth="1.4" fill="none" />}
+          <path d="M41 39q6-3 12 0M23 39l-14-3M71 39l14-3" stroke={FRAME} strokeWidth="3" fill="none" />
+          {own.cracked && <path d="M57 36l5 6-3 3 5 3" stroke="#fbf7ee" strokeWidth="1.4" fill="none" />}
         </g>
       </Head>
       {/* V for victory beside his head */}
