@@ -20,6 +20,13 @@ function seeded(seed: string) {
   }
 }
 
+/**
+ * Rooms made from this moment hand out only the free robots to anyone who hasn't picked a face; before
+ * it, any character (bought or not) could come up. Going by when the room was made keeps every phone
+ * in a room agreeing.
+ */
+export const ROBOTS_ONLY_FROM = Date.UTC(2026, 9, 17)
+
 /** `fixed`: looks that are already decided (Ops' own face, in a game against her). */
 export function looksFor(room: Room, fixed: Looks = {}): Looks {
   const players = Object.entries(room.players ?? {}).sort(([, a], [, b]) => a.seat - b.seat)
@@ -29,13 +36,15 @@ export function looksFor(room: Room, fixed: Looks = {}): Looks {
     if (!out[id] && look) out[id] = look
   }
   const rand = seeded(`${room.game}:${room.code}:${room.createdAt}`)
-  const free = CREW_STYLES.map((s) => s.id).filter((l) => !Object.values(out).includes(l))
+  const pool = CREW_STYLES.filter((s) => !s.price || (room.createdAt ?? 0) < ROBOTS_ONLY_FROM).map((s) => s.id)
+  const free = pool.filter((l) => !Object.values(out).includes(l))
   for (let i = free.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1))
     ;[free[i], free[j]] = [free[j], free[i]]
   }
-  // nine characters and at most four players, so there's always one free
-  for (const [id] of players) if (!out[id]) out[id] = free.shift() ?? CREW_STYLES[0].id
+  // three free robots and up to four players: once they're all taken, they come round again
+  let again = 0
+  for (const [id] of players) if (!out[id]) out[id] = free.shift() ?? pool[again++ % pool.length]
   return out
 }
 
