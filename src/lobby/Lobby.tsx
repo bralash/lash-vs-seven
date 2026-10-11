@@ -422,8 +422,19 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
           <div className="lobby__hero">
             <h1 className="lobby__title">Can’t connect</h1>
             <p>{FAILURE_COPY.offline}</p>
+            {canLocal && <p className="hint">You can still play on this phone.</p>}
           </div>
-          <button type="button" className="btn btn--primary" onClick={() => setAuthTry((n) => n + 1)}>
+          {canLocal && bot && (
+            <button type="button" className="btn btn--primary btn--block" onClick={() => setSetup('bot')}>
+              Play {BOT_NAME}
+            </button>
+          )}
+          {canLocal && game.modes !== 'vs Ops' && game.modes !== 'online + Ops' && (
+            <button type="button" className="btn btn--block" onClick={() => setSetup('local')}>
+              Pass &amp; play
+            </button>
+          )}
+          <button type="button" className={canLocal ? 'btn btn--block' : 'btn btn--primary'} onClick={() => setAuthTry((n) => n + 1)}>
             Try again
           </button>
         </main>

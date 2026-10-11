@@ -16,3 +16,8 @@ createRoot(document.getElementById('root')!).render(
 
 // your name and when you were last here, for the admin page
 touchProfile()
+
+// save the app on this phone so Ops and pass & play work with no internet (see src/sw.js)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
+}
