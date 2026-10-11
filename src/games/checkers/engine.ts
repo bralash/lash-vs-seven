@@ -89,6 +89,10 @@ export interface Live {
   last?: Step
   /** turns in a row with only kings moving and nothing captured */
   quiet: number
+  /** captures so far in the move in progress (only while `chain` is set) */
+  jumps?: number
+  /** most pieces each seat has captured in one move this game (missing in older rooms: none) */
+  best?: [number, number]
   result?: { winner: Seat | -1 }
 }
 
@@ -121,13 +125,20 @@ export function play(live: Live, seat: Seat, from: number, to: number): Live | u
   b[to] = piece
   const board = b.join('')
 
-  const { chain: _c, ...rest } = live
+  const { chain: _c, jumps: _j, ...rest } = live
   const next: Live = { ...rest, board, last: step }
+  // a chain always has at least one capture behind it, even in a room from before `jumps` was kept
+  const run = step.captured === undefined ? 0 : (live.chain !== undefined ? (live.jumps ?? 1) : 0) + 1
+  if (run > (live.best?.[seat] ?? 0)) {
+    const best = [...(live.best ?? [0, 0])] as [number, number]
+    best[seat] = run
+    next.best = best
+  }
   const quiet = step.captured === undefined && isKing(live.board[from]) ? (live.chain === undefined ? live.quiet + 1 : live.quiet) : 0
 
   // keep jumping: same piece, same turn (crowning ends the turn, as in the classic game)
   if (step.captured !== undefined && !crowned && pieceSteps(board, to).some((s) => s.captured !== undefined)) {
-    return { ...next, chain: to, quiet: 0 }
+    return { ...next, chain: to, jumps: run, quiet: 0 }
   }
 
   const other = (1 - seat) as Seat

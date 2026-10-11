@@ -19,6 +19,7 @@ import { useHold } from '../../match/useHold'
 import { useAwayPlayers } from '../../match/useOpponentAway'
 import { Backs, Card, Hand, PlayedStack, TrickPips } from './Cards'
 import { HAND, lockDeck, newKey, readHand, relockDeck, stripLocks, verifyDeal } from './deal'
+import { sparFeats } from './feats'
 import {
   TRICKS,
   SUIT_NAMES,
@@ -106,6 +107,9 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
   const local = session.local
+  // watching someone else's match: no side, no hand, and this phone never takes part in the deal
+  const watching = !!session.watching
+  const noYou = local || watching
   // against Ops there's no other phone to keep secrets from: deal on this device, like pass & play
   // (Ops' brain only ever reads her own hand)
   const vsOps = useVsOps()
@@ -114,8 +118,8 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   // by who sat down, not seats: a room opened for four can start with two
   const many = players.filter(Boolean).length > 2
   const name = (s: number) => players[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: number) => !local && s === me.seatN
-  // whose cards are on screen: online that's you; on one device it's whoever holds the phone
+  const mine = (s: number) => !noYou && s === me.seatN
+  // whose cards are on screen: online that's you; on one device it's whoever holds the phone (a watcher sees seat 0's side, face down)
   const view = me.seatN
   const seats = seatsOf(live)
   const dealtIn = roundSeats(live)
@@ -138,7 +142,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   useEffect(() => {
     for (const s of seats) {
       const p = players[s]
-      if (p && room.out?.[p.id]) session.move<Live>((cur) => drop(cur, s)).catch(() => {})
+      if (p && room.out?.[p.id] && !watching) session.move<Live>((cur) => drop(cur, s)).catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outKey, seats.join(','), session])
@@ -155,12 +159,12 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     if (k) memKeys.current[roundId] = k
     return k
   }
-  const myKey = open ? null : getKey(false)
+  const myKey = open || watching ? null : getKey(false)
   // my lock is already on the deck, but the key that takes it off isn't on this device
-  const lost = !open && live.phase !== 'done' && !myKey && chain.includes(view) && chain.indexOf(view) < (r.locked ?? 0)
+  const lost = !open && !watching && live.phase !== 'done' && !myKey && chain.includes(view) && chain.indexOf(view) < (r.locked ?? 0)
 
   const myPos = dealtIn.indexOf(view)
-  const mySlots = !open && dealt(live) && myPos >= 0 ? r.dealt!.slice(myPos * HAND, myPos * HAND + HAND) : null
+  const mySlots = !open && !watching && dealt(live) && myPos >= 0 ? r.dealt!.slice(myPos * HAND, myPos * HAND + HAND) : null
   const slotSig = mySlots?.join(',')
   const myCards = useMemo<number[] | null>(() => {
     if (open) return r.hands?.[view] ?? null
@@ -172,7 +176,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const legal = playable(hand, plays, n)
 
   /* ── the deal: each phone does its part as soon as it's its turn round the chain ── */
-  const step = open || myPos < 0
+  const step = open || watching || myPos < 0
     ? null
     : live.phase === 'deal'
       ? !r.dealt
@@ -276,13 +280,13 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     const seen = seenRef.current
     if (plays.length > seen.n && plays.length % n === 0) {
       const w = trickWinner(plays.slice(-n))
-      if (live.phase !== 'done') sound(local || w === me.seatN ? 'find' : 'tick')
+      if (live.phase !== 'done') sound(noYou || w === me.seatN ? 'find' : 'tick')
     }
     if (live.phase === 'done' && seen.phase !== 'done') {
-      sound(local || r.winner === me.seatN ? 'findBig' : 'end')
+      sound((noYou ? r.winner !== undefined : r.winner === me.seatN) ? 'findBig' : 'end')
     }
     seenRef.current = { n: plays.length, phase: live.phase }
-  }, [plays, n, live.phase, r.winner, me.seatN, local, sound])
+  }, [plays, n, live.phase, r.winner, me.seatN, noYou, sound])
 
   // pass & play: cover your hand whenever the phone changes hands
   const [holder, setHolder] = useState<string | null>(null)
@@ -345,18 +349,18 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const status = (() => {
     if (live.phase === 'deal') {
       const again = live.redeal ? `Dealing again · ${name(live.redeal.who)} ${live.redeal.why === 'left' ? 'left' : 'lost their cards'}` : null
-      return again ?? (open ? 'Dealing…' : 'Shuffling…')
+      return again ?? (open || watching ? 'Dealing…' : 'Shuffling…')
     }
     if (live.phase === 'done') return roundLine(live, name)
     const lastNote = last ? ' · last trick' : ''
-    if (leading && (local || live.turn !== me.seatN)) return `${name(live.turn)} leads${lastNote}`
-    if (!leading && (local || !canPlay.includes(me.seatN))) return `${local ? '' : 'Waiting for '}${andList(canPlay.map(name))}${local ? ' to play' : ''}${lastNote}`
+    if (leading && (noYou || live.turn !== me.seatN)) return `${name(live.turn)} leads${lastNote}`
+    if (!leading && (noYou || !canPlay.includes(me.seatN))) return `${local ? '' : 'Waiting for '}${andList(canPlay.map(name))}${local ? ' to play' : ''}${lastNote}`
     if (leading) return last ? 'Your lead · last trick' : 'Your lead'
     const canFollow = hand.some((c) => suitOf(c) === ledSuit)
     return canFollow ? `Follow ${SUIT_NAMES[ledSuit!]}` : `No ${SUIT_NAMES[ledSuit!]} — play any card`
   })()
 
-  const youAct = live.phase === 'play' && (local ? !cover : canPlay.includes(me.seatN))
+  const youAct = !watching && live.phase === 'play' && (local ? !cover : canPlay.includes(me.seatN))
   const opponents = dealtIn.filter((s) => s !== view)
 
   return (
@@ -429,7 +433,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
                       : check.msg}
               </p>
             )}
-            {!over && (
+            {!over && !watching && (
               <button type="button" className="btn btn--primary btn--lg" onClick={() => (sound('tap'), session.move<Live>((cur) => nextRound(cur)).catch(() => {}))}>
                 Next round <span className="keycap">↵</span>
               </button>
@@ -462,6 +466,9 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           </div>
         ) : live.phase === 'deal' ? (
           <div className="sp-hand sp-hand--waiting" aria-hidden="true" />
+        ) : watching ? (
+          // seat 0's cards stay face down: only their own phone can read them
+          dealtIn.includes(view) ? <Backs n={TRICKS - plays.filter((p) => p.s === view).length} seat={view} name={name(view)} label /> : <div className="sp-hand sp-hand--waiting" aria-hidden="true" />
         ) : (
           <>
             <Hand cards={hand} legal={legal} enabled={myTurn} selected={picked} onPick={pick} />
@@ -538,7 +545,9 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
   // by who sat down, not seats: a room opened for four can start with two
   const many = players.filter(Boolean).length > 2
   const winner = leaderOf(s, seats)
-  const iWon = session.local ? winner !== -1 : winner === me.seatN
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seatN
   const past = live.past ?? []
   const name = (k: number) => players[k]?.name ?? `Player ${k + 1}`
 
@@ -565,7 +574,7 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
     session.start({ ...initialSparState(st.target, st.match + 1, inRoom.map((p) => p.seat)) })
   }, [session, me.isHost, imReady, othersReady, st.target, st.match, inRoom])
 
-  const rivalry = useRivalryMulti(GAME, room, me, players, s, seats, st.match)
+  const rivalry = useRivalryMulti(GAME, room, me, players, s, seats, st.match, undefined, sparFeats(live))
   // standings: those still in by points, then anyone who left
   const standing = [...seats].sort((a, b) => s[b] - s[a])
   const gone = players.flatMap((p, k) => (p && !seats.includes(k) ? [k] : []))
@@ -592,7 +601,7 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
           {many ? ` · ${players.filter(Boolean).length} players` : ''}
         </p>
         <h1 className={`spm-results__title${iWon ? ' spm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${name(winner)} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${name(winner)} wins`}
         </h1>
       </div>
       {many ? (
@@ -602,7 +611,7 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
               <span className="sp-standings__place">{seats.includes(k) ? i + 1 : '–'}</span>
               <span className="sp-standings__who">
                 {name(k)}
-                {!session.local && k === me.seatN && <em> · you</em>}
+                {!noYou && k === me.seatN && <em> · you</em>}
                 {!seats.includes(k) && <em> · left</em>}
               </span>
               <strong>{s[k] ?? 0}</strong>
@@ -611,9 +620,9 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
         </ol>
       ) : (
         <div className="mt-hud spm-results__cards">
-          <ScoreCard p={players[0]} you={!session.local && me.seatN === 0} value={s[0]} meta="points" />
+          <ScoreCard p={players[0]} you={!noYou && me.seatN === 0} value={s[0]} meta="points" />
           <span className="mt-ended__vs" aria-hidden="true">vs</span>
-          <ScoreCard p={players[1]} you={!session.local && me.seatN === 1} value={s[1]} meta="points" />
+          <ScoreCard p={players[1]} you={!noYou && me.seatN === 1} value={s[1]} meta="points" />
         </div>
       )}
       <ol className="sp-rounds">
@@ -638,6 +647,7 @@ function Results({ room, me, st, players, exit }: { room: Room; me: Me; st: Spar
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

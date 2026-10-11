@@ -18,6 +18,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { OwareBoard, sowMs, useSowing } from './Board'
+import { owareFeats } from './feats'
 import { TO_WIN, freshLive, legalMoves, play, sideOf, type Live } from './engine'
 import '../../styles/oware.css'
 
@@ -45,7 +46,9 @@ export function OwareMatch({ room, me, exit }: { room: Room; me: Me; exit: Match
   const live = st.live
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // "you" only means something online; a watcher has no side
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
 
@@ -64,8 +67,8 @@ export function OwareMatch({ room, me, exit }: { room: Room; me: Me; exit: Match
   useScrollLock(inMatch)
   const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
 
-  // online you sow on your turn; on one device whoever's turn it is
-  const mover: Seat | null = inMatch && (session.local || live.turn === me.seat) ? live.turn : null
+  // online you sow on your turn; on one device whoever's turn it is; a watcher never sows
+  const mover: Seat | null = inMatch && !watching && (session.local || live.turn === me.seat) ? live.turn : null
   const myTurn = mover !== null && !session.local
 
   const sow = (pit: number) => {
@@ -80,8 +83,8 @@ export function OwareMatch({ room, me, exit }: { room: Room; me: Me; exit: Match
     if (!live.result || ended.current) return
     ended.current = true
     const w = live.result.winner
-    sound((session.local ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
-  }, [live.result, me.seat, sound, session.local])
+    sound((session.local || watching ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
+  }, [live.result, me.seat, sound, session.local, watching])
 
   const card = (s: Seat, active: boolean, turn = false) => (
     <ScoreCard p={seats[s]} you={mine(s)} active={active} turn={turn} value={live.captured[s]} meta={`${COLOUR[s]} · captured`} />
@@ -117,13 +120,13 @@ export function OwareMatch({ room, me, exit }: { room: Room; me: Me; exit: Match
       : starving
         ? myTurn
           ? `${name((1 - live.turn) as Seat)} has no seeds — give them some`
-          : `${turnName} must give ${session.local ? name((1 - live.turn) as Seat) : 'you'} seeds`
+          : `${turnName} must give ${session.local || watching ? name((1 - live.turn) as Seat) : 'you'} seeds`
         : myTurn
           ? 'Your turn'
           : `${turnName}’s turn`
 
-  // online your row sits along the bottom; on one device seat 0 sits at the bottom, seat 1 across the table
-  const bottom: Seat = session.local ? 0 : me.seat
+  // online your row sits along the bottom; on one device (or watching) seat 0 sits at the bottom, seat 1 across the table
+  const bottom: Seat = session.local || watching ? 0 : me.seat
 
   return (
     <main className="owm screen-in">
@@ -188,7 +191,9 @@ function Results({
   const live = st.live
   const s = live.captured
   const winner = (live.result?.winner ?? -1) as Seat | -1
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) there’s no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
 
   const cheered = useRef(false)
@@ -214,7 +219,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, owareFeats(live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const name = (k: Seat) => names[k]
   const card: CardInput = {
@@ -246,14 +251,14 @@ function Results({
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Oware</p>
         <h1 className={`owm-results__title${iWon ? ' owm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
         </h1>
         <p className="owm-results__line">{reasonLine(live, name)}</p>
       </div>
       <div className="mt-hud owm-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · seeds`} />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · seeds`} />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · seeds`} />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · seeds`} />
       </div>
       <RivalryLine r={rivalry} />
       <ResultActions
@@ -265,6 +270,7 @@ function Results({
         oppGone={oppGone}
         onReady={readyUp}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

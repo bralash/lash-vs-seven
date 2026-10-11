@@ -18,6 +18,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { CheckersBoard, Piece } from './Board'
+import { checkersFeats } from './feats'
 import { QUIET_LIMIT, RESULT_MS, count, freshLive, kings, legalSteps, play, type Live } from './engine'
 import '../../styles/checkers.css'
 
@@ -47,8 +48,9 @@ export function CheckersMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const live = st.live
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
-  // "you" only means something online; on a shared device the cards follow whose turn it is
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // "you" only means something online; on a shared device the cards follow whose turn it is, and a watcher has no side
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const score = (s: Seat) => count(live.board, s)
@@ -63,7 +65,7 @@ export function CheckersMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   useScrollLock(inMatch)
   const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
 
-  const myTurn = inMatch && live.turn === me.seat
+  const myTurn = inMatch && !watching && live.turn === me.seat
 
   const step = (from: number, to: number) => {
     if (!myTurn) return
@@ -79,17 +81,18 @@ export function CheckersMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     const seen = seenRef.current
     if (live.last && lastKey !== seen.key) {
       const piece = live.board[live.last.to]
-      const byMe = session.local || Number(piece) % 2 === me.seat
+      // a watcher hears every move as the other side's
+      const byMe = !watching && (session.local || Number(piece) % 2 === me.seat)
       if (crowns > seen.crowns) sound('join') // crowned
       else if (live.last.captured !== undefined) sound(byMe ? 'find' : 'tick')
       else if (!byMe) sound('tick')
     }
     if (live.result && !seen.result) {
       const w = live.result.winner
-      sound((session.local ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
+      sound((session.local || watching ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
     }
     seenRef.current = { key: lastKey, result: !!live.result, crowns }
-  }, [lastKey, live.last, live.board, live.result, crowns, me.seat, sound, session.local])
+  }, [lastKey, live.last, live.board, live.result, crowns, me.seat, sound, session.local, watching])
 
   const scoreboard = (
     <>
@@ -142,7 +145,7 @@ export function CheckersMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       </p>
 
       <div className="ck-stage">
-        <CheckersBoard live={live} mySeat={me.seat} myTurn={myTurn} flipped={!session.local && me.seat === 1} onStep={step} />
+        <CheckersBoard live={live} mySeat={me.seat} myTurn={myTurn} flipped={!session.local && !watching && me.seat === 1} onStep={step} />
       </div>
 
       {awaySecs !== null && opp && (
@@ -174,8 +177,9 @@ function Results({
   const board = st.live.board
   const s = [count(board, 0), count(board, 1)]
   const winner = (st.live.result?.winner ?? -1) as Seat | -1
-  // on one device the winner is whoever won — there's no "you" to compare against
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
 
   const cheered = useRef(false)
@@ -201,7 +205,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, checkersFeats(st.live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const wonBy = winner === -1 ? '' : s[(1 - winner) as Seat] === 0 ? 'Took every piece' : 'Left them no moves'
   const card: CardInput = {
@@ -235,14 +239,14 @@ function Results({
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Checkers</p>
         <h1 className={`ckm-results__title${iWon ? ' ckm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
         </h1>
         <p className="ckm-results__line">{winner === -1 ? 'No captures in 25 moves each' : wonBy}</p>
       </div>
       <div className="mt-hud ckm-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · pieces left`} />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · pieces left`} />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · pieces left`} />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · pieces left`} />
       </div>
       <RivalryLine r={rivalry} />
       <ResultActions
@@ -254,6 +258,7 @@ function Results({
         oppGone={oppGone}
         onReady={readyUp}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

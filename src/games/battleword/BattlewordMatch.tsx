@@ -19,6 +19,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
+import { battlewordFeats } from './feats'
 import { fitting, opsWord } from './bot'
 import { Grid, Keys, WordSetter, loadSecret, problem, saveSecret, useTyping, type Secret } from './Board'
 import {
@@ -66,14 +67,16 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // a watcher has no side and holds no word: they see only the guesses, the colours and the reveal
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const vsOps = useVsOps()
   const level = useOpsLevel()
 
   // each word lives only on its owner's device (on one device, both; against Ops, hers too)
   const secretId = (s: Seat) => `${room.code}:${room.createdAt}:${st.match}:${s}`
   const [mem, setMem] = useState<Record<string, Secret>>({})
-  const owns = (s: Seat) => session.local || s === me.seat || (vsOps && s === BOT_SEAT)
+  const owns = (s: Seat) => !watching && (session.local || s === me.seat || (vsOps && s === BOT_SEAT))
   const secretOf = (s: Seat): Secret | null => (owns(s) ? (mem[secretId(s)] ?? loadSecret(secretId(s))) : null)
 
   useEffect(() => {
@@ -89,6 +92,7 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   /* ── moves ── */
   const lockWord = async (s: Seat, word: string) => {
+    if (watching) return
     const salt = newSalt()
     const commit = await commitOf(word, salt)
     saveSecret(secretId(s), { word, salt })
@@ -97,6 +101,7 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
     session.move<Live>((cur) => lock(cur, s, commit)).catch(() => {})
   }
   const sendGuess = (s: Seat, w: string) => {
+    if (watching) return
     if (session.local) {
       // one device: the colours come straight from the other word in memory
       const theirs = secretOf(other(s))
@@ -114,16 +119,16 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const holder = pending ? other(pending.s) : null
   const held = holder !== null && !session.local ? secretOf(holder) : null
   useEffect(() => {
-    if (!pending || !held || session.local) return
+    if (!pending || !held || session.local || watching) return
     const t = setTimeout(() => session.move<Live>((cur) => (cur.pending ? answer(cur, score(cur.pending.w, held.word)) : undefined)).catch(() => {}), 250)
     return () => clearTimeout(t)
-  }, [pending, held, session])
+  }, [pending, held, session, watching])
 
   // Ops hides her word as soon as the game starts
   const opsPicked = useRef('')
   const opsId = secretId(BOT_SEAT)
   useEffect(() => {
-    if (!vsOps || live.phase !== 'setting' || live.commits?.s1 || opsPicked.current === opsId) return
+    if (watching || !vsOps || live.phase !== 'setting' || live.commits?.s1 || opsPicked.current === opsId) return
     opsPicked.current = opsId
     const t = setTimeout(() => lockWord(BOT_SEAT, opsWord(level ?? 'medium')), 700)
     return () => {
@@ -135,7 +140,7 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   // the end: each owner shows their word so the other can check it
   useEffect(() => {
-    if (!over) return
+    if (!over || watching) return
     for (const s of [0, 1] as Seat[]) {
       const sec = secretOf(s)
       if (sec && !revealed(live, s)) session.move<Live>((cur) => reveal(cur, s, sec.word, sec.salt)).catch(() => {})
@@ -154,19 +159,19 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
     }
     if (over && !seen.over) {
       const w = live.result?.winner
-      sound(w === -1 ? 'end' : session.local || w === me.seat ? 'findBig' : 'end')
+      sound(w === -1 ? 'end' : session.local || watching || w === me.seat ? 'findBig' : 'end')
     }
     seenRef.current = { counts, over }
-  }, [counts, over, live, me.seat, sound, session.local])
+  }, [counts, over, live, me.seat, sound, session.local, watching])
 
   // the guesser waits on the other phone; say so if it's slow
   const [slow, setSlow] = useState(false)
   useEffect(() => {
     setSlow(false)
-    if (!pending || session.local) return
+    if (!pending || session.local || watching) return
     const t = setTimeout(() => setSlow(true), 2500)
     return () => clearTimeout(t)
-  }, [pending, session.local])
+  }, [pending, session.local, watching])
 
   // pass & play: the phone changes hands before each word is hidden
   const [handed, setHanded] = useState<string | null>(null)
@@ -176,9 +181,9 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   // who's guessing now, and typing their guess
   const turn = live.turn
-  const guesser: Seat = session.local ? turn : me.seat
+  const guesser: Seat = session.local || watching ? turn : me.seat
   const myTries = triesOf(live, guesser)
-  const canGuess = live.phase === 'playing' && !pending && (session.local || turn === me.seat) && myTries.length < MAX_GUESSES
+  const canGuess = !watching && live.phase === 'playing' && !pending && (session.local || turn === me.seat) && myTries.length < MAX_GUESSES
   const [msg, setMsg] = useState('')
   const [shake, setShake] = useState(0)
   const submit = (w: string) => {
@@ -244,6 +249,19 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   }
 
   /* ── setting ── */
+  if (live.phase === 'setting' && watching) {
+    const waiting = ([0, 1] as Seat[]).filter((s) => !live.commits?.[`s${s}`])
+    return (
+      <main className="bwm screen-in">
+        {hud}
+        <div className="bw-cover">
+          <VsBlock mood="wait" eyes size={72} />
+          <h1 className="bw-cover__title">Players are getting ready…</h1>
+          <p>{waiting.length === 1 ? `${name(other(waiting[0]))}’s word is locked in. Waiting for ${name(waiting[0])} to hide theirs…` : 'Both are hiding a word…'}</p>
+        </div>
+      </main>
+    )
+  }
   if (live.phase === 'setting') {
     const s: Seat = session.local ? localSetter! : me.seat
     const done = !!live.commits?.[`s${s}`]
@@ -267,13 +285,15 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   /* ── playing / just finished ── */
   const theirSeat = other(guesser)
   const lastChance = live.phase === 'playing' && turn !== live.starter && cracked(triesOf(live, live.starter))
-  const lost = !session.local && pending && holder === me.seat && !secretOf(me.seat)
+  const lost = !session.local && !watching && pending && holder === me.seat && !secretOf(me.seat)
   const status = over
-    ? endLine(live, name, session.local ? null : me.seat)
-    : session.local
+    ? endLine(live, name, session.local || watching ? null : me.seat)
+    : session.local || watching
       ? lastChance
         ? `${name(live.starter)} cracked it! ${name(turn)}: last guess to tie`
-        : `${name(turn)}’s guess`
+        : watching
+          ? `${name(turn)} is guessing`
+          : `${name(turn)}’s guess`
       : turn === me.seat
         ? pending
           ? slow
@@ -286,9 +306,10 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
           ? `You cracked it! ${name(turn)} gets one last guess`
           : `${name(turn)} is guessing`
 
-  // on one device both boards sit in seat order; online yours is on the left
-  const order: Seat[] = session.local ? [0, 1] : [me.seat, other(me.seat)]
-  const showLetters = (s: Seat) => session.local || vsOps || s === me.seat
+  // on one device (or watching) both boards sit in seat order; online yours is on the left
+  const order: Seat[] = session.local || watching ? [0, 1] : [me.seat, other(me.seat)]
+  // a watcher sees colours only, like a player sees the other side: no letters to pass on
+  const showLetters = (s: Seat) => session.local || vsOps || (!watching && s === me.seat)
   const opsGuessing = vsOps && turn === BOT_SEAT && live.phase === 'playing'
 
   return (
@@ -300,14 +321,14 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
       <div className="bw-boards">
         {order.map((s) => (
           <div key={s} className={`bw-board bw-board--${s}${live.phase === 'playing' && turn === s ? ' bw-board--turn' : ''}`}>
-            <p className="bw-board__label">{!session.local && s === me.seat ? 'Your guesses' : `${name(s)}’s guesses`}</p>
+            <p className="bw-board__label">{!session.local && !watching && s === me.seat ? 'Your guesses' : `${name(s)}’s guesses`}</p>
             <Grid
               guesses={triesOf(live, s)}
               typing={s === guesser && canGuess ? typed : undefined}
               pending={pending?.s === s ? pending.w : undefined}
               letters={showLetters(s)}
               shake={s === guesser ? shake : 0}
-              small={!session.local && s !== me.seat}
+              small={!session.local && !watching && s !== me.seat}
               label={`${name(s)}’s guesses at ${name(other(s))}’s word`}
             />
           </div>
@@ -322,7 +343,8 @@ export function BattlewordMatch({ room, me, exit }: { room: Room; me: Me; exit: 
           </button>
         </div>
       ) : (
-        !over && (
+        !over &&
+        !watching && (
           <>
             <p className="bw-msg" role="alert">
               {msg}
@@ -367,7 +389,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
   const session = useSession(GAME, room.code)
   const live = st.live
   const winner = (live.result?.winner ?? -1) as Seat | -1
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
 
@@ -401,7 +425,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
     session.start({ ...initialBattlewordState(st.match + 1) })
   }, [session, me.isHost, imReady, oppReady, st.match])
 
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, battlewordFeats(live))
   const n = (s: Seat) => triesOf(live, s).length
   const wordOf = (s: Seat) => revealed(live, s)?.word ?? '?????'
   const scoreLine = `${n(0)} — ${n(1)}`
@@ -416,7 +440,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
     players: [0, 1].map((k) => ({ name: names[k], seat: k as 0 | 1, score: String(n(k as Seat)), meta: 'guesses' })) as CardInput['players'],
     detail: { kind: 'battleword', grids: [triesOf(live, 0).map((g) => g.p), triesOf(live, 1).map((g) => g.p)], words: [wordOf(0), wordOf(1)] },
   }
-  const title = winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`
+  const title = winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${names[winner]} wins`
 
   return (
     <main className="bwm bwm-results screen-in">
@@ -425,7 +449,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Battleword</p>
         <h1 className={`bwm-results__title${iWon ? ' bwm-results__title--win' : ''}`}>{title}</h1>
-        <p className="hint">{endLine(live, (s) => names[s], session.local ? null : me.seat)}</p>
+        <p className="hint">{endLine(live, (s) => names[s], noYou ? null : me.seat)}</p>
       </div>
       <div className="bw-boards bw-boards--results">
         {([0, 1] as Seat[]).map((s) => (
@@ -450,6 +474,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

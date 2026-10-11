@@ -44,6 +44,7 @@ import { OpsFace } from '../components/OpsFace'
 import { StakePanel } from './StakePanel'
 import { LooksProvider, WearsProvider, looksFor, wearsFor } from '../match/looks'
 import { LocalSessionProvider, WATCH_SESSION } from '../match/session'
+import { withFeats } from '../match/feats'
 import { Spectators } from '../match/Spectators'
 import { TauntLayer } from '../match/Taunts'
 import { ThrowLayer, throwsIn } from '../match/Throws'
@@ -546,7 +547,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         }
       />
       {screen}
-      {showRules && game.rules && <HowToPlay rules={game.rules} demo={rulesDemo} onClose={() => setShowRules(false)} />}
+      {showRules && game.rules && <HowToPlay rules={withFeats(game.slug, game.rules)} demo={rulesDemo} onClose={() => setShowRules(false)} />}
       {confirming && guard && <ConfirmLeave kind={guard.kind} other={guard.other} carryOn={guard.carryOn} stake={guard.stake} tower={guard.kind === 'local' && !!loadLocal(game.slug)?.tower && !loadLocal(game.slug)?.tower?.done} onStay={stay} onLeave={confirmLeave} />}
     </div>
   )

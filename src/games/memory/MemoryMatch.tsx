@@ -16,6 +16,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
+import { memoryFeats } from './feats'
 import { newKey } from '../spar/deal'
 import { FACES, FaceArt } from './Faces'
 import {
@@ -83,7 +84,9 @@ export function MemoryMatch({ room, me, exit }: { room: Room; me: Me; exit: Matc
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // a watcher has no side and no lock on the deck: they only see cards as the players turn them over
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const vsOps = useVsOps()
   // one device (pass & play, Ops): the board is shuffled right here, in the open
   const open = session.local || vsOps
@@ -105,30 +108,30 @@ export function MemoryMatch({ room, me, exit }: { room: Room; me: Me; exit: Matc
   const [key, setKey] = useState(() => (open ? null : myKey(keyId)))
   useEffect(() => setKey(open ? null : myKey(keyId)), [keyId, open])
   // a key is made when this phone first locks the deck; after that, losing it means you can't play on
-  const lostKey = !open && live.phase !== 'deal' && !key && (live.dealer === me.seat ? !!live.deckA : !!live.deckB)
+  const lostKey = !open && !watching && live.phase !== 'deal' && !key && (live.dealer === me.seat ? !!live.deckA : !!live.deckB)
 
   useEffect(() => {
-    if (open || live.phase !== 'deal') return
+    if (open || watching || live.phase !== 'deal') return
     const dealer = live.dealer === me.seat
     if (dealer ? live.deckA : !live.deckA || live.deckB) return
     // reuse a key already saved for this board: an effect that runs twice must not lock with two keys
     const k = key ?? myKey(keyId) ?? makeKey(keyId)
     if (!key) setKey(k)
     session.move<Live>((cur) => (dealer ? postDeckA(cur, me.seat, k) : postDeckB(cur, me.seat, k))).catch(() => {})
-  }, [open, live.phase, live.dealer, live.deckA, live.deckB, me.seat, key, keyId, session])
+  }, [open, watching, live.phase, live.dealer, live.deckA, live.deckB, me.seat, key, keyId, session])
 
   const askFor = live.ask
   const part = live.part
   useEffect(() => {
-    if (open || !key) return
+    if (open || watching || !key) return
     if (askFor && askFor.s !== me.seat) session.move<Live>((cur) => answerAsk(cur, key)).catch(() => {})
     else if (part && part.s === me.seat) session.move<Live>((cur) => readPart(cur, key)).catch(() => {})
-  }, [open, key, askFor, part, me.seat, session])
+  }, [open, watching, key, askFor, part, me.seat, session])
 
   // the end: show my key so the other phone can check the whole board
   useEffect(() => {
-    if (!open && over && key && !live.keys?.[`s${me.seat}`]) session.move<Live>((cur) => postKey(cur, me.seat, key)).catch(() => {})
-  }, [open, over, key, live.keys, me.seat, session])
+    if (!open && !watching && over && key && !live.keys?.[`s${me.seat}`]) session.move<Live>((cur) => postKey(cur, me.seat, key)).catch(() => {})
+  }, [open, watching, over, key, live.keys, me.seat, session])
 
   /* ── what's face up ── */
   const shown = useMemo(() => {
@@ -161,7 +164,7 @@ export function MemoryMatch({ room, me, exit }: { room: Room; me: Me; exit: Matc
   }, [flips, pairs, sound])
 
   const flipper: Seat = session.local ? live.turn : me.seat
-  const myTurn = live.phase === 'play' && (session.local || live.turn === me.seat)
+  const myTurn = !watching && live.phase === 'play' && (session.local || live.turn === me.seat)
   const tap = (i: number) => {
     if (!myTurn || looking || !canFlip(live.miss ? { ...live, miss: false, up: [] } : live, flipper, i)) return
     if (open) session.move<Live>((cur) => flipLocal(cur, flipper, i)).catch(() => {})
@@ -181,12 +184,14 @@ export function MemoryMatch({ room, me, exit }: { room: Room; me: Me; exit: Matc
 
   const status =
     live.phase === 'deal'
-      ? 'Shuffling…'
+      ? watching
+        ? 'Players are getting ready…'
+        : 'Shuffling…'
       : over
         ? live.result?.winner === -1
           ? 'All found: a draw'
           : 'All pairs found'
-        : session.local
+        : session.local || watching
           ? `${name(live.turn)}’s turn`
           : live.turn === me.seat
             ? askFor || part
@@ -281,7 +286,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Memory
   const vsOps = useVsOps()
   const live = st.live
   const winner = (live.result?.winner ?? -1) as Seat | -1
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
 
@@ -308,7 +315,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Memory
     session.start({ ...initialMemoryState(st.size, st.match + 1) })
   }, [session, me.isHost, imReady, oppReady, st.size, st.match])
 
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, memoryFeats(live))
   const scoreLine = `${live.scores[0]} — ${live.scores[1]}`
   const flips = (live.log ?? []).length
   const card: CardInput = {
@@ -328,16 +335,16 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Memory
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Memory</p>
         <h1 className={`memm-results__title${iWon ? ' memm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${names[winner]} wins`}
         </h1>
         <p className="hint">
           {live.result?.forfeit ? 'by forfeit' : `${live.scores[0]} – ${live.scores[1]} pairs · ${flips} cards turned`}
         </p>
       </div>
       <div className="mt-hud">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={live.scores[0]} meta="pairs" />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={live.scores[0]} meta="pairs" />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={live.scores[1]} meta="pairs" />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={live.scores[1]} meta="pairs" />
       </div>
       <Recap live={live} />
       {check && 'error' in check && <p className="mem-warn">Something doesn’t add up: {check.error} doesn’t match what was locked in.</p>}
@@ -352,6 +359,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Memory
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

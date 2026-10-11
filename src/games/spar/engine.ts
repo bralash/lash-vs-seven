@@ -62,6 +62,8 @@ export interface Past {
   /** the winner's scoring cards (the last trick, or the last two when they add up) */
   cards?: number[]
   forfeit?: boolean
+  /** the winner took every trick of the round (a feat; missing on rounds from before feats) */
+  sweep?: boolean
 }
 
 export interface Live {
@@ -242,7 +244,10 @@ export function scoreRound(plays: Play[], n: number): { winner: number; points: 
 }
 
 function finish(live: Live): Live {
-  const { winner, points, cards } = scoreRound(playsOf(live.cur), roundSeats(live).length)
+  const plays = playsOf(live.cur)
+  const n = roundSeats(live).length
+  const { winner, points, cards } = scoreRound(plays, n)
+  const sweep = Array.from({ length: TRICKS }, (_, t) => trickWinner(trickAt(plays, t, n))).every((w) => w === winner)
   const scores = [...live.scores]
   scores[winner] += points
   return {
@@ -250,7 +255,7 @@ function finish(live: Live): Live {
     phase: 'done',
     scores,
     cur: { ...live.cur, winner, points },
-    past: [...(live.past ?? []), { winner, points, cards }],
+    past: [...(live.past ?? []), { winner, points, cards, ...(sweep ? { sweep } : {}) }],
   }
 }
 

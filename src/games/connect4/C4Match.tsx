@@ -20,6 +20,7 @@ import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { C4Board, Disc } from './Board'
 import { RESULT_MS, dropRow, freshLive, next, play, type Live } from './engine'
+import { connect4Feats } from './feats'
 import '../../styles/connect4.css'
 
 const GAME = 'connect4'
@@ -196,7 +197,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, undefined, c4Moments(st.live))
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, connect4Feats(st.live), c4Moments(st.live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Connect Four',

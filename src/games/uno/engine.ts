@@ -130,6 +130,10 @@ export interface Live {
   called?: number[]
   last?: Last | null
   winner?: number
+  /** turns each seat has had this deal, by seat (for the Fast hands feat): a turn counts once it's over — a
+   *  play, or a draw that passes it on — and a draw you can still play from counts with what follows.
+   *  Missing on deals from before feats (then nobody earns it). */
+  tc?: number[]
   /** this deal was made again: who for, and why */
   redeal?: { who: number; why: 'left' | 'forfeit' } | null
 
@@ -174,7 +178,7 @@ export function chainOf(l: Live): number[] {
 }
 
 export function freshLive(seats: number[], first: number, deal = 0): Live {
-  return { seats, deal: deal + 1, phase: 'deal', first, turn: first, dir: 1 }
+  return { seats, deal: deal + 1, phase: 'deal', first, turn: first, dir: 1, tc: [0, 0, 0, 0] }
 }
 
 /* ── One device: deal in the open ──────────────────────────────────── */
@@ -287,6 +291,14 @@ function refill(l: Live): Live {
 
 /* ── Play ──────────────────────────────────────────────────────────── */
 
+/** `s`'s turn is over: one more on their count (deals from before the count are left alone) */
+function tick(l: Live, s: number): Live {
+  if (!l.tc) return l
+  const tc = [0, 1, 2, 3].map((k) => l.tc?.[k] ?? 0)
+  tc[s] += 1
+  return { ...l, tc }
+}
+
 /** Can card `c` go on the pile now? (Not counting whose turn it is, or a card just drawn.) */
 export function fits(l: Live, c: number): boolean {
   const top = topOf(l)
@@ -330,6 +342,7 @@ export function play(l0: Live, s: number, c: number, opt: { slot?: Slot; col?: n
     l = { ...l, held: { ...l.held, [sk(s)]: heldOf(l, s).filter((x) => x !== slot) } }
   }
   const p: Play = { s, c, ...(l.hands ? {} : { slot: opt.slot }), ...(isWild(c) ? { col: opt.col } : {}) }
+  l = tick(l, s)
   l = { ...l, plays: [...playsOf(l), p], discard: [...discardOf(l), c], colour: isWild(c) ? opt.col! : colourOf(c), drew: null, drawn: null, last: { s, what: 'play' } }
 
   const left = countOf(l, s)
@@ -378,19 +391,19 @@ export function draw(l0: Live, s: number): Live | undefined {
   if (!g) return undefined
   // having picked up, they're no longer on one card
   const base: Live = { ...g.l, uno: g.l.uno === s ? null : g.l.uno, called: (l.called ?? []).filter((x) => x !== s) }
-  if (owe) return refill({ ...base, owe: 0, turn: stepFrom(l, s), last: { s, what: 'owe', n: g.got.length } })
-  if (!g.got.length) return { ...base, turn: stepFrom(l, s), last: { s, what: 'dry' } }
+  if (owe) return refill(tick({ ...base, owe: 0, turn: stepFrom(l, s), last: { s, what: 'owe', n: g.got.length } }, s))
+  if (!g.got.length) return tick({ ...base, turn: stepFrom(l, s), last: { s, what: 'dry' } }, s)
   const drawn = g.got[0]
   const next: Live = { ...base, drew: s, drawn, last: { s, what: 'draw', n: 1 } }
   // one device knows the card: if it can't be played the turn just passes
-  if (l.hands && !fits(next, drawn as number)) return refill({ ...next, drew: null, drawn: null, turn: stepFrom(l, s) })
+  if (l.hands && !fits(next, drawn as number)) return refill(tick({ ...next, drew: null, drawn: null, turn: stepFrom(l, s) }, s))
   return refill(next)
 }
 
 /** `s` keeps the card they drew, and the turn passes. */
 export function keep(l: Live, s: number): Live | undefined {
   if (l.phase !== 'play' || l.turn !== s || l.drew !== s) return undefined
-  return refill({ ...l, drew: null, drawn: null, turn: stepFrom(l, s), last: { s, what: 'keep' } })
+  return refill(tick({ ...l, drew: null, drawn: null, turn: stepFrom(l, s), last: { s, what: 'keep' } }, s))
 }
 
 /** `s` calls Uno: on one card (before anyone catches them), or ahead with two on their turn. */

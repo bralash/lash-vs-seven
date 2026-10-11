@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { VsBlock } from '../components/VsBlock'
 import type { MatchExit, Me } from '../lobby/Lobby'
 import { stillIn, type Room } from '../lobby/rooms'
+import { useWatching } from './session'
 import { stakeResult } from './stakes'
 import type { Seated } from './types'
 
@@ -21,6 +22,7 @@ export function MatchEnded({ room, me, seats, exit, scoreboard }: Props) {
   const leaver = seats.find((p) => p?.id === room.leftBy) ?? null
   const iLeft = room.leftBy === me.id
   const dropped = room.endReason === 'disconnected'
+  const watching = useWatching()
   // in a staked match, whoever pressed Leave owes whoever's left (a dropped connection voids it)
   const [stakes] = useState(() => stakeResult(room, stillIn(room).filter((p) => p.id !== room.leftBy).map((p) => ({ id: p.id, score: 0 })), me.id, 'A lost connection doesn’t count, so the stake is off'))
   const title = iLeft
@@ -30,7 +32,9 @@ export function MatchEnded({ room, me, seats, exit, scoreboard }: Props) {
     ? 'The match ended while you were away.'
     : dropped
       ? 'They lost connection and didn’t make it back, so the match is over.'
-      : 'They left the match, so it’s over. Start a new room to play again.'
+      : watching
+        ? 'They left the match, so it’s over.'
+        : 'They left the match, so it’s over. Start a new room to play again.'
 
   return (
     <main className="mt-ended screen-in">
@@ -50,7 +54,7 @@ export function MatchEnded({ room, me, seats, exit, scoreboard }: Props) {
       )}
       <div className="mt-actions">
         <button type="button" className="btn btn--primary btn--lg" onClick={exit.now}>
-          New room <span className="keycap">↵</span>
+          {watching ? 'Stop watching' : 'New room'} <span className="keycap">↵</span>
         </button>
         {/* leave first so the finished room is cleaned up, then go home */}
         <button

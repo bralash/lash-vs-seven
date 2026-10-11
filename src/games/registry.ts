@@ -1,7 +1,6 @@
 // Every game on the site. The homepage and each game's lobby read from here,
 // so adding a game = one entry + one route component.
 
-import { BATTLESHIP_FEATS } from './battleship/feats'
 
 export type Category = 'word' | 'board' | 'card' | 'puzzle' | 'sport'
 
@@ -72,6 +71,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'battleword',
     tiles: 'CRANE',
     name: 'Battleword',
@@ -90,6 +90,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'hangman',
     tiles: 'GUESS',
     name: 'Hangman',
@@ -108,6 +109,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'spar',
     tiles: 'SPAR',
     name: 'Spar',
@@ -128,6 +130,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'uno',
     tiles: 'UNO',
     name: 'Uno',
@@ -149,6 +152,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'crossword',
     tiles: 'KENTE',
     name: 'Crossword',
@@ -166,6 +170,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'battleship',
     fullscreen: true,
     tiles: 'FLEET',
@@ -182,10 +187,10 @@ export const GAMES: GameMeta[] = [
       { title: 'Take your shot', body: 'Players take turns firing at a square of the other’s sea — one shot a turn, hit or miss. A hit is marked in red, a miss with a splash.' },
       { title: 'Sink them all', body: 'When every square of a ship is hit, it sinks and its outline shows. Sink all five of your opponent’s ships first to win. The host picks one battle or best of 3.' },
       { title: 'No peeking', body: 'Online, your fleet never leaves your phone — it answers each shot. At the end both fleets are revealed and checked against what was locked in at the start and every answer given, so nobody can move a ship or fib about a hit.' },
-      { title: 'Feats', body: `Brag-worthy moments, kept against each rival: ${BATTLESHIP_FEATS.map((f) => `${f.name} — ${f.blurb.charAt(0).toLowerCase()}${f.blurb.slice(1, -1)}`).join('; ')}.` },
     ],
   },
   {
+    watch: true,
     slug: 'tictactoe',
     tiles: 'XOX',
     name: 'Tic-Tac-Toe',
@@ -224,6 +229,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'checkers',
     fullscreen: true,
     tiles: 'KING',
@@ -243,6 +249,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'othello',
     tiles: 'FLIP',
     name: 'Othello',
@@ -261,6 +268,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'oware',
     fullscreen: true,
     tiles: 'SEEDS',
@@ -280,6 +288,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'ludo',
     fullscreen: true,
     tiles: 'SIX',
@@ -303,6 +312,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'quoridor',
     fullscreen: true,
     tiles: 'WALLS',
@@ -324,6 +334,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'dots',
     tiles: 'BOXES',
     name: 'Dots & Boxes',
@@ -359,6 +370,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'memory',
     tiles: 'PAIRS',
     name: 'Memory',
@@ -397,6 +409,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    watch: true,
     slug: 'pool',
     fullscreen: true,
     tiles: 'POOL',

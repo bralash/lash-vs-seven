@@ -19,6 +19,7 @@ import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { AnswerTiles, ClueLists, Grid, Keys } from './Board'
 import { RESULT_MS, answer, colours, count, freshLive, layout, makePuzzle, pass, squares, type Live, type Puzzle } from './engine'
+import { crosswordFeats } from './feats'
 import { THEME_LABEL, type Theme } from './words'
 import '../../styles/crossword.css'
 
@@ -55,7 +56,9 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
   const { puzzle, live } = st
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // "you" only means something online; a watcher has no side (and gets no keyboard)
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
@@ -70,7 +73,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
   useBeforeUnload(inMatch)
   useScrollLock(inMatch)
   const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
-  const myTurn = inMatch && live.turn === me.seat
+  const myTurn = inMatch && !watching && live.turn === me.seat
 
   const painted = colours(puzzle, live)
   const sqs = layout(puzzle)
@@ -119,7 +122,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
   // both work from the latest draft, so quick taps between renders never land on the same square
   const merge = (d: string) => Array.from(known, (c, k) => (c !== ' ' ? c : d[k] ?? ' '))
   const type = (l: string) => {
-    if (selected < 0 || cursor < 0) return
+    if (watching || selected < 0 || cursor < 0) return
     sound('tap')
     setDraft((prev) => {
       const d = merge(prev)
@@ -129,7 +132,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
     })
   }
   const back = () => {
-    if (selected < 0) return
+    if (watching || selected < 0) return
     sound('tap')
     setDraft((prev) => {
       const d = merge(prev)
@@ -167,7 +170,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
   const keyRef = useRef({ type, back, submit })
   keyRef.current = { type, back, submit }
   useEffect(() => {
-    if (!inMatch) return
+    if (!inMatch || watching) return
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (/^[a-z]$/i.test(e.key)) keyRef.current.type(e.key.toUpperCase())
@@ -178,7 +181,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [inMatch])
+  }, [inMatch, watching])
 
   // react to every answer: sounds, the wrong-answer shake, the claimed word stamping in
   const [fresh, setFresh] = useState<number[]>()
@@ -187,7 +190,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
     const seen = seenRef.current
     if (live.moves !== seen.moves && live.last) {
       const { seat, w, ok } = live.last
-      const byMe = session.local || seat === me.seat
+      const byMe = !watching && (session.local || seat === me.seat)
       if (w >= 0 && ok) {
         setFresh(squares(puzzle, w))
         sound(byMe ? 'find' : 'tick')
@@ -201,10 +204,10 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
     }
     if (live.result && !seen.result) {
       const win = live.result.winner
-      sound((session.local ? win !== -1 : win === me.seat) ? 'findBig' : win === -1 ? 'join' : 'end')
+      sound((session.local || watching ? win !== -1 : win === me.seat) ? 'findBig' : win === -1 ? 'join' : 'end')
     }
     seenRef.current = { moves: live.moves, result: !!live.result }
-  }, [live.moves, live.last, live.result, me.seat, puzzle, session.local, sound])
+  }, [live.moves, live.last, live.result, me.seat, puzzle, session.local, sound, watching])
 
   const scoreboard = (
     <>
@@ -290,7 +293,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
                 </button>
               </div>
               <AnswerTiles known={known} draft={spelled} cursor={cursor} shake={shake} />
-              <Keys canType={inMatch} canAct={myTurn && !busy} full={full} onKey={type} onBack={back} onPass={skip} onSubmit={submit} />
+              {!watching && <Keys canType={inMatch} canAct={myTurn && !busy} full={full} onKey={type} onBack={back} onPass={skip} onSubmit={submit} />}
             </>
           )}
           <ClueLists puzzle={puzzle} owners={live.owners} selected={selected} onPick={(w) => (sound('tap'), pick(w))} />
@@ -314,7 +317,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Crossw
   const { puzzle, live } = st
   const s = [count(live.owners, 0), count(live.owners, 1)]
   const winner = (live.result?.winner ?? -1) as Seat | -1
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) there’s no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
   const unsolved = puzzle.words.length - s[0] - s[1]
 
@@ -340,7 +345,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Crossw
   }, [session, me.isHost, imReady, oppReady, st.theme, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, crosswordFeats(puzzle, live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Crossword',
@@ -368,16 +373,16 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Crossw
           {live.result?.reason === 'passed' ? ` · both passed with ${words(unsolved)} left` : ''}
         </p>
         <h1 className={`cwm-results__title${iWon ? ' cwm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
         </h1>
         <p className="cwm-results__line">
           {s[0]} <span>—</span> {s[1]}
         </p>
       </div>
       <div className="mt-hud cwm-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · words`} />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · words`} />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · words`} />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · words`} />
       </div>
       <RivalryLine r={rivalry} />
       <ResultActions
@@ -389,6 +394,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Crossw
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

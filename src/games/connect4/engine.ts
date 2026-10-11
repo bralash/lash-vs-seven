@@ -45,6 +45,8 @@ export interface Live {
   /** index of the last disc dropped, -1 for none */
   last: number
   result?: Result
+  /** feats earned so far this series, as letter + seat pairs ("q0l1": q = Quick four, l = Last slot); absent = none */
+  got?: string
 }
 
 /** Lowest empty row in a column, or -1 if the column is full. */
@@ -75,11 +77,22 @@ export function play(live: Live, seat: Seat, col: number): Live | undefined {
   const result = outcome(board)
   const scores = { ...live.scores }
   if (result && result.winner !== -1) scores[`s${result.winner}`]++
-  return { ...live, board, last: cell, turn: (1 - seat) as Seat, scores, ...(result ? { result } : {}) }
+  const out: Live = { ...live, board, last: cell, turn: (1 - seat) as Seat, scores, ...(result ? { result } : {}) }
+  if (result && result.winner !== -1) {
+    let got = live.got ?? ''
+    const add = (k: string) => {
+      if (!got.includes(k + seat)) got += k + seat
+    }
+    if (board.split('').filter((v) => v === String(seat)).length <= 5) add('q')
+    if (board.split('.').length - 1 <= 1) add('l')
+    if (got) out.got = got
+  }
+  return out
 }
 
 /** Next game in the series: clear the board, other player opens. Only applies once per finished game. */
 export function next(live: Live, finishedGame: number): Live | undefined {
   if (!live.result || live.game !== finishedGame) return undefined
-  return freshLive((1 - live.starter) as Seat, live.game + 1, live.scores)
+  // feats earned in earlier games carry over to the end of the series
+  return { ...freshLive((1 - live.starter) as Seat, live.game + 1, live.scores), ...(live.got ? { got: live.got } : {}) }
 }

@@ -31,6 +31,7 @@ import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
 import type { Seated } from '../../match/types'
 import { useAwayPlayers } from '../../match/useOpponentAway'
+import { wordhuntFeats } from './feats'
 import '../../styles/wordhunt.css'
 
 export interface WordHuntState {
@@ -347,7 +348,9 @@ function Results({ room, me, st, mine, grid, exit }: { room: Room; me: Me; st: W
   const headline = winner === -1 ? 'Draw' : iWon ? 'You win' : `${name(winner)} wins`
 
   const bySeat = players.map((p) => (p ? scores[seated.indexOf(p)] : 0))
-  const rivalry = useRivalryMulti(GAME, room, me, players, bySeat, finished.map((i) => seated[i].seat), st.round)
+  const finishedSeats = finished.map((i) => seated[i].seat)
+  const feats = wordhuntFeats(players.map((p) => (p ? lists[seated.indexOf(p)] : [])), finishedSeats)
+  const rivalry = useRivalryMulti(GAME, room, me, players, bySeat, finishedSeats, st.round, undefined, feats)
   const scoreLine = scores.map((x) => x.toLocaleString()).join(' — ')
   // share card: spotlight the winner's best word (yours on a draw)
   const featured = winner >= 0 ? winner : Math.max(0, seated.findIndex((p) => p.id === me.id))

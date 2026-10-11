@@ -19,6 +19,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useAwayPlayers } from '../../match/useOpponentAway'
 import { COLOR_HEX, COLOR_NAME, Die3D, LudoBoard, spot, type Dest, type TokenView } from './Board'
+import { ludoFeats } from './feats'
 import {
   COLORS,
   HOME,
@@ -74,10 +75,13 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
   const local = session.local
+  // a watcher has no side and no turn: the wording follows pass & play, but nothing is theirs to tap
+  const watching = !!session.watching
+  const noYou = local || watching
   const seats = seatedPlayers(room)
   const many = seats.filter(Boolean).length > 2
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: Seat) => !local && s === me.seatN
+  const mine = (s: Seat) => !noYou && s === me.seatN
 
   const over = live.winner !== undefined
   const showResults = useHold(over, RESULT_MS)
@@ -90,9 +94,10 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const carryOn = others.length >= 2
 
   // someone left the room (or dropped) in a 3–4 player game: their tokens come off and play goes on.
-  // Any phone can do it; the transaction only lands once.
+  // Any player's phone can do it (not a watcher's); the transaction only lands once.
   const outKey = Object.keys(room.out ?? {}).join(',')
   useEffect(() => {
+    if (watching) return
     for (const s of orderOf(live)) {
       const p = seats[s]
       if (p && room.out?.[p.id]) session.move<Live>((cur) => drop(cur, s)).catch(() => {})
@@ -158,7 +163,7 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   }
 
   /* ── my turn ── */
-  const myTurn = !over && (local || live.turn === me.seatN)
+  const myTurn = !over && !watching && (local || live.turn === me.seatN)
   const canRoll = inMatch && myTurn && !live.rolled && !animating
   const pickable = inMatch && myTurn && !animating ? movable(live) : []
   const [selected, setSelected] = useState<{ c: Color; i: number } | null>(null)
@@ -249,17 +254,17 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const v = live.die?.v ?? 0
   const status = (() => {
     if (over) return `${name(live.winner!)} brings them all home!`
-    if (shaking) return live.die ? `${local || live.die.s !== me.seatN ? name(live.die.s) : 'You'} rolled…` : 'Rolling…'
+    if (shaking) return live.die ? `${noYou || live.die.s !== me.seatN ? name(live.die.s) : 'You'} rolled…` : 'Rolling…'
     if (step !== null) return live.last?.kicks?.length ? 'Kicked!' : ' '
     if (live.die?.none && !live.rolled && live.die.s !== who) {
-      return `${local || live.die.s !== me.seatN ? name(live.die.s) : 'You'} rolled ${live.die.v} — no move`
+      return `${noYou || live.die.s !== me.seatN ? name(live.die.s) : 'You'} rolled ${live.die.v} — no move`
     }
     const bonus = live.last && live.die && live.die.v === 6 && !live.rolled && live.die.s === who && !live.die.none
     if (!live.rolled) {
-      if (local) return `${name(who)}${bonus ? ' — six, roll again' : '’s roll'}`
+      if (noYou) return `${name(who)}${bonus ? ' — six, roll again' : '’s roll'}`
       return who === me.seatN ? (bonus ? 'Six! Roll again' : 'Your roll') : `${name(who)} ${bonus ? 'rolls again' : 'is rolling…'}`
     }
-    if (!local && who !== me.seatN) return `${name(who)} rolled ${v} · moving…`
+    if (watching || (!local && who !== me.seatN)) return `${name(who)} rolled ${v} · moving…`
     if (selected) return 'Forward, or back to capture?'
     const blocked = v === 6 && exitBlocked(live, who)
     return `${v === 6 ? 'Six! ' : ''}Pick a token${blocked ? ' · exit blocked' : ''}`
@@ -270,7 +275,7 @@ export function LudoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       ? colorsOf(live, who).filter((c) => pickable.some((p) => p.c === c && live.tokens[c]?.[p.i] === 0))
       : []
 
-  const view: Seat = local ? 0 : me.seatN
+  const view: Seat = noYou ? 0 : me.seatN
   const youAct = inMatch && myTurn && !animating
 
   return (
@@ -335,7 +340,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
   const session = useSession(GAME, room.code)
   const live = st.live
   const winner: number = live.winner ?? -1
-  const iWon = session.local ? winner !== -1 : winner === me.seatN
+  // on one device (or watching) there’s no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seatN
   const many = seats.filter(Boolean).length > 2
   const name = (k: number) => seats[k]?.name ?? `Player ${k + 1}`
 
@@ -366,7 +373,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
   const standing = [...playing].sort((a, b) => (a === winner ? -1 : b === winner ? 1 : homeCount(live, b) - homeCount(live, a) || progress(live, b) - progress(live, a)))
   const gone = seats.flatMap((p, k) => (p && !playing.includes(k) ? [k] : []))
   const scores = seats.map((_, s) => (s === winner ? 1 : 0))
-  const rivalry = useRivalryMulti(GAME, room, me, seats, scores, playing, st.match, ludoMoments(live))
+  const rivalry = useRivalryMulti(GAME, room, me, seats, scores, playing, st.match, ludoMoments(live), ludoFeats(live))
   const home = (k: number) => homeCount(live, k)
   const total = tokenTotal(live, winner === -1 ? standing[0] : winner)
   const scoreLine = standing.map(home).join(' — ')
@@ -407,7 +414,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
         <p className="label">
           Match {st.match} · Ludo · {many ? `${seats.filter(Boolean).length} players` : st.mode === 'full' ? '2 colours each' : '1 colour each'}
         </p>
-        <h1 className={`ldm-results__title${iWon ? ' ldm-results__title--win' : ''}`}>{winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${name(winner)} wins`}</h1>
+        <h1 className={`ldm-results__title${iWon ? ' ldm-results__title--win' : ''}`}>{winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${name(winner)} wins`}</h1>
         <p className="ldm-results__line">All {total} tokens home</p>
       </div>
       {many ? (
@@ -417,7 +424,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
               <span className="sp-standings__place">{playing.includes(k) ? i + 1 : '–'}</span>
               <span className="sp-standings__who">
                 <Swatches colors={colorsOf(live, k)} /> {name(k)}
-                {!session.local && k === me.seatN && <em> · you</em>}
+                {!noYou && k === me.seatN && <em> · you</em>}
                 {!playing.includes(k) && <em> · left</em>}
               </span>
               <strong>{playing.includes(k) ? `${home(k)}/${tokenTotal(live, k)} home · ${caps(k)} ✕` : ''}</strong>
@@ -426,9 +433,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
         </ol>
       ) : (
         <div className="mt-hud ldm-results__cards">
-          <ScoreCard p={seats[0]} you={!session.local && me.seatN === 0} value={`${home(0)}/${tokenTotal(live, 0)}`} meta={`${caps(0)} capture${caps(0) === 1 ? '' : 's'}`} />
+          <ScoreCard p={seats[0]} you={!noYou && me.seatN === 0} value={`${home(0)}/${tokenTotal(live, 0)}`} meta={`${caps(0)} capture${caps(0) === 1 ? '' : 's'}`} />
           <span className="mt-ended__vs" aria-hidden="true">vs</span>
-          <ScoreCard p={seats[1]} you={!session.local && me.seatN === 1} value={`${home(1)}/${tokenTotal(live, 1)}`} meta={`${caps(1)} capture${caps(1) === 1 ? '' : 's'}`} />
+          <ScoreCard p={seats[1]} you={!noYou && me.seatN === 1} value={`${home(1)}/${tokenTotal(live, 1)}`} meta={`${caps(1)} capture${caps(1) === 1 ? '' : 's'}`} />
         </div>
       )}
       <RivalryLine r={rivalry} />
@@ -441,6 +448,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: LudoSt
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

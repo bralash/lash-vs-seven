@@ -19,6 +19,7 @@ import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { Mark, TttBoard } from './Board'
 import { MARK, RESULT_MS, freshLive, next, play, type Live } from './engine'
+import { tictactoeFeats } from './feats'
 import '../../styles/tictactoe.css'
 
 const GAME = 'tictactoe'
@@ -42,8 +43,9 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   const live = st.live
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
-  // "you" only means something online; on a shared device the cards follow whose turn it is
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // "you" only means something online; on a shared device the cards follow whose turn it is, and a watcher has no side
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const score = (s: Seat) => live.scores[`s${s}`]
@@ -58,7 +60,7 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   useScrollLock(inMatch)
   const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
 
-  const myTurn = inMatch && !live.result && live.turn === me.seat
+  const myTurn = inMatch && !watching && !live.result && live.turn === me.seat
 
   const tap = (cell: number) => {
     if (!myTurn || live.board[cell] !== '.') return
@@ -80,13 +82,13 @@ export function TttMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   const seenRef = useRef({ last: live.last, game: live.game, result: !!live.result })
   useEffect(() => {
     const seen = seenRef.current
-    if (live.last !== seen.last && live.last >= 0 && !session.local && live.board[live.last] !== String(me.seat)) sound('tick')
+    if (live.last !== seen.last && live.last >= 0 && !session.local && (watching || live.board[live.last] !== String(me.seat))) sound('tick')
     if (live.result && !seen.result) {
       const w = live.result.winner
-      sound((session.local ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
+      sound((session.local || watching ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
     }
     seenRef.current = { last: live.last, game: live.game, result: !!live.result }
-  }, [live.last, live.game, live.result, live.board, me.seat, sound, session.local])
+  }, [live.last, live.game, live.result, live.board, me.seat, sound, session.local, watching])
 
   const scoreboard = (
     <>
@@ -163,8 +165,9 @@ function Results({
   const session = useSession(GAME, room.code)
   const s = [st.live.scores.s0, st.live.scores.s1]
   const winner = (s[0] >= st.target ? 0 : 1) as Seat
-  // on one device the winner is whoever won — there's no "you" to compare against
-  const iWon = session.local || winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou || winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
 
   const cheered = useRef(false)
@@ -190,7 +193,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, tictactoeFeats(st.live, st.target))
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Tic-Tac-Toe',
@@ -221,16 +224,16 @@ function Results({
           Match {st.match} · first to {st.target}
         </p>
         <h1 className={`ttt-results__title${iWon ? ' ttt-results__title--win' : ''}`}>
-          {iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
+          {iWon && !noYou ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
         </h1>
         <p className="ttt-results__line">
           {s[0]} <span>—</span> {s[1]}
         </p>
       </div>
       <div className="mt-hud ttt-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={s[0]} meta={MARK[0]} />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta={MARK[0]} />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={MARK[1]} />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={s[1]} meta={MARK[1]} />
       </div>
       <RivalryLine r={rivalry} />
       <ResultActions
@@ -242,6 +245,7 @@ function Results({
         oppGone={oppGone}
         onReady={readyUp}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

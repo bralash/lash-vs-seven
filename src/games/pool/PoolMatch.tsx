@@ -22,6 +22,7 @@ import { poolMoments } from '../../match/moments'
 import { BALLS, FRAME_DT, HEAD_Y, OFF, POCKETS, R, guide, simulate, type Ev } from './physics'
 import { Ball, Cue, RAIL, S, TableArt, VH, VW, X, Y } from './Table'
 import { RESULT_MS, canPlace, freshLive, groupName, left, nextFrame, onEight, playShot, type Live } from './rules'
+import { poolFeats } from './feats'
 import '../../styles/pool.css'
 
 const GAME = 'pool'
@@ -133,13 +134,13 @@ export function PoolMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live.shot?.n])
 
-  // a finished frame: a pause, then the next rack (the match ends on the results screen)
+  // a finished frame: a pause, then the next rack (the match ends on the results screen); a watcher waits for the players to rack
   useEffect(() => {
-    if (!live.result || seriesOver || abandoned || rolling) return
+    if (watching || !live.result || seriesOver || abandoned || rolling) return
     const finished = live.frame
     const t = setTimeout(() => session.move<Live>((cur) => nextFrame(cur, finished)).catch(() => {}), RESULT_MS)
     return () => clearTimeout(t)
-  }, [session, live.result, live.frame, seriesOver, abandoned, rolling])
+  }, [session, watching, live.result, live.frame, seriesOver, abandoned, rolling])
   useEffect(() => {
     if (live.result && !rolling) sound(session.local || watching || live.result.winner === me.seat ? 'findBig' : 'end')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -639,7 +640,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: PoolSt
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, undefined, poolMoments(st.live))
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, poolFeats(st.live), poolMoments(st.live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const history = st.live.history ?? []
   const card: CardInput = {

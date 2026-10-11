@@ -127,6 +127,8 @@ export function useRivalryMulti(
   matchNo: number,
   /** what each seat did, for the weekly missions (moments.ts) */
   moments?: Moments,
+  /** the feat ids each seat earned this match; kept only when two are left (a group record has no feats) */
+  feats?: string[][],
 ): RivalryView | null {
   const { local, bot, level, watching } = useSession(game, room.code)
   const [view] = useState<RivalryView | null>(() => {
@@ -150,19 +152,25 @@ export function useRivalryMulti(
       const [a, b] = finished
       const outcome = (x: number, y: number): Outcome => (scores[x] === scores[y] ? 'draw' : scores[x] > scores[y] ? 'win' : 'loss')
       const pair: [string, string] = [nameOf(a), nameOf(b)]
+      const featsOf = (s: number) => feats?.[s] ?? []
       if (local) {
         const aFirst = pair[0].trim().toLowerCase() <= pair[1].trim().toLowerCase()
-        const stored = recordResult({ game, key: localKey(pair), name: `${pair[0]} & ${pair[1]}`, outcome: aFirst ? outcome(a, b) : outcome(b, a), matchId })
+        const byFirst = feats && (aFirst ? { me: featsOf(a), them: featsOf(b) } : { me: featsOf(b), them: featsOf(a) })
+        const stored = recordResult({ game, key: localKey(pair), name: `${pair[0]} & ${pair[1]}`, outcome: aFirst ? outcome(a, b) : outcome(b, a), matchId, feats: byFirst })
         const r = aFirst ? stored : flip(stored)
-        return { ...describe(r, pair[0], pair[1], gameName), card: cardLine(pair, [r.total.w, r.total.l]), feats: [] }
+        const shown = feats && ([featsOf(a), featsOf(b)] as [string[], string[]])
+        return { ...describe(r, pair[0], pair[1], gameName), card: cardLine(pair, [r.total.w, r.total.l]), feats: earned(r, shown, pair[0], pair[1], false) }
       }
       const opp = players[a === me.seatN ? b : a]
       if (!opp) return null
-      const result = outcome(me.seatN, a === me.seatN ? b : a)
-      const r = recordResult({ game, key: opp.id, name: opp.name, outcome: result, matchId })
-      payOut({ key: matchId, outcome: result, rival: opp.id, streak: r.streak?.who === 'me' ? r.streak.n : 0, stayed: seatCountOf(room) > 2, startedAt: room.startedAt, moments: moments?.[me.seatN] })
+      const other = a === me.seatN ? b : a
+      const result = outcome(me.seatN, other)
+      const mine = feats && { me: featsOf(me.seatN), them: featsOf(other) }
+      const r = recordResult({ game, key: opp.id, name: opp.name, outcome: result, matchId, feats: mine })
+      payOut({ key: matchId, outcome: result, rival: opp.id, streak: r.streak?.who === 'me' ? r.streak.n : 0, stayed: seatCountOf(room) > 2, feats: mine?.me.length, startedAt: room.startedAt, moments: moments?.[me.seatN] })
       const bySeat = me.seatN === a ? r : flip(r)
-      return { ...describe(r, 'You', opp.name, gameName), card: cardLine(pair, [bySeat.total.w, bySeat.total.l]), feats: [], stakes }
+      const ordered = mine && ([mine.me, mine.them] as [string[], string[]])
+      return { ...describe(r, 'You', opp.name, gameName), card: cardLine(pair, [bySeat.total.w, bySeat.total.l]), feats: earned(r, ordered, 'You', opp.name, true), stakes }
     }
 
     // three or four: the group's record. Online members are uids; in pass & play, names in lower case.

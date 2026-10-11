@@ -34,6 +34,7 @@ import {
   type SolveMap,
 } from './engine'
 import { prefetchDefinition, useDefinition } from './useDefinition'
+import { anagramFeats } from './feats'
 import '../../styles/anagram.css'
 
 const GAME = 'anagram'
@@ -479,7 +480,8 @@ function Results({ room, me, st, rounds, exit }: { room: Room; me: Me; st: Anagr
   const headline = winner === -1 ? 'Draw' : iWon ? 'You win' : `${name(winner)} wins`
 
   const bySeat = players.map((p) => (p ? wins[seated.indexOf(p)] : 0))
-  const rivalry = useRivalryMulti(GAME, room, me, players, bySeat, finished.map((i) => seated[i].seat), st.match)
+  const feats = anagramFeats(rounds, players, winner === -1 ? -1 : seated[winner].seat)
+  const rivalry = useRivalryMulti(GAME, room, me, players, bySeat, finished.map((i) => seated[i].seat), st.match, undefined, feats)
   const scoreLine = wins.join(' — ')
   const solverOf = (x: RoundTimes) => (x.solve ? seated.find((p) => p.id === x.solve!.by) : undefined)
   const card: CardInput = {

@@ -27,6 +27,10 @@ export interface Live {
   /** index of the last mark placed, -1 for none */
   last: number
   result?: Result
+  /** games drawn in a row so far this series (absent = none; older rooms never had it) */
+  draws?: number
+  /** set once a series has had three draws in a row (Iron wall) */
+  wall?: true
 }
 
 export function outcome(board: string): Result | null {
@@ -48,12 +52,19 @@ export function play(live: Live, seat: Seat, cell: number): Live | undefined {
   const result = outcome(board)
   const scores = { ...live.scores }
   if (result && result.winner !== -1) scores[`s${result.winner}`]++
-  return { ...live, board, last: cell, turn: (1 - seat) as Seat, scores, ...(result ? { result } : {}) }
+  const { draws: _d, ...rest } = live
+  const out: Live = { ...rest, board, last: cell, turn: (1 - seat) as Seat, scores, ...(result ? { result } : {}) }
+  // a draw extends the run of draws, a win ends it; a game still going leaves it as it was
+  const draws = result ? (result.winner === -1 ? (live.draws ?? 0) + 1 : 0) : live.draws ?? 0
+  if (draws) out.draws = draws
+  if (draws >= 3) out.wall = true
+  return out
 }
 
 /** Next game in the series: clear the board, other player opens. Only applies once per finished game. */
 export function next(live: Live, finishedGame: number): Live | undefined {
   if (!live.result || live.game !== finishedGame) return undefined
   const starter = (1 - live.starter) as Seat
-  return freshLive(starter, live.game + 1, live.scores)
+  // the draw run and Iron wall carry over from game to game within the series
+  return { ...freshLive(starter, live.game + 1, live.scores), ...(live.draws ? { draws: live.draws } : {}), ...(live.wall ? { wall: true as const } : {}) }
 }

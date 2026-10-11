@@ -4,6 +4,8 @@ import { PEERS, conflicts } from './engine'
 interface Saved {
   grid: string
   notes: number[]
+  /** digits entered that weren't the solution's (missing in saves from before it was counted) */
+  slips?: number
 }
 
 function loadSaved(key: string, puzzle: string): Saved | null {
@@ -19,9 +21,10 @@ function loadSaved(key: string, puzzle: string): Saved | null {
 
 /**
  * One player's work on a puzzle: their entries, pencil marks and selection. Kept in this tab's
- * storage under `key`, so a refresh mid-solve picks up where you were.
+ * storage under `key`, so a refresh mid-solve picks up where you were. With the `solution`, it
+ * also counts wrong entries (`slips`), even ones put right later.
  */
-export function useSudokuInput(puzzle: string, key: string, active: boolean) {
+export function useSudokuInput(puzzle: string, key: string, active: boolean, solution?: string) {
   const [state, setState] = useState<Saved>(() => loadSaved(key, puzzle) ?? { grid: puzzle, notes: new Array(81).fill(0) })
   const [selected, setSelected] = useState(-1)
   const [notesMode, setNotesMode] = useState(false)
@@ -44,6 +47,7 @@ export function useSudokuInput(puzzle: string, key: string, active: boolean) {
   }, [key, state])
 
   const { grid, notes } = state
+  const slips = state.slips ?? 0
   const clashes = useMemo(() => conflicts(grid), [grid])
   const counts = useMemo(() => {
     const c = new Array(10).fill(0)
@@ -61,7 +65,7 @@ export function useSudokuInput(puzzle: string, key: string, active: boolean) {
           if (s.grid[i] === '.' && !s.notes[i]) return s
           const notes = s.notes.slice()
           notes[i] = 0
-          return { grid: s.grid.slice(0, i) + '.' + s.grid.slice(i + 1), notes }
+          return { ...s, grid: s.grid.slice(0, i) + '.' + s.grid.slice(i + 1), notes }
         }
         if (notesMode) {
           if (s.grid[i] !== '.') return s
@@ -74,10 +78,11 @@ export function useSudokuInput(puzzle: string, key: string, active: boolean) {
         notes[i] = 0
         // placing a digit clears it from the pencil marks it now rules out
         for (const p of PEERS[i]) notes[p] &= ~(1 << d)
-        return { grid: s.grid.slice(0, i) + d + s.grid.slice(i + 1), notes }
+        const slips = (s.slips ?? 0) + (solution && solution[i] !== String(d) ? 1 : 0)
+        return { grid: s.grid.slice(0, i) + d + s.grid.slice(i + 1), notes, slips }
       })
     },
-    [active, selected, puzzle, notesMode],
+    [active, selected, puzzle, notesMode, solution],
   )
 
   // desktop keyboard: digits, Backspace/Delete, arrows, N for notes
@@ -107,5 +112,5 @@ export function useSudokuInput(puzzle: string, key: string, active: boolean) {
     return () => window.removeEventListener('keydown', onKey)
   }, [active, enter])
 
-  return { grid, notes, selected, setSelected, notesMode, setNotesMode, enter, clashes, counts }
+  return { grid, notes, selected, setSelected, notesMode, setNotesMode, enter, clashes, counts, slips }
 }

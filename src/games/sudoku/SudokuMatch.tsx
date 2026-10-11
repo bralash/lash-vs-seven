@@ -23,6 +23,7 @@ import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { NumberPad, SudokuBoard } from './Board'
 import { COUNTDOWN_MS, DIFFICULTY_LABEL, RESULT_MS, clock, generate, isSolved, type Difficulty } from './engine'
+import { sudokuFeats } from './feats'
 import { useSudokuInput } from './useSudokuInput'
 import '../../styles/sudoku.css'
 
@@ -37,6 +38,8 @@ interface LocalLive {
   /** when the current player tapped Start (device clock) */
   startAt?: number
   times?: { s0?: number; s1?: number }
+  /** whether each player finished without a wrong entry (missing in older rooms) */
+  clean?: { s0?: boolean; s1?: boolean }
 }
 
 export interface SudokuState {
@@ -47,7 +50,7 @@ export interface SudokuState {
   /** online: cells each player has filled, for the opponent's progress bar */
   progress?: Record<string, number>
   /** online: the first finisher claims this (create-only in the rules, so exactly one winner) */
-  solved?: { win?: { by: string; ms: number } }
+  solved?: { win?: { by: string; ms: number; clean?: boolean } }
   ready?: Record<string, boolean>
   live: LocalLive
 }
@@ -88,7 +91,7 @@ function OnlineSudoku({ room, me, exit }: { room: Room; me: Me; exit: MatchExit 
   useScrollLock(inRace)
   const awaySecs = useOpponentAway(GAME, room.code, opp, inRace)
 
-  const input = useSudokuInput(st.puzzle, `lvs_sudoku:${room.code}:${st.match}`, phase === 'play' && !abandoned)
+  const input = useSudokuInput(st.puzzle, `lvs_sudoku:${room.code}:${st.match}`, phase === 'play' && !abandoned, st.solution)
   const need = empties(st.puzzle)
   const mineFilled = filled(input.grid, st.puzzle)
 
@@ -103,8 +106,8 @@ function OnlineSudoku({ room, me, exit }: { room: Room; me: Me; exit: MatchExit 
   useEffect(() => {
     if (phase !== 'play' || claimed.current || !isSolved(input.grid)) return
     claimed.current = true
-    set(ref(db, `${path}/state/solved/win`), { by: me.id, ms: Math.max(0, now - playFrom) }).catch(() => {})
-  }, [phase, input.grid, path, me.id, now, playFrom])
+    set(ref(db, `${path}/state/solved/win`), { by: me.id, ms: Math.max(0, now - playFrom), clean: input.slips === 0 }).catch(() => {})
+  }, [phase, input.grid, input.slips, path, me.id, now, playFrom])
 
   // sounds: countdown ticks, go, and the finish
   const countdown = Math.max(1, Math.ceil((playFrom - now) / 1000))
@@ -221,7 +224,7 @@ function LocalSudoku({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }
   useBeforeUnload(!done)
   useScrollLock(!done)
 
-  const input = useSudokuInput(st.puzzle, `lvs_sudoku:local:${st.match}:${turn}`, solving)
+  const input = useSudokuInput(st.puzzle, `lvs_sudoku:local:${st.match}:${turn}`, solving, st.solution)
 
   // finished my run: record the time, then hand over (or end)
   useEffect(() => {
@@ -235,9 +238,10 @@ function LocalSudoku({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }
             turn: turn === first ? ((1 - turn) as Seat) : turn,
             phase: turn === first ? 'ready' : 'done',
             times: { ...(cur.times ?? {}), [`s${turn}`]: ms },
+            clean: { ...(cur.clean ?? {}), [`s${turn}`]: input.slips === 0 },
           },
     )
-  }, [solving, input.grid, live.startAt, turn, first, session, sound])
+  }, [solving, input.grid, input.slips, live.startAt, turn, first, session, sound])
 
   const start = () => {
     sound('start')
@@ -436,7 +440,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.difficulty, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, sudokuFeats(st, seats, winner))
   const scoreLine = `${values[0]} — ${values[1]}`
   const card: CardInput = {
     game: 'Sudoku',

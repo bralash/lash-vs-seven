@@ -113,8 +113,27 @@ export interface Live {
   last?: LastMove
   /** captures (direct + line kicks) by seat */
   caps: number[]
+  /** what the feats need (a game saved before feats has none — treated as nothing yet) */
+  fx?: Fx
   winner?: Seat
 }
+
+/**
+ * Feat tracking, updated by `move` the same way on every phone.
+ *  - `hit`: bitmask of the seats that have had a token kicked back to the yard this game.
+ *  - `owe`: per seat, the seat that last kicked one of its tokens, if it hasn't kicked anyone since (-1 none).
+ *  - `rev`: bitmask of the seats that earned Revenge.
+ * Revenge, exactly: when you kick (any of the three ways) and among the tokens kicked by that move is
+ * one of `owe[you]` — the last player to kick you — you earn it. Your next kick of anyone clears
+ * `owe[you]` whatever it hits, so it has to be the very next time you kick. If someone else kicks you
+ * first, they become the one you owe; if the same player kicks you again it stays them.
+ */
+export interface Fx {
+  hit?: number
+  owe?: number[]
+  rev?: number
+}
+const NO_OWE = [-1, -1, -1, -1]
 
 /** the other player, in a two-player game (Ops' brain) */
 export const other = (s: Seat) => (1 - s) as Seat
@@ -142,7 +161,7 @@ export function freshLive(mode: 'quick' | 'full', p1: Color, start: number, seat
   for (let s = 0; s < colors.length; s++) colors[s] ??= []
   const tokens: Partial<Record<Color, number[]>> = {}
   for (const c of colors.flat()) tokens[c] = [0, 0, 0, 0]
-  return { mode, colors, order, tokens, turn: order[((start % order.length) + order.length) % order.length], rolled: false, caps: [0, 0, 0, 0] }
+  return { mode, colors, order, tokens, turn: order[((start % order.length) + order.length) % order.length], rolled: false, caps: [0, 0, 0, 0], fx: { hit: 0, owe: [...NO_OWE], rev: 0 } }
 }
 
 const toks = (live: Live, c: Color) => live.tokens[c] ?? []
@@ -306,6 +325,20 @@ export function move(live: Live, seat: Seat, color: Color, i: number, dir: 'forw
 
   const caps = [0, 1, 2, 3].map((k) => live.caps?.[k] ?? 0)
   caps[seat] += kicks.length
+  let fx = live.fx
+  if (kicks.length) {
+    const owe = [0, 1, 2, 3].map((k) => live.fx?.owe?.[k] ?? -1)
+    let hit = live.fx?.hit ?? 0
+    let rev = live.fx?.rev ?? 0
+    const victims = [...new Set(kicks.map((k) => seatOf(live, k.c)))]
+    if (owe[seat] >= 0 && victims.includes(owe[seat])) rev |= 1 << seat
+    owe[seat] = -1
+    for (const v of victims) {
+      hit |= 1 << v
+      owe[v] = seat
+    }
+    fx = { hit, owe, rev }
+  }
   const last: LastMove = { n: (live.last?.n ?? 0) + 1, c: color, i, path }
   if (dir === 'back') last.back = true
   if (kicks.length) last.kicks = kicks
@@ -316,6 +349,7 @@ export function move(live: Live, seat: Seat, color: Color, i: number, dir: 'forw
   return {
     ...next,
     caps,
+    ...(fx ? { fx } : {}),
     last,
     rolled: false,
     turn: won || bonus ? seat : nextSeat(live, seat),

@@ -22,6 +22,7 @@ import { useRivalryMulti } from '../../match/useRivalry'
 import { unoMoments } from '../../match/moments'
 import { ColourPick, UnoBack, UnoCard, UnoHand } from './Cards'
 import { lockCards, newKey, openCard, readCard, relock, strip, verify } from './deal'
+import { unoFeats } from './feats'
 import {
   COLOUR_NAMES,
   DECK,
@@ -113,6 +114,9 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
   const local = session.local
+  // watching someone else's match: no side, no hand, and this phone never touches the deal or the room
+  const watching = !!session.watching
+  const noYou = local || watching
   // against Ops there's no other phone to keep secrets from: deal on this device, like pass & play
   // (her brain only ever reads her own hand)
   const vsOps = useVsOps()
@@ -120,9 +124,9 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   const players = seatedPlayers(room)
   const many = players.filter(Boolean).length > 2
   const name = (s: number) => players[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: number) => !local && s === me.seatN
+  const mine = (s: number) => !noYou && s === me.seatN
   const nm = (s: number) => (mine(s) ? 'You' : name(s))
-  // whose cards are on screen: online that's you; on one device it's whoever's turn it is
+  // whose cards are on screen: online that's you; on one device it's whoever's turn it is (a watcher sees seat 0's side, face down)
   const view = local ? g.turn : me.seatN
   const seats = g.seats
 
@@ -140,7 +144,9 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   const base = `${roomPath(GAME, room.code)}/state/live`
   const moveG = useCallback(
     (m: (g: Live) => Live | undefined): Promise<boolean> =>
-      open
+      watching
+        ? Promise.resolve(false)
+        : open
         ? session.move<Wrap>((w) => {
             const n = m(w.g)
             return n ? { ...w, g: n } : undefined
@@ -151,7 +157,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
             const n = m(cur)
             return n === undefined ? undefined : (JSON.parse(JSON.stringify(n)) as Live)
           }).then((r) => r.committed),
-    [open, session, base],
+    [open, watching, session, base],
   )
 
   // someone left the room (or dropped): deal again without them. Any phone can; it only lands once.
@@ -159,7 +165,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   useEffect(() => {
     for (const s of seats) {
       const p = players[s]
-      if (p && room.out?.[p.id]) moveG((cur) => drop(cur, s)).catch(() => {})
+      if (p && room.out?.[p.id] && !watching) moveG((cur) => drop(cur, s)).catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outKey, seats.join(','), moveG])
@@ -196,11 +202,11 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   }
   const myPos = chain.indexOf(view)
   // my lock is on a pile, but the key that takes it off isn't on this device
-  const lost = !open && g.phase !== 'done' && myPos >= 0 && piles.some((pl, p) => myPos < (pl.locked ?? 0) && !getKey(p, false))
+  const lost = !open && !watching && g.phase !== 'done' && myPos >= 0 && piles.some((pl, p) => myPos < (pl.locked ?? 0) && !getKey(p, false))
 
   /* ── this phone's part: lock a pile, unlock others' cards, show my keys at the end ── */
   const chore: Chore | null = (() => {
-    if (open || myPos < 0 || lost || session.watching) return null
+    if (open || watching || myPos < 0 || lost) return null
     if (g.phase !== 'done') {
       const lp = lockingPile({ ...g, piles })
       if (lp >= 0) {
@@ -292,7 +298,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   let cards: { key: string; c: number }[] = []
   let pending = 0
   if (open) cards = (g.hands?.[view] ?? []).map((c) => ({ key: `c${c}`, c }))
-  else
+  else if (!watching)
     for (const slot of g.held?.[sk(view)] ?? []) {
       const memo = decoded.current.get(`${g.deal}:${slot}`)
       if (memo !== undefined) {
@@ -317,7 +323,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   const legal = cards.filter((x) => legalCards.includes(x.c) && (!drawnKey || x.key === drawnKey)).map((x) => x.key)
 
   /* ── playing ── */
-  const myTurn = g.phase === 'play' && g.turn === view && !lost
+  const myTurn = !watching && g.phase === 'play' && g.turn === view && !lost
   const [picked, setPicked] = useState<string | null>(null)
   const [wildFor, setWildFor] = useState<{ key: string; c: number } | null>(null)
   const [stuck, setStuck] = useState(false)
@@ -349,11 +355,11 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
 
   // online, a card drawn that can't go on the pile is kept after a moment
   useEffect(() => {
-    if (open || g.drew !== view || g.turn !== view || drawnCard === null || fits(g, drawnCard)) return
+    if (open || watching || g.drew !== view || g.turn !== view || drawnCard === null || fits(g, drawnCard)) return
     const t = setTimeout(() => moveG((cur) => keep(cur, view)).catch(() => {}), 1100)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, g.drew, g.turn, drawnCard, view])
+  }, [open, watching, g.drew, g.turn, drawnCard, view])
 
   // sounds: what just happened
   const lastSig = `${g.deal}:${plays.length}:${JSON.stringify(g.last ?? null)}`
@@ -362,14 +368,14 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
     if (seenRef.current === lastSig) return
     seenRef.current = lastSig
     const l = g.last
-    if (g.phase === 'done') sound(local || g.winner === me.seatN ? 'findBig' : 'end')
+    if (g.phase === 'done') sound((noYou ? g.winner !== undefined : g.winner === me.seatN) ? 'findBig' : 'end')
     else if (!l) return
     else if (l.what === 'play') sound('snap')
     else if (l.what === 'catch') sound('buzz')
     else if (l.what === 'uno') sound('horn')
     else if (l.what === 'owe' && (l.n ?? 0) >= 4) sound('splat')
     else sound('tick')
-  }, [lastSig, g.last, g.phase, g.winner, me.seatN, local, sound])
+  }, [lastSig, g.last, g.phase, g.winner, me.seatN, noYou, sound])
 
   /* ── the end-of-round check, once every key is out ── */
   const [check, setCheck] = useState<{ ok: true } | { ok: false; msg: string } | null>(null)
@@ -449,16 +455,16 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
 
   const top = topOf(g)
   const under = (g.discard ?? []).at(-2)
-  const catchable = g.phase === 'play' && g.uno !== null && g.uno !== undefined && g.uno !== view && seats.includes(view) ? g.uno : null
+  const catchable = !watching && g.phase === 'play' && g.uno !== null && g.uno !== undefined && g.uno !== view && seats.includes(view) ? g.uno : null
   const myCount = countOf(g, view)
-  const unoNow = g.phase === 'play' && g.uno === view
+  const unoNow = !watching && g.phase === 'play' && g.uno === view
   const unoAhead = myTurn && myCount === 2 && !(g.called ?? []).includes(view) && g.drew !== view
   const lastPlay = plays.at(-1)
 
   const status = (() => {
     if (g.phase === 'deal') {
       const again = g.redeal ? `Dealing again · ${name(g.redeal.who)} ${g.redeal.why === 'left' ? 'left' : 'lost their cards'}` : null
-      return again ?? (open ? 'Dealing…' : 'Shuffling…')
+      return again ?? (open || watching ? 'Dealing…' : 'Shuffling…')
     }
     if (g.phase === 'done') return g.winner === undefined ? '' : mine(g.winner) ? 'Uno — you’re out!' : `${name(g.winner)} is out!`
     if (!myTurn || local) {
@@ -492,8 +498,9 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   })()
 
   const hint = (() => {
-    if (slow && blocking !== null && blocking !== undefined && blocking !== view) return `Waiting for ${name(blocking)}’s phone…`
+    if (slow && blocking !== null && blocking !== undefined && (watching || blocking !== view)) return `Waiting for ${name(blocking)}’s phone…`
     if (stuck) return 'Shuffling the discards back in… try again in a moment'
+    if (watching) return ' '
     if (!myTurn) return pending ? 'Your new cards are on their way…' : ' '
     if (wildFor) return ' '
     if (picked) {
@@ -526,21 +533,9 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
         ) : (
           <>
             <div className="uno-opps">
-              {opponents.map((s) => {
-                const n = countOf(g, s)
-                return (
-                  <div key={s} className={`uno-opp uno-opp--${s}${g.turn === s && g.phase === 'play' ? ' is-turn' : ''}`}>
-                    <span className="uno-opp__who">{name(s)}</span>
-                    <div className="uno-opp__backs" aria-label={`${name(s)}: ${n} card${n === 1 ? '' : 's'}`}>
-                      {Array.from({ length: Math.min(n, 8) }, (_, i) => (
-                        <UnoBack key={i} size="sm" />
-                      ))}
-                      {n > 8 && <span className="uno-opp__more">+{n - 8}</span>}
-                    </div>
-                    {n === 1 && <span className={`uno-opp__uno${g.uno === s ? ' uno-opp__uno--open' : ''}`}>{g.uno === s ? 'No Uno!' : 'Uno'}</span>}
-                  </div>
-                )
-              })}
+              {opponents.map((s) => (
+                <Backs key={s} g={g} s={s} name={name(s)} />
+              ))}
             </div>
             <div className="uno-centre">
               <button type="button" className={`uno-deck${canDraw && !cover ? ' uno-deck--go' : ''}`} disabled={!canDraw || cover} onClick={doDraw} aria-label={owe ? `Draw ${owe}` : 'Draw a card'}>
@@ -585,6 +580,9 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
           </div>
         ) : g.phase === 'deal' ? (
           <div className="sp-hand sp-hand--waiting" aria-hidden="true" />
+        ) : watching ? (
+          // seat 0's cards stay face down: only their own phone can read them
+          seats.includes(view) ? <Backs g={g} s={view} name={name(view)} /> : <div className="sp-hand sp-hand--waiting" aria-hidden="true" />
         ) : (
           <>
             {wildFor && <ColourPick onPick={(col) => (sound('tap'), doPlay(wildFor.key, wildFor.c, col))} onCancel={() => setWildFor(null)} />}
@@ -644,6 +642,23 @@ function DealSteps({ g, piles, name, slow, blocking }: { g: Live; piles: Pile[];
   )
 }
 
+/** Someone else's hand, face down (a watcher sees every hand like this, seat 0's too). */
+function Backs({ g, s, name }: { g: Live; s: number; name: string }) {
+  const n = countOf(g, s)
+  return (
+    <div className={`uno-opp uno-opp--${s}${g.turn === s && g.phase === 'play' ? ' is-turn' : ''}`}>
+      <span className="uno-opp__who">{name}</span>
+      <div className="uno-opp__backs" aria-label={`${name}: ${n} card${n === 1 ? '' : 's'}`}>
+        {Array.from({ length: Math.min(n, 8) }, (_, i) => (
+          <UnoBack key={i} size="sm" />
+        ))}
+        {n > 8 && <span className="uno-opp__more">+{n - 8}</span>}
+      </div>
+      {n === 1 && <span className={`uno-opp__uno${g.uno === s ? ' uno-opp__uno--open' : ''}`}>{g.uno === s ? 'No Uno!' : 'Uno'}</span>}
+    </div>
+  )
+}
+
 /* ── Results ─────────────────────────────────────────────────────────── */
 
 function Results({ room, me, st, players, exit, checkLine }: { room: Room; me: Me; st: UnoState; players: (Seated | null)[]; exit: MatchExit; checkLine: string | null }) {
@@ -653,7 +668,9 @@ function Results({ room, me, st, players, exit, checkLine }: { room: Room; me: M
   const seats = g.seats
   const many = players.filter(Boolean).length > 2
   const winner = g.winner ?? -1
-  const iWon = session.local ? winner !== -1 : winner === me.seatN
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seatN
   const name = (k: number) => players[k]?.name ?? `Player ${k + 1}`
 
   const cheered = useRef(false)
@@ -679,7 +696,7 @@ function Results({ room, me, st, players, exit, checkLine }: { room: Room; me: M
   }, [session, me.isHost, imReady, othersReady, st.match, inRoom])
 
   const scores = players.map((_, s) => (s === winner ? 1 : 0))
-  const rivalry = useRivalryMulti(GAME, room, me, players, scores, seats, st.match, unoMoments(g))
+  const rivalry = useRivalryMulti(GAME, room, me, players, scores, seats, st.match, unoMoments(g), unoFeats(g))
   const left = (s: number) => countOf(g, s)
   const standing = [...seats].sort((a, b) => (a === winner ? -1 : b === winner ? 1 : left(a) - left(b)))
   const gone = players.flatMap((p, k) => (p && !seats.includes(k) ? [k] : []))
@@ -706,7 +723,7 @@ function Results({ room, me, st, players, exit, checkLine }: { room: Room; me: M
         <p className="label">
           Match {st.match} · Uno{many ? ` · ${players.filter(Boolean).length} players` : ''}
         </p>
-        <h1 className={`spm-results__title${iWon ? ' spm-results__title--win' : ''}`}>{winner === -1 ? 'No winner' : iWon && !session.local ? 'You win' : `${name(winner)} wins`}</h1>
+        <h1 className={`spm-results__title${iWon ? ' spm-results__title--win' : ''}`}>{winner === -1 ? 'No winner' : iWon && !noYou ? 'You win' : `${name(winner)} wins`}</h1>
       </div>
       <ol className="sp-standings">
         {[...standing, ...gone].map((k, i) => (
@@ -714,7 +731,7 @@ function Results({ room, me, st, players, exit, checkLine }: { room: Room; me: M
             <span className="sp-standings__place">{seats.includes(k) ? i + 1 : '–'}</span>
             <span className="sp-standings__who">
               {name(k)}
-              {!session.local && k === me.seatN && <em> · you</em>}
+              {!noYou && k === me.seatN && <em> · you</em>}
               {!seats.includes(k) && <em> · left</em>}
             </span>
             <strong>{!seats.includes(k) ? '' : k === winner ? 'Out' : `${left(k)} left`}</strong>
@@ -732,6 +749,7 @@ function Results({ room, me, st, players, exit, checkLine }: { room: Room; me: M
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

@@ -60,7 +60,14 @@ export interface Live {
   closed?: number[]
   /** game over: -1 = draw */
   result?: { winner: Seat | -1 }
+  /** boxes the player to move has taken so far this turn (absent = none) */
+  run?: number
+  /** seats that took 6+ boxes in one turn this game, e.g. "1" (Chain gang); absent = none */
+  chain?: string
 }
+
+/** Boxes in one turn for Chain gang. */
+export const CHAIN = 6
 
 export const count = (boxes: string, seat: Seat) => boxes.split('').filter((v) => v === String(seat)).length
 
@@ -84,9 +91,15 @@ export function play(live: Live, seat: Seat, i: number): Live | undefined {
       closed.push(b)
     }
   }
-  const { closed: _drop, ...rest } = live
+  const { closed: _drop, run: _run, ...rest } = live
   const nextLive: Live = { ...rest, lines, boxes, last: i, turn: closed.length ? seat : ((1 - seat) as Seat) }
-  if (closed.length) nextLive.closed = closed
+  if (closed.length) {
+    nextLive.closed = closed
+    // closing a box keeps the turn, so any run so far is this seat's
+    const run = (live.run ?? 0) + closed.length
+    nextLive.run = run
+    if (run >= CHAIN && !(live.chain ?? '').includes(String(seat))) nextLive.chain = (live.chain ?? '') + seat
+  }
   if (!boxes.includes('.')) {
     const a = count(boxes, 0)
     const b = count(boxes, 1)

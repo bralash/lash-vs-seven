@@ -13,6 +13,7 @@ import { loadDictionary } from '../../lib/dictionary'
 import { fitting, opsWord } from './bot'
 import { RivalryLine } from '../../match/RivalryLine'
 import { useRivalry } from '../../match/useRivalry'
+import { hangmanFeats } from './feats'
 import type { CardInput } from '../../match/shareCard'
 import { MatchEnded } from '../../match/MatchEnded'
 import { ScoreCard } from '../../match/ScoreCard'
@@ -69,14 +70,16 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // a watcher has no side and holds no word: they see the tiles, the letters tried and the reveal
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
 
   const r = current(live)
   const setter = setterOf(live)
   const guesser = other(setter)
-  // online you are one side; on one device you're both, so you set and guess
-  const iSet = session.local || me.seat === setter
-  const iGuess = session.local || me.seat === guesser
+  // online you are one side; on one device you're both, so you set and guess; watching, neither
+  const iSet = !watching && (session.local || me.seat === setter)
+  const iGuess = !watching && (session.local || me.seat === guesser)
 
   // the setter's word for this round lives only on their device
   const secretId = `${room.code}:${room.createdAt}:${st.match}:${live.round}`
@@ -103,6 +106,7 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
 
   /* ── moves ── */
   const lockWord = async (word: string, hint: string) => {
+    if (watching) return
     const salt = newSalt()
     const commit = await commitOf(word, salt)
     saveSecret(secretId, { word, salt })
@@ -111,6 +115,7 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
     session.move<Live>((cur) => lock(cur, setter, { length: word.length, commit, hint: st.hints ? hint : '' })).catch(() => {})
   }
   const tryLetter = (l: string) => {
+    if (watching) return
     sound('tap')
     if (session.local) {
       // one device: the answer comes straight from the word in memory
@@ -127,14 +132,14 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   // online setter: answer each guess as it arrives
   const pending = r?.pending
   useEffect(() => {
-    if (session.local || me.seat !== setter || !pending || !secret) return
+    if (session.local || watching || me.seat !== setter || !pending || !secret) return
     session.move<Live>((cur) => answer(cur, secret.word, secret.salt)).catch(() => {})
-  }, [pending, secret, setter, me.seat, session])
+  }, [pending, secret, setter, me.seat, session, watching])
 
   // Ops picks her word as soon as it's her turn to set one (no hint: she doesn't write them)
   const opsPicked = useRef('')
   useEffect(() => {
-    if (!opsSets || live.phase !== 'setting' || opsPicked.current === secretId) return
+    if (watching || !opsSets || live.phase !== 'setting' || opsPicked.current === secretId) return
     opsPicked.current = secretId
     const t = setTimeout(() => lockWord(opsWord(level ?? 'medium'), ''), 900)
     return () => {
@@ -146,18 +151,18 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
 
   // ...and this device answers your guesses at it
   useEffect(() => {
-    if (!opsSets || !pending || !opsSecret) return
+    if (watching || !opsSets || !pending || !opsSecret) return
     session.move<Live>((cur) => answer(cur, opsSecret.word, opsSecret.salt)).catch(() => {})
-  }, [pending, opsSecret, opsSets, session])
+  }, [pending, opsSecret, opsSets, session, watching])
 
   // the guesser waits on the setter's phone; say so if it's slow
   const [slow, setSlow] = useState(false)
   useEffect(() => {
     setSlow(false)
-    if (!pending || session.local) return
+    if (!pending || session.local || watching) return
     const t = setTimeout(() => setSlow(true), 2500)
     return () => clearTimeout(t)
-  }, [pending, session.local])
+  }, [pending, session.local, watching])
 
   // sounds for each answer, and the end of a round
   const seenRef = useRef({ guessed: r?.guessed ?? '', outcome: r?.outcome })
@@ -170,11 +175,11 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
     }
     if (r?.outcome && !seen.outcome) {
       const guesserWon = r.outcome !== 'hanged'
-      const iWon = session.local ? true : (guesserWon ? guesser : setter) === me.seat
+      const iWon = session.local || watching ? true : (guesserWon ? guesser : setter) === me.seat
       sound(iWon ? 'findBig' : 'end')
     }
     seenRef.current = { guessed: g, outcome: r?.outcome }
-  }, [r, guesser, setter, me.seat, sound, session.local])
+  }, [r, guesser, setter, me.seat, sound, session.local, watching])
 
   // the reveal: does the word match what was locked in, and every answer given?
   const [honest, setHonest] = useState<boolean | null>(null)
@@ -248,7 +253,7 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
           <div className="hm-cover">
             <VsBlock mood="wait" eyes size={72} />
             <h1 className="hm-cover__title">{name(setter)} is picking a word…</h1>
-            <p>You’ll see how long it is, then start guessing.</p>
+            <p>{watching ? `Players are getting ready… then ${name(guesser)} starts guessing.` : 'You’ll see how long it is, then start guessing.'}</p>
           </div>
         )}
         {awaySecs !== null && opp && <p className="mt-banner" role="status">{opp.name} disconnected · ending the match in {awaySecs}s unless they’re back</p>}
@@ -260,7 +265,7 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   const round = r!
   const done = live.phase === 'done'
   const canGuess = iGuess && !done && !round.pending && (!session.local || !!secret)
-  const lost = !session.local && me.seat === setter && !done && !secret
+  const lost = !session.local && !watching && me.seat === setter && !done && !secret
   const status = done
     ? outcomeLine(round, name)
     : session.local
@@ -297,7 +302,7 @@ export function HangmanMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
         <div className="hm-reveal">
           {honest === false && <p className="hm-warn">This word doesn’t match the one locked in at the start.</p>}
           {honest === true && round.word && <p className="hint">✓ Same word that was locked in</p>}
-          {!over && (
+          {!over && !watching && (
             <button type="button" className="btn btn--primary btn--lg" onClick={() => session.move<Live>((cur) => nextRound(cur)).catch(() => {})}>
               {!session.local && me.seat === guesser ? 'Pick my word' : 'Next round'} <span className="keycap">↵</span>
             </button>
@@ -363,7 +368,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Hangma
   const live = st.live
   const s = wins(live)
   const winner = (s[0] === s[1] ? -1 : s[0] > s[1] ? 0 : 1) as Seat | -1
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
   const rounds = live.rounds ?? []
 
@@ -389,7 +396,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Hangma
   }, [session, me.isHost, imReady, oppReady, st.hints, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, hangmanFeats(live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Hangman',
@@ -408,7 +415,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Hangma
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Hangman</p>
         <h1 className={`hmm-results__title${iWon ? ' hmm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${names[winner]} wins`}
         </h1>
       </div>
       <ol className="hm-rounds">
@@ -426,9 +433,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Hangma
         })}
       </ol>
       <div className="mt-hud hmm-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={s[0]} meta="rounds won" />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta="rounds won" />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta="rounds won" />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={s[1]} meta="rounds won" />
       </div>
       <RivalryLine r={rivalry} />
       <ResultActions
@@ -440,6 +447,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Hangma
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

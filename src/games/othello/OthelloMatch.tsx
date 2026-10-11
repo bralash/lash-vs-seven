@@ -19,6 +19,7 @@ import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { Disc, OthelloBoard } from './Board'
 import { RESULT_MS, count, flips, freshLive, play, type Live } from './engine'
+import { othelloFeats } from './feats'
 import '../../styles/othello.css'
 
 const GAME = 'othello'
@@ -46,8 +47,9 @@ export function OthelloMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   const live = st.live
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
-  // "you" only means something online; on a shared device the cards follow whose turn it is
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // "you" only means something online; on a shared device the cards follow whose turn it is, and a watcher has no side
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const score = (s: Seat) => count(live.board, s)
@@ -63,7 +65,7 @@ export function OthelloMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   useScrollLock(inMatch)
   const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
 
-  const myTurn = inMatch && live.turn === me.seat
+  const myTurn = inMatch && !watching && live.turn === me.seat
 
   const place = (cell: number) => {
     if (!myTurn || !flips(live.board, me.seat, cell).length) return
@@ -76,17 +78,18 @@ export function OthelloMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
   useEffect(() => {
     const seen = seenRef.current
     if (live.last !== seen.last && live.last >= 0) {
-      const byMe = session.local || live.board[live.last] === String(me.seat)
+      // a watcher hears every move as the other side's
+      const byMe = !watching && (session.local || live.board[live.last] === String(me.seat))
       if (!byMe) sound('tick')
       // a big capture (5+) gets a little fanfare for whoever made it
       else if ((live.flipped?.length ?? 0) >= 5) sound('find')
     }
     if (live.result && !seen.result) {
       const w = live.result.winner
-      sound((session.local ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
+      sound((session.local || watching ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
     }
     seenRef.current = { last: live.last, result: !!live.result }
-  }, [live.last, live.board, live.flipped, live.result, me.seat, sound, session.local])
+  }, [live.last, live.board, live.flipped, live.result, me.seat, sound, session.local, watching])
 
   const scoreboard = (
     <>
@@ -112,7 +115,7 @@ export function OthelloMatch({ room, me, exit }: { room: Room; me: Me; exit: Mat
         ? 'You win the match'
         : `${seats[live.result.winner]?.name ?? 'They'} wins the match`
     : skipped
-      ? session.local
+      ? session.local || watching
         ? `${skipped.name} can’t move — ${mover?.name ?? 'next player'} again`
         : myTurn
         ? `${skipped.name} can’t move — go again`
@@ -168,8 +171,9 @@ function Results({
   const session = useSession(GAME, room.code)
   const s = [count(st.live.board, 0), count(st.live.board, 1)]
   const winner = (st.live.result?.winner ?? -1) as Seat | -1
-  // on one device the winner is whoever won — there's no "you" to compare against
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
 
   const cheered = useRef(false)
@@ -195,7 +199,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.hints, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, othelloFeats(st.live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Othello',
@@ -224,16 +228,16 @@ function Results({
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Othello</p>
         <h1 className={`otm-results__title${iWon ? ' otm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
         </h1>
         <p className="otm-results__line">
           {s[0]} <span>—</span> {s[1]}
         </p>
       </div>
       <div className="mt-hud otm-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · discs`} />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · discs`} />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · discs`} />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · discs`} />
       </div>
       <RivalryLine r={rivalry} />
       <ResultActions
@@ -245,6 +249,7 @@ function Results({
         oppGone={oppGone}
         onReady={readyUp}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

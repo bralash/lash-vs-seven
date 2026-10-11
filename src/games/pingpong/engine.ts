@@ -32,6 +32,8 @@ export interface Live {
   result?: { winner: Side; final: boolean } | null
   /** the final score of each finished game */
   history?: [number, number][]
+  /** the longest rally (hits, serve included) each side has won this match; missing in older rooms */
+  rally?: [number, number]
 }
 
 export type Why = 'miss' | 'net' | 'long' | 'wide' | 'winner'
@@ -49,24 +51,26 @@ export function serverOf(l: Live): Side {
   return ((l.starter + turns) % 2) as Side
 }
 
-/** The point goes to `winner`; ends the game (and maybe the match, at `target` games) when it's won. */
-export function awardPoint(l: Live, winner: Side, why: Why, target: number): Live {
+/** The point goes to `winner` after a rally of `hits` shots; ends the game (and maybe the match, at `target` games) when it's won. */
+export function awardPoint(l: Live, winner: Side, why: Why, target: number, hits = 0): Live {
   if (l.result) return l
+  const rally: [number, number] = [...(l.rally ?? [0, 0])]
+  rally[winner] = Math.max(rally[winner], hits)
   const points: [number, number] = [...l.points]
   points[winner]++
   const [a, b] = points
   const won = (a >= POINTS || b >= POINTS) && Math.abs(a - b) >= 2
   const n = (l.last?.n ?? 0) + 1
-  if (!won) return { ...l, points, last: { winner, why, n } }
+  if (!won) return { ...l, points, rally, last: { winner, why, n } }
   const games: [number, number] = [...l.games]
   games[winner]++
-  return { ...l, points, games, last: { winner, why, n }, result: { winner, final: games[winner] >= target }, history: [...(l.history ?? []), points] }
+  return { ...l, points, games, rally, last: { winner, why, n }, result: { winner, final: games[winner] >= target }, history: [...(l.history ?? []), points] }
 }
 
 /** The next game, after `finished`: the other player starts serving. */
 export function nextGame(l: Live, finished: number): Live | undefined {
   if (!l.result || l.result.final || l.game !== finished) return undefined
-  return freshLive((1 - l.starter) as Side, l.game + 1, l.games, l.history)
+  return { ...freshLive((1 - l.starter) as Side, l.game + 1, l.games, l.history), ...(l.rally ? { rally: l.rally } : {}) }
 }
 
 /* ── shots ── */

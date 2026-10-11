@@ -23,6 +23,8 @@ export interface Live {
   moves: number
   /** moves since the last capture (for calling a stalled game) */
   quiet: number
+  /** most seeds each seat has captured with one sowing this game (missing in older rooms: none) */
+  haul?: [number, number]
   /** the last move, so both screens can replay the sowing */
   /** (the database drops empty arrays, so read `took` as `took ?? []`) */
   last?: { pit: number; seat: Seat; before: number[]; took?: number[] }
@@ -99,6 +101,11 @@ export function play(live: Live, seat: Seat, pit: number): Live | undefined {
     last: { pit, seat, before: live.pits, took },
   }
   delete next.result
+  if (seeds > (live.haul?.[seat] ?? 0)) {
+    const haul = [...(live.haul ?? [0, 0])] as [number, number]
+    haul[seat] = seeds
+    next.haul = haul
+  }
 
   const winner = (): Seat | -1 => (captured[0] === captured[1] ? -1 : captured[0] > captured[1] ? 0 : 1)
   if (captured[seat] >= TO_WIN) {

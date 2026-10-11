@@ -83,10 +83,12 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
-  const mine = (s: Seat) => !local && s === me.seat
+  // a watcher has no side and holds no fleet: they see only the public sea (shots, answers, reveals)
+  const watching = !!session.watching
+  const mine = (s: Seat) => !local && !watching && s === me.seat
   // against Ops her fleet is kept and answered on this device too (her brain never reads yours)
   const vsOps = useVsOps()
-  const holds = (s: Seat) => local || s === me.seat || (vsOps && s === BOT_SEAT)
+  const holds = (s: Seat) => !watching && (local || s === me.seat || (vsOps && s === BOT_SEAT))
 
   // each fleet lives only on its owner's device (both, in pass & play)
   const secretId = (s: Seat) => `${room.code}:${room.createdAt}:${st.match}:${live.game}:${s}`
@@ -107,6 +109,7 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   /* ── placing ── */
   const lockFleet = async (seat: Seat, layout: Layout) => {
+    if (watching) return
     const salt = newSalt()
     const enc = encode(layout)
     const commit = await commitOf(enc, salt)
@@ -120,7 +123,7 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const opsPlaced = useRef('')
   useEffect(() => {
     const id = secretId(BOT_SEAT)
-    if (!vsOps || live.phase !== 'placing' || live.waters[BOT_SEAT].commit || opsPlaced.current === id) return
+    if (watching || !vsOps || live.phase !== 'placing' || live.waters[BOT_SEAT].commit || opsPlaced.current === id) return
     opsPlaced.current = id
     lockFleet(BOT_SEAT, randomLayout())
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,6 +141,7 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const settling = local && shownTotal !== shotsTotal
 
   const fireAt = (cell: number) => {
+    if (watching) return
     const shooter = live.turn
     const target = other(shooter)
     if (local) {
@@ -156,19 +160,19 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   // online: my device answers each shot at my fleet as it arrives
   const myPending = live.waters[me.seat].pending
-  const mySecret = local ? null : secretOf(me.seat)
+  const mySecret = local || watching ? null : secretOf(me.seat)
   useEffect(() => {
-    if (local || myPending === undefined || !mySecret) return
+    if (local || watching || myPending === undefined || !mySecret) return
     const lay = decode(mySecret.layout)
     if (!lay) return
     session.move<Live>((cur) => answer(cur, me.seat, lay, mySecret.salt)).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myPending, mySecret?.layout, local, me.seat, session])
+  }, [myPending, mySecret?.layout, local, watching, me.seat, session])
 
   // against Ops: this device answers your shots at her fleet
   const opsPending = live.waters[BOT_SEAT].pending
   useEffect(() => {
-    if (!vsOps || opsPending === undefined) return
+    if (watching || !vsOps || opsPending === undefined) return
     const sec = secretOf(BOT_SEAT)
     const lay = sec && decode(sec.layout)
     if (sec && lay) session.move<Live>((cur) => answer(cur, BOT_SEAT, lay, sec.salt)).catch(() => {})
@@ -178,7 +182,7 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   // when a game ends, each fleet still hidden is shown (the loser's already is)
   const done = live.phase === 'done'
   useEffect(() => {
-    if (!done) return
+    if (!done || watching) return
     for (const s of [0, 1] as Seat[]) {
       if (live.waters[s].layout || !holds(s)) continue
       const sec = secretOf(s)
@@ -190,13 +194,16 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   // phones show one sea: theirs on your shot, yours on theirs (pass & play: always the shooter's target).
   // The tabs peek at the other one until the turn moves on.
-  const autoSea: Sea = local || live.turn === me.seat ? 'theirs' : 'yours'
+  // A watcher follows the shooter like pass & play, a beat behind so the last shot is seen landing.
+  const autoSea: Sea = local || watching || live.turn === me.seat ? 'theirs' : 'yours'
   const [sea, setSea] = useState<Sea>(autoSea)
   const [peek, setPeek] = useState(false)
+  const [watchTurn, setWatchTurn] = useState<Seat>(live.turn)
   useEffect(() => {
     const t = setTimeout(() => {
       setSea(autoSea)
       setPeek(false)
+      setWatchTurn(live.turn)
     }, SWITCH_MS)
     return () => clearTimeout(t)
   }, [autoSea, live.turn])
@@ -206,10 +213,10 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const [slow, setSlow] = useState(false)
   useEffect(() => {
     setSlow(false)
-    if (local || oppPending === undefined) return
+    if (local || watching || oppPending === undefined) return
     const t = setTimeout(() => setSlow(true), 2500)
     return () => clearTimeout(t)
-  }, [oppPending, local])
+  }, [oppPending, local, watching])
 
   // what each answered shot did: a line under the scores, and a sound
   const [flash, setFlash] = useState<{ text: string; kind: 'miss' | 'hit' | 'sunk' } | null>(null)
@@ -229,7 +236,13 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
       const sunkNow = (w.sunk ?? []).find((s) => s.cells.includes(cell))
       const hit = (w.hits ?? []).includes(cell)
       let text: string
-      if (sunkNow) {
+      if (watching) {
+        // no side to cheer for: who did what, by name, and neutral sounds
+        text = sunkNow
+          ? `${name(shooter)} sank ${name(t)}’s ${shipName(sunkNow.id)}!`
+          : `${name(shooter)} ${hit ? 'hit' : 'missed'} at ${cellName(cell)}`
+        sound(sunkNow ? 'find' : 'tap')
+      } else if (sunkNow) {
         const ship = shipName(sunkNow.id)
         text = local ? `${name(shooter)} sank ${name(t)}’s ${ship}!` : youShot ? `You sank their ${ship}!` : `${name(shooter)} sank your ${ship}`
         sound(youShot ? 'findBig' : 'end')
@@ -242,7 +255,7 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
       }
       setFlash({ text, kind: sunkNow ? 'sunk' : hit ? 'hit' : 'miss' })
     }
-  }, [live.waters, local, me.seat, sound]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [live.waters, local, watching, me.seat, sound]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!flash) return
     const t = setTimeout(() => setFlash(null), FLASH_MS)
@@ -312,6 +325,22 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   }
 
   /* ── placing ── */
+  if (live.phase === 'placing' && watching) {
+    const waiting = ([0, 1] as Seat[]).filter((s) => !live.waters[s].commit)
+    return (
+      <main className="bsm screen-in">
+        {hud}
+        <div className="bs-cover">
+          <VsBlock mood="wait" eyes size={72} />
+          <h1 className="bs-cover__title">Players are getting ready…</h1>
+          <p>
+            {waiting.length === 1 ? `${name(other(waiting[0]))}’s fleet is locked in. ${name(waiting[0])} is placing their ships.` : 'Both are placing their ships.'} The first shot is{' '}
+            {name(live.starter)}’s.
+          </p>
+        </div>
+      </main>
+    )
+  }
   if (live.phase === 'placing') {
     const seat = local ? placer : me.seat
     const placed = !!live.waters[seat].commit
@@ -341,10 +370,11 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
 
   /* ── firing / game over ── */
   // whose eyes the screen is for: online, yours; in pass & play the shooter (still the last one while their result shows)
-  const view: Seat = local ? (settling ? other(live.turn) : live.turn) : me.seat
+  // a watcher: on a wide screen both seas stay put (player 1's on the right); on a phone, the shooter's like pass & play
+  const view: Seat = local ? (settling ? other(live.turn) : live.turn) : watching ? (wide || done ? 0 : watchTurn) : me.seat
   const foe = other(view)
-  const myTurn = !done && live.turn === view && !settling
-  const lost = !local && !done && !secretOf(me.seat)
+  const myTurn = !done && !watching && live.turn === view && !settling
+  const lost = !local && !watching && !done && !secretOf(me.seat)
   const canFire = myTurn && live.waters[foe].pending === undefined && (!local || !!layoutOf(foe)) && !lost
   const ownLayout = layoutOf(view) ?? (live.waters[view].layout ? decode(live.waters[view].layout!) : null)
   const foeLayout = done && live.waters[foe].layout ? decode(live.waters[foe].layout!) : null
@@ -352,10 +382,10 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   const status = done
     ? live.forfeit
       ? `${name(live.winner!)} takes game ${live.game + 1}`
-      : `${local ? name(live.winner!) : live.winner === me.seat ? 'You' : name(live.winner!)} sank the whole fleet!`
+      : `${local || watching ? name(live.winner!) : live.winner === me.seat ? 'You' : name(live.winner!)} sank the whole fleet!`
     : flash
       ? flash.text
-      : local
+      : local || watching
         ? `${name(live.turn)}’s shot`
         : live.turn === me.seat
           ? oppPending !== undefined
@@ -368,8 +398,8 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
   // wide screens and the final reveal show both seas; phones one at a time, with tabs to look at the other
   const single = !wide && !done
   const shown: Sea = peek ? (sea === 'theirs' ? 'yours' : 'theirs') : sea
-  const theirsName = local ? `${name(foe)}’s waters` : 'Their waters'
-  const yoursName = local ? `${name(view)}’s fleet` : 'Your fleet'
+  const theirsName = local || watching ? `${name(foe)}’s waters` : 'Their waters'
+  const yoursName = watching ? `${name(view)}’s waters` : local ? `${name(view)}’s fleet` : 'Your fleet'
   const tabs = (
     <div className="bs-tabs" role="tablist" aria-label="Which sea">
       {(['theirs', 'yours'] as Sea[]).map((k) => (
@@ -420,7 +450,7 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
         shots={live.waters[view].shots}
         hits={live.waters[view].hits}
         pending={live.waters[view].pending}
-        label={local ? `${name(view)}’s fleet` : 'Your fleet'}
+        label={local || watching ? `${name(view)}’s fleet` : 'Your fleet'}
       />
     </section>
   )
@@ -457,7 +487,7 @@ export function BattleshipMatch({ room, me, exit }: { room: Room; me: Me; exit: 
             </p>
           )}
           {!cheat && honest.every((h) => h !== null) && (live.waters[0].layout || live.waters[1].layout) && <p className="hint">✓ Fleets match what was locked in</p>}
-          {!over && (
+          {!over && !watching && (
             <button type="button" className="btn btn--primary btn--lg" onClick={() => session.move<Live>((cur) => nextGame(cur)).catch(() => {})}>
               Next game <span className="keycap">↵</span>
             </button>
@@ -488,7 +518,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
   const session = useSession(GAME, room.code)
   const live = norm(st.live)
   const winner = matchWinner(live)
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
   const played = live.played ?? []
 
@@ -566,7 +598,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Battleship{live.best === 3 ? ' · best of 3' : ''}</p>
         <h1 className={`bsm-results__title${iWon ? ' bsm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${names[winner]} wins`}
         </h1>
       </div>
 
@@ -615,6 +647,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Battle
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

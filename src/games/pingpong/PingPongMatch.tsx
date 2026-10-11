@@ -54,6 +54,7 @@ import {
   type Side,
   type Why,
 } from './engine'
+import { pingpongFeats } from './feats'
 import '../../styles/pingpong.css'
 
 const GAME = 'pingpong'
@@ -175,6 +176,8 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     shown: null as { x: number; y: number } | null,
     /** how near the net the far racket is (a friend online can step in) */
     oppY: HIT_Y[1],
+    /** shots played this point, serve included (both phones count every shot, so they agree) */
+    hits: 0,
   })
   const faceEl = useRef<SVGCircleElement>(null)
   const [pow, setPow] = useState<{ n: number; mine: boolean } | null>(null)
@@ -213,6 +216,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     r.flight = null
     r.late = null
     r.oppY = HIT_Y[1]
+    r.hits = 0
     if (seatOf(serverOf(l)) === 0) {
       r.phase = 'serve-me'
       setPrompt('Your serve · flick up')
@@ -232,7 +236,8 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       r.phase = 'point'
       setPrompt('')
       const key = pointKey(liveRef.current)
-      session.move<Live>((cur) => (pointKey(cur) === key ? awardPoint(cur, seatOf(winner), why, st.target) : undefined)).catch(() => {})
+      const hits = r.hits
+      session.move<Live>((cur) => (pointKey(cur) === key ? awardPoint(cur, seatOf(winner), why, st.target, hits) : undefined)).catch(() => {})
     },
     [session, st.target, seatOf],
   )
@@ -337,6 +342,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       shot.err = Math.max(shot.err, batErr(off) * 0.85)
       setHint(false)
       r.flight = plan(0, b.x, shot, r.clock, Math.random, b.y)
+      r.hits++
       send(r.flight)
       r.swingAt = r.clock
       r.big = smash
@@ -402,6 +408,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     if (!shot || r.phase !== 'serve-me') return
     setHint(false)
     r.flight = plan(0, r.myX, shot, r.clock, Math.random, r.myY)
+    r.hits++
     send(r.flight)
     r.swingAt = r.clock
     r.big = false
@@ -427,6 +434,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 
       if (vsOps && r.phase === 'serve-them' && t >= r.serveAt) {
         r.flight = plan(1, r.opsX, opsServe(level), t)
+        r.hits++
         r.opsSwingAt = t
         r.phase = 'flight'
         sound('pong')
@@ -439,6 +447,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         const mine = flip ? mirror(msg.f) : msg.f
         const late = Math.max(0, Math.min(1500, Date.now() + offsetRef.current - msg.at))
         r.flight = rebase(mine, t, late, r.shown ?? mine.from)
+        r.hits++
         // their racket is where they met it
         r.opsX = mine.from.x
         r.oppY = Math.max(0.6, mine.from.y)
@@ -469,6 +478,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
             r.opsSwingAt = t + 110
           } else {
             r.flight = plan(1, b.x, res, t)
+            r.hits++
             r.opsSwingAt = t
             if (res.smash) smashed(false)
             else sound('pong')
@@ -742,7 +752,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: PPStat
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'You', seats[1]?.name ?? 'Ops']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, undefined, pingMoments(st.live))
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, pingpongFeats(st.live), pingMoments(st.live))
   const scoreLine = `${g[0]} — ${g[1]}`
   const history = st.live.history ?? []
   const card: CardInput = {

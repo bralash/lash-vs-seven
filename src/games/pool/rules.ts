@@ -55,11 +55,24 @@ export interface Live {
   foul?: boolean | null
   result?: { winner: Seat; why: string } | null
   /** each finished frame: who took it and how */
-  history?: { winner: Seat; why: string }[]
+  history?: Frame[]
+  /** this frame, for the feats: seats that have taken a shot, and seats that have fouled (bitmasks).
+   *  Missing on frames from before feats (then no feat comes from that frame). */
+  took?: number
+  fouled?: number
+}
+
+export interface Frame {
+  winner: Seat
+  why: string
+  /** the winner broke and potted their group and the 8 before the other player had a shot */
+  run?: boolean
+  /** the winner didn't foul in the frame */
+  clean?: boolean
 }
 
 export function freshLive(breaker: Seat, frame = 1, scores = { s0: 0, s1: 0 }, history: Live['history'] = [], rand: () => number = Math.random): Live {
-  return { frame, breaker, turn: breaker, pos: rack(rand), broken: false, inHand: 'kitchen', groups: null, scores, shot: null, says: null, foul: null, result: null, history }
+  return { frame, breaker, turn: breaker, pos: rack(rand), broken: false, inHand: 'kitchen', groups: null, scores, shot: null, says: null, foul: null, result: null, history, took: 0, fouled: 0 }
 }
 
 export const other = (s: Seat) => (s === 0 ? 1 : 0) as Seat
@@ -107,7 +120,11 @@ export function playShot(l: Live, by: Seat, shot: Shot, name: (s: Seat) => strin
   const objects = potted.filter((n) => n !== 0 && n !== 8)
   const who = name(by)
   const played: PlayedShot = { ...shot, n: (l.shot?.n ?? 0) + 1, by, from: start, call: eightUp ? play.call : null }
-  const base = { ...l, shot: played, inHand: null, foul: null }
+  const tracked = l.took !== undefined
+  const took = (l.took ?? 0) | (1 << by)
+  const fouled = (l.fouled ?? 0) | (1 << by)
+  const base = { ...l, shot: played, inHand: null, foul: null, ...(tracked ? { took } : {}) }
+  const fouls = tracked ? { fouled } : {}
 
   const spot = (ball: number, at: { x: number; y: number }) => {
     const f = freeSpot(pos, at.x, at.y, ball)
@@ -126,7 +143,7 @@ export function playShot(l: Live, by: Seat, shot: Shot, name: (s: Seat) => strin
       // (the shot is kept, so every screen still plays it out before the balls go back in the rack)
       return { ...freshLive(other(by), l.frame, l.scores, l.history), shot: played, says: `${who}’s break was too soft (${railed} to a cushion): racked again, ${name(other(by))} breaks` }
     }
-    if (scratch) return { ...base, pos, broken: true, turn: other(by), inHand: 'anywhere', foul: true, says: `${who} scratches on the break · ball in hand` }
+    if (scratch) return { ...base, ...fouls, pos, broken: true, turn: other(by), inHand: 'anywhere', foul: true, says: `${who} scratches on the break · ball in hand` }
     const again = objects.length > 0
     const says = objects.length ? `${who} pots ${objects.length === 1 ? 'one' : objects.length} on the break` : eight ? 'The 8 goes down on the break and comes back up' : 'Nothing down off the break'
     return { ...base, pos, broken: true, turn: again ? by : other(by), says }
@@ -159,10 +176,16 @@ export function playShot(l: Live, by: Seat, shot: Shot, name: (s: Seat) => strin
     const winner = won ? by : other(by)
     const scores = { ...l.scores }
     scores[`s${winner}`]++
-    return { ...base, pos, says: why, groups, scores, result: { winner, why }, history: [...(l.history ?? []), { winner, why }] }
+    const frame: Frame = { winner, why }
+    if (tracked) {
+      const fouledNow = scratch || foul ? fouled : (l.fouled ?? 0)
+      if (!(fouledNow & (1 << winner))) frame.clean = true
+      if (won && by === l.breaker && took === 1 << by) frame.run = true
+    }
+    return { ...base, ...(scratch || foul ? fouls : {}), pos, says: why, groups, scores, result: { winner, why }, history: [...(l.history ?? []), frame] }
   }
 
-  if (foul) return { ...base, pos, groups, turn: other(by), inHand: 'anywhere', foul: true, says: `${foul} · ball in hand` }
+  if (foul) return { ...base, ...fouls, pos, groups, turn: other(by), inHand: 'anywhere', foul: true, says: `${foul} · ball in hand` }
 
   /* a clean shot: an open table goes to whoever pots only one kind */
   if (!groups && objects.length) {

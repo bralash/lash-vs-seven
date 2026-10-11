@@ -19,6 +19,7 @@ import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { DotsBoard, Swatch } from './Board'
 import { RESULT_MS, count, freshLive, play, type Live } from './engine'
+import { dotsFeats } from './feats'
 import '../../styles/dots.css'
 
 const GAME = 'dots'
@@ -48,8 +49,9 @@ export function DotsMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const live = st.live
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
-  // "you" only means something online; on a shared device the cards follow whose turn it is
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // "you" only means something online; on a shared device the cards follow whose turn it is, and a watcher has no side
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const score = (s: Seat) => count(live.boxes, s)
@@ -65,7 +67,7 @@ export function DotsMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   useScrollLock(inMatch)
   const awaySecs = useOpponentAway(GAME, room.code, opp, inMatch)
 
-  const myTurn = inMatch && live.turn === me.seat
+  const myTurn = inMatch && !watching && live.turn === me.seat
 
   const draw = (line: number) => {
     if (!myTurn || live.lines[line] !== '.') return
@@ -78,16 +80,17 @@ export function DotsMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   useEffect(() => {
     const seen = seenRef.current
     if (live.last !== seen.last && live.last >= 0) {
-      const byMe = session.local || live.lines[live.last] === String(me.seat)
-      if (live.closed && byMe) sound('find')
+      // a watcher hears every line as the other side's, and every box closing
+      const byMe = !watching && (session.local || live.lines[live.last] === String(me.seat))
+      if (live.closed && (byMe || watching)) sound('find')
       else if (!byMe) sound('tick')
     }
     if (live.result && !seen.result) {
       const w = live.result.winner
-      sound((session.local ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
+      sound((session.local || watching ? w !== -1 : w === me.seat) ? 'findBig' : w === -1 ? 'join' : 'end')
     }
     seenRef.current = { last: live.last, result: !!live.result }
-  }, [live.last, live.lines, live.closed, live.result, me.seat, sound, session.local])
+  }, [live.last, live.lines, live.closed, live.result, me.seat, sound, session.local, watching])
 
   const scoreboard = (
     <>
@@ -170,8 +173,9 @@ function Results({
   const session = useSession(GAME, room.code)
   const s = [count(st.live.boxes, 0), count(st.live.boxes, 1)]
   const winner = (st.live.result?.winner ?? -1) as Seat | -1
-  // on one device the winner is whoever won — there's no "you" to compare against
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) the winner is whoever won — there's no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
 
   const cheered = useRef(false)
@@ -197,7 +201,7 @@ function Results({
   }, [session, me.isHost, imReady, oppReady, st.size, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, dotsFeats(st.live))
   const scoreLine = `${s[0]} — ${s[1]}`
   const card: CardInput = {
     game: 'Dots & Boxes',
@@ -230,16 +234,16 @@ function Results({
           Match {st.match} · {sizeLabel(st.size)} board
         </p>
         <h1 className={`dbm-results__title${iWon ? ' dbm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}
         </h1>
         <p className="dbm-results__line">
           {s[0]} <span>—</span> {s[1]}
         </p>
       </div>
       <div className="mt-hud dbm-results__cards">
-        <ScoreCard p={seats[0]} you={!session.local && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · boxes`} />
+        <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta={`${COLOUR[0]} · boxes`} />
         <span className="mt-ended__vs" aria-hidden="true">vs</span>
-        <ScoreCard p={seats[1]} you={!session.local && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · boxes`} />
+        <ScoreCard p={seats[1]} you={!noYou && me.seat === 1} value={s[1]} meta={`${COLOUR[1]} · boxes`} />
       </div>
       <RivalryLine r={rivalry} />
       <ResultActions
@@ -251,6 +255,7 @@ function Results({
         oppGone={oppGone}
         onReady={readyUp}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )

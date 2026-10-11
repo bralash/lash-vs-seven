@@ -18,6 +18,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { Pawn, QuoridorBoard, previewProblem, type Preview } from './Board'
+import { quoridorFeats } from './feats'
 import { RESULT_MS, freshLive, move, pathLeft, placeWall, wallsUsed, type Live } from './engine'
 import '../../styles/quoridor.css'
 
@@ -41,7 +42,9 @@ export function QuoridorMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const live = st.live
   const { play: sound } = useSound()
   const session = useSession(GAME, room.code)
-  const mine = (s: Seat) => !session.local && s === me.seat
+  // "you" only means something online; a watcher has no side
+  const watching = !!session.watching
+  const mine = (s: Seat) => !session.local && !watching && s === me.seat
   const seats = playersBySeat(room)
   const opp = seats[me.seat === 0 ? 1 : 0]
   const name = (s: Seat) => seats[s]?.name ?? `Player ${s + 1}`
@@ -56,7 +59,7 @@ export function QuoridorMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 
   // on one device the board is in the hands of whoever's turn it is
   const seat: Seat = session.local ? live.turn : me.seat
-  const myTurn = inMatch && live.turn === seat
+  const myTurn = inMatch && !watching && live.turn === seat
 
   const [preview, setPreview] = useState<Preview | null>(null)
   useEffect(() => setPreview(null), [live.turn, live.result])
@@ -77,13 +80,13 @@ export function QuoridorMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   useEffect(() => {
     const seen = seenRef.current
     if (live.last && lastKey !== seen.key) {
-      const byMe = session.local || live.last.seat === me.seat
+      const byMe = !watching && (session.local || live.last.seat === me.seat)
       if (live.last.wall !== undefined) sound('join')
       else if (!byMe) sound('tick')
     }
-    if (live.result && !seen.result) sound(session.local || live.result.winner === me.seat ? 'findBig' : 'end')
+    if (live.result && !seen.result) sound(session.local || watching || live.result.winner === me.seat ? 'findBig' : 'end')
     seenRef.current = { key: lastKey, result: over }
-  }, [lastKey, live.last, live.result, over, me.seat, sound, session.local])
+  }, [lastKey, live.last, live.result, over, me.seat, sound, session.local, watching])
 
   const card = (s: Seat, active: boolean, turn = false) => (
     <ScoreCard p={seats[s]} you={mine(s)} active={active} turn={turn} score={-pathLeft(live, s)} value={live.left[s]} meta={`walls · ${toGo(pathLeft(live, s))}`} />
@@ -104,7 +107,7 @@ export function QuoridorMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     ? mine(live.result.winner)
       ? 'You made it across!'
       : `${name(live.result.winner)} made it across`
-    : session.local
+    : session.local || watching
       ? `${name(live.turn)}’s turn`
       : myTurn
         ? live.left[seat] > 0
@@ -132,7 +135,7 @@ export function QuoridorMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           live={live}
           seat={seat}
           active={myTurn}
-          flipped={!session.local && me.seat === 1}
+          flipped={!session.local && !watching && me.seat === 1}
           preview={preview}
           onPreview={setPreview}
           onMove={stepTo}
@@ -176,7 +179,9 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Quorid
   const session = useSession(GAME, room.code)
   const live = st.live
   const winner = (live.result?.winner ?? -1) as Seat | -1
-  const iWon = session.local ? winner !== -1 : winner === me.seat
+  // on one device (or watching) there’s no "you" to compare against
+  const noYou = session.local || !!session.watching
+  const iWon = noYou ? winner !== -1 : winner === me.seat
   const opp = seats[me.seat === 0 ? 1 : 0]
 
   const cheered = useRef(false)
@@ -200,7 +205,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Quorid
   }, [session, me.isHost, imReady, oppReady, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'Player 1', seats[1]?.name ?? 'Player 2']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, quoridorFeats(live))
   const loser = winner === -1 ? 1 : ((1 - winner) as Seat)
   const short = winner === -1 ? 0 : pathLeft(live, loser)
   const moves = live.moves ?? [0, 0]
@@ -235,7 +240,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Quorid
         <ResultMark winner={winner} />
         <p className="label">Match {st.match} · Quoridor</p>
         <h1 className={`qrm-results__title${iWon ? ' qrm-results__title--win' : ''}`}>
-          {winner === -1 ? 'Draw' : iWon && !session.local ? 'You win' : `${names[winner]} wins`}
+          {winner === -1 ? 'Draw' : iWon && !noYou ? 'You win' : `${names[winner]} wins`}
         </h1>
         {line && <p className="qrm-results__line">{line}</p>}
       </div>
@@ -272,6 +277,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Quorid
         oppGone={oppGone}
         onReady={() => (sound('tap'), session.ready(me.id))}
         onLeave={exit.now}
+        watching={session.watching}
       />
     </main>
   )
