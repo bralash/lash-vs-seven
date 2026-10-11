@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
@@ -35,6 +35,7 @@ import {
   dealt,
   drop,
   dropAll,
+  dropOrder,
   finishLabel,
   forfeit,
   freshLive,
@@ -321,6 +322,9 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     const t = setTimeout(() => setSlowCheck(true), 3000)
     return () => clearTimeout(t)
   }, [d, live.phase])
+  // the dropped cards on the table: stacked, or spread out to read
+  const [spread, setSpread] = useState(false)
+  useEffect(() => setSpread(false), [deals])
   const gbaCount = r.gba?.length ?? 0
   const seenGba = useRef(gbaCount)
   useEffect(() => {
@@ -405,6 +409,8 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   // the cards laid down: a drop being checked, one that won, or one just caught
   const lastGba = r.gba?.[r.gba.length - 1]
   const onTable = d ?? caught ?? (live.phase === 'done' && (live.past ?? []).at(-1)?.gba !== undefined ? lastGba : null)
+  // in the order they'd be played (a winning drop is already laid out that way), so the last trick's card ends up on top
+  const pile = !onTable ? [] : onTable === d && live.phase === 'done' ? onTable.cards : dropOrder(onTable.cards).order
 
   const status = (() => {
     if (live.phase === 'deal') {
@@ -469,11 +475,19 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
             <span className="sp-slot__who">
               {name(onTable.s)} <em>· drops all</em>
             </span>
-            <div className="sp-dropped__cards">
-              {onTable.cards.map((c) => (
-                <Card key={c} k={c} size="lg" className="sp-slot__card" />
+            {/* stacked in the order they'd be played, the last trick's card on top; tap to spread them out */}
+            <button
+              type="button"
+              className={`sp-dropped__cards${spread ? ' is-spread' : ''}`}
+              onClick={() => (sound('tap'), setSpread((v) => !v))}
+              aria-label={`${pile.length} cards, last on top: ${pile.map(cardLabel).join(', ')}. Tap to ${spread ? 'stack' : 'spread'} them.`}
+            >
+              {pile.map((c, i, all) => (
+                <span key={c} className="sp-dropped__card" style={{ '--i': i - (all.length - 1) / 2 } as CSSProperties}>
+                  <Card k={c} size="lg" />
+                </span>
               ))}
-            </div>
+            </button>
             {onTable !== d && lastGba ? (
               <p className="sp-dropped__gba">
                 <span className="sp-slot__stamp">Gba</span>

@@ -50,7 +50,7 @@ export const ULTS: Record<Ult, { name: string; said: string }> = {
   kwaa: { name: 'Kwaaa!', said: 'Circle! Circle! Everybody down!' },
   nightfall: { name: 'Night Fall', said: 'I’m Batops.' },
   asante: { name: 'War of the Golden Stool', said: 'Then we women will fight!' },
-  freeshs: { name: 'Free SHS', said: 'The battle is in our hands!' },
+  freeshs: { name: 'Free SHS', said: 'The battle is the Lord’s!' },
   static: { name: 'Static', said: 'Bzzt.' },
 }
 export const ultOf = (look: string | null | undefined): Ult => (look === 'warrior' ? 'rage' : look === 'titan' ? 'snap' : look === 'spider' ? 'thwip' : look === 'prime' ? 'rollout' : look === 'brute' ? 'smash' : look === 'ghost' ? 'airstrike' : look === 'anansi' ? 'tales' : look === 'trotro' ? 'kwaa' : look === 'bat' ? 'nightfall' : look === 'queen' ? 'asante' : look === 'addo' ? 'freeshs' : 'static')

@@ -174,8 +174,28 @@
   border-top: 4px solid var(--dim);
   background: var(--tile);
 }
-.sp-dropped__cards { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(4px, 1.4vw, 10px); }
-.sp-dropped__cards .sp-card--lg { --w: clamp(46px, 13vw, 70px); }
+/* a pile: every card in the same spot, fanned a little, the last one on top; .is-spread lays them out */
+.sp-dropped__cards {
+  --cw: clamp(46px, 13vw, 70px);
+  display: grid;
+  justify-items: center;
+  margin: 4px 0 2px;
+  padding: 6px 0 10px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sp-dropped__cards .sp-card--lg { --w: var(--cw); }
+.sp-dropped__card {
+  grid-area: 1 / 1;
+  transform: translateX(calc(var(--i) * var(--cw) * .22)) rotate(calc(var(--i) * 7deg));
+  transform-origin: 50% 120%;
+  transition: transform .28s var(--ease-snap);
+  /* backwards only, so the transform stays free to transition when spreading */
+  animation: sp-land .3s var(--ease-snap) backwards;
+}
+.sp-dropped__cards.is-spread .sp-dropped__card { transform: translateX(calc(var(--i) * var(--cw) * 1.08)) rotate(calc(var(--i) * 2deg)); }
 .sp-dropped__gba { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; font-size: 13px; color: var(--paper-2); }
 .sp-dropped__gba .sp-slot__stamp { position: static; background: var(--strike); color: var(--paper); }
 .sp-hintrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; }
