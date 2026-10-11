@@ -97,7 +97,7 @@
                 ".validate": "newData.isNumber()"
               },
               "look": {
-                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost|anansi|trotro|bat|queen|addo)$/)"
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|prime|warrior|titan|spider|brute|ghost|anansi|trotro|bat|queen|addo)$/) && (newData.val().matches(/^(screen|bot|cyclops|die)$/) || root.child('wallets/' + $uid + '/owned/' + newData.val()).val() === true || (newData.val().matches(/^(prime|warrior|titan|spider|brute|ghost)$/) && now < 1792195200000))"
               },
               "wear": {
                 ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[a-z]+(,[a-z]+){0,2}$/)"
@@ -210,7 +210,7 @@
                 ".validate": "newData.isNumber()"
               },
               "look": {
-                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|visor|prime|warrior|titan|spider|brute|ghost|anansi|trotro|bat|queen|addo)$/)"
+                ".validate": "newData.isString() && newData.val().matches(/^(screen|bot|cyclops|die|prime|warrior|titan|spider|brute|ghost|anansi|trotro|bat|queen|addo)$/) && (newData.val().matches(/^(screen|bot|cyclops|die)$/) || root.child('wallets/' + $uid + '/owned/' + newData.val()).val() === true || (newData.val().matches(/^(prime|warrior|titan|spider|brute|ghost)$/) && now < 1792195200000))"
               },
               "wear": {
                 ".validate": "newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[a-z]+(,[a-z]+){0,2}$/)"
