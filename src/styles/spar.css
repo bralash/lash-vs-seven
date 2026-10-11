@@ -164,6 +164,23 @@
   animation: stamp-in .35s .15s var(--ease-snap) both;
 }
 
+/* ── Drop all ──────────────────────────────────────────── */
+.sp-dropped {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 10px 6px 18px;
+  border-top: 4px solid var(--dim);
+  background: var(--tile);
+}
+.sp-dropped__cards { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(4px, 1.4vw, 10px); }
+.sp-dropped__cards .sp-card--lg { --w: clamp(46px, 13vw, 70px); }
+.sp-dropped__gba { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; font-size: 13px; color: var(--paper-2); }
+.sp-dropped__gba .sp-slot__stamp { position: static; background: var(--strike); color: var(--paper); }
+.sp-hintrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; }
+.sp-dropbtn { min-height: 0; padding: 4px 12px; font-size: 13px; box-shadow: var(--shadow-sm); }
+
 /* ── The deal ──────────────────────────────────────────── */
 .sp-deal { display: grid; gap: 12px; padding: 4px 2px 6px; }
 .sp-deal__steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }

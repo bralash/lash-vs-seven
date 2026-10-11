@@ -24,19 +24,25 @@ import {
   TRICKS,
   SUIT_NAMES,
   byCard,
+  canDrop,
   cardLabel,
+  catcher,
   chainOf,
+  checkDrops,
   checkPlays,
   dealLocal,
   dealNo,
   dealt,
   drop,
+  dropAll,
   finishLabel,
   forfeit,
   freshLive,
   leaderOf,
   matchOver,
   nextRound,
+  outOf,
+  postCheck,
   handTo,
   play,
   toPlay,
@@ -239,7 +245,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       if (!('error' in v)) {
         const bySeat: number[][] = []
         dealtIn.forEach((s, i) => (bySeat[s] = v.hands[i]))
-        bad = checkPlays(plays, bySeat, n)
+        bad = checkPlays(plays, bySeat, n) ?? checkDrops(r, bySeat)
       }
       if (!alive) return
       if ('error' in v) setCheck({ ok: false, msg: 'The deal doesn’t check out — the shuffle wasn’t fair.' })
@@ -273,6 +279,54 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     const h = myCards ?? undefined
     session.move<Live>((cur) => play(cur, view, k, h)).catch(() => {})
   }
+
+  /* ── drop all: lay every card down on your lead; Gba (−3) if anyone could take a trick ── */
+  const outs = outOf(r)
+  const iAmOut = !watching && outs.includes(view)
+  // on one device the hands are all here: only offer it when it can't fail
+  const dropOk =
+    myTurn &&
+    canDrop(live, view, hand.length) &&
+    (!open || dealtIn.every((s) => s === view || outs.includes(s) || catcher(hand, remaining(r.hands?.[s] ?? [], plays, s)) === null))
+  const [dropArm, setDropArm] = useState(false)
+  useEffect(() => setDropArm(false), [plays.length, deals, live.turn])
+  const dropAllNow = () => {
+    if (!dropArm) {
+      setDropArm(true)
+      setPicked(null)
+      sound('tap')
+      return
+    }
+    setDropArm(false)
+    sound('tap')
+    const cards = [...hand]
+    const h = myCards ?? undefined
+    const all = open ? r.hands : undefined
+    session.move<Live>((cur) => dropAll(cur, view, cards, h, all)).catch(() => {})
+  }
+  // online: someone dropped — this phone checks its own hand and answers (the card that takes a trick, or none)
+  const d = r.drop
+  const mustCheck = !open && !watching && live.phase === 'play' && !!d && d.s !== view && dealtIn.includes(view) && !outs.includes(view) && r.checks?.[sk(view)] === undefined && !!myCards
+  useEffect(() => {
+    if (!mustCheck || !d) return
+    const c = catcher(d.cards, hand)
+    const seat = view
+    session.move<Live>((cur) => postCheck(cur, seat, c ?? -1)).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mustCheck, roundId])
+  const [slowCheck, setSlowCheck] = useState(false)
+  useEffect(() => {
+    setSlowCheck(false)
+    if (!d || live.phase !== 'play') return
+    const t = setTimeout(() => setSlowCheck(true), 3000)
+    return () => clearTimeout(t)
+  }, [d, live.phase])
+  const gbaCount = r.gba?.length ?? 0
+  const seenGba = useRef(gbaCount)
+  useEffect(() => {
+    if (gbaCount > seenGba.current) sound('error')
+    seenGba.current = gbaCount
+  }, [gbaCount, sound])
 
   // sounds: tricks won and lost, and the end of a round
   const seenRef = useRef({ n: plays.length, phase: live.phase })
@@ -346,12 +400,23 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const ledSuit = leading ? null : suitOf(plays[plays.length - partial].c)
   const last = trickNo === TRICKS - 1
 
+  // a Gba that's just happened: nothing has been played since
+  const caught = live.phase === 'play' && r.gba?.length && r.gba[r.gba.length - 1].at === plays.length ? r.gba[r.gba.length - 1] : null
+  // the cards laid down: a drop being checked, one that won, or one just caught
+  const lastGba = r.gba?.[r.gba.length - 1]
+  const onTable = d ?? caught ?? (live.phase === 'done' && (live.past ?? []).at(-1)?.gba !== undefined ? lastGba : null)
+
   const status = (() => {
     if (live.phase === 'deal') {
       const again = live.redeal ? `Dealing again · ${name(live.redeal.who)} ${live.redeal.why === 'left' ? 'left' : 'lost their cards'}` : null
       return again ?? (open || watching ? 'Dealing…' : 'Shuffling…')
     }
     if (live.phase === 'done') return roundLine(live, name)
+    if (d) {
+      const waiting = dealtIn.filter((s) => s !== d.s && !outs.includes(s) && r.checks?.[sk(s)] === undefined)
+      return slowCheck && waiting.length ? `${name(d.s)} drops all · waiting for ${andList(waiting.map(name))}’s phone…` : `${name(d.s)} drops all · checking…`
+    }
+    if (caught) return `Gba! ${name(caught.by)}’s ${cardLabel(caught.c)} catches ${noYou || caught.s !== me.seatN ? name(caught.s) : 'you'} · −3`
     const lastNote = last ? ' · last trick' : ''
     if (leading && (noYou || live.turn !== me.seatN)) return `${name(live.turn)} leads${lastNote}`
     if (!leading && (noYou || !canPlay.includes(me.seatN))) return `${local ? '' : 'Waiting for '}${andList(canPlay.map(name))}${local ? ' to play' : ''}${lastNote}`
@@ -382,7 +447,7 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           ) : (
             <div className="sp-opps">
               {opponents.map((s) => (
-                <Backs key={s} n={TRICKS - plays.filter((p) => p.s === s).length} seat={s} name={name(s)} label={opponents.length > 1} />
+                <Backs key={s} n={TRICKS - plays.filter((p) => p.s === s).length} seat={s} name={outs.includes(s) ? `${name(s)} · out` : name(s)} label={opponents.length > 1 || outs.includes(s)} />
               ))}
             </div>
           )}
@@ -399,6 +464,25 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
         {live.phase === 'deal' && !open ? (
           <DealSteps live={live} name={name} slow={slow} />
+        ) : onTable ? (
+          <div className={`sp-dropped sp-slot--${onTable.s}`}>
+            <span className="sp-slot__who">
+              {name(onTable.s)} <em>· drops all</em>
+            </span>
+            <div className="sp-dropped__cards">
+              {onTable.cards.map((c) => (
+                <Card key={c} k={c} size="lg" className="sp-slot__card" />
+              ))}
+            </div>
+            {onTable !== d && lastGba ? (
+              <p className="sp-dropped__gba">
+                <span className="sp-slot__stamp">Gba</span>
+                {name(lastGba.by)} holds <Card k={lastGba.c} size="sm" />
+              </p>
+            ) : (
+              live.phase === 'done' && <span className="sp-slot__stamp">wins</span>
+            )}
+          </div>
         ) : (
           <div className={`sp-trick sp-trick--${n}`}>
             {order.map((who, i) => {
@@ -471,8 +555,27 @@ export function SparMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           dealtIn.includes(view) ? <Backs n={TRICKS - plays.filter((p) => p.s === view).length} seat={view} name={name(view)} label /> : <div className="sp-hand sp-hand--waiting" aria-hidden="true" />
         ) : (
           <>
-            <Hand cards={hand} legal={legal} enabled={myTurn} selected={picked} onPick={pick} />
-            <p className="sp-hint">{myTurn ? (picked !== null ? `Tap ${cardLabel(picked)} again to play it` : 'Tap a card to lift it') : ' '}</p>
+            <Hand cards={iAmOut ? [] : hand} legal={legal} enabled={myTurn && !dropArm} selected={picked} onPick={pick} />
+            <div className="sp-hintrow">
+              <p className="sp-hint">
+                {iAmOut
+                  ? 'Gba — you sit out the rest of this round'
+                  : dropArm
+                    ? open
+                      ? 'Nobody can take a trick off these: tap again to drop'
+                      : 'If anyone can take a trick off these, it’s Gba: −3'
+                    : myTurn
+                      ? picked !== null
+                        ? `Tap ${cardLabel(picked)} again to play it`
+                        : 'Tap a card to lift it'
+                      : ' '}
+              </p>
+              {dropOk && (
+                <button type="button" className={`btn sp-dropbtn${dropArm ? ' btn--primary' : ''}`} onClick={dropAllNow}>
+                  {dropArm ? `Drop all ${hand.length} — sure?` : 'Drop all'}
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -528,11 +631,14 @@ function roundLine(live: Live, name: (s: number) => string) {
   const r = live.cur
   if (r.winner === undefined) return ''
   if (r.forfeitBy !== undefined) return `${name(r.winner)} takes the round · +1`
+  const p0 = (live.past ?? []).at(-1)
+  if (p0?.gba !== undefined) return `Gba! ${name(p0.gba)} −3 · ${name(r.winner)} +1`
+  if (r.drop && r.winner === r.drop.s) return `${name(r.winner)} drops all · +${r.points}${p0 && r.points! > 1 ? ` · ${finishLabel({ ...p0, drop: false })}` : ''}`
   const p = (live.past ?? []).at(-1)
   return `${name(r.winner)} takes it · +${r.points}${p && p.cards?.length && r.points! > 1 ? ` · ${finishLabel(p)}` : ''}`
 }
 
-const pastCards = (p: Past) => (p.forfeit ? '—' : (p.cards ?? []).map(cardLabel).join(' '))
+const pastCards = (p: Past) => (p.forfeit || p.gba !== undefined ? '—' : (p.cards ?? []).map(cardLabel).join(' '))
 
 /* ── Results ─────────────────────────────────────────────────────────── */
 
