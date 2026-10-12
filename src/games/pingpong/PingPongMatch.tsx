@@ -74,25 +74,50 @@ export function initialPPState(target = 2, match = 1): PPState {
   return { target, match, live: freshLive((match % 2 === 1 ? 0 : 1) as Side) }
 }
 
-/* ── drawing: the table seen from above, a little perspective so the far end narrows ── */
+/*
+ * drawing: the table from a low camera just behind your end, in real perspective. The far end
+ * shrinks to FAR_S of the near end and everything scales the same way, so your bat is big up close
+ * (bigger than the thumb under it) and shrinks as you step in toward the net.
+ */
 
 const VW = 300
 // room under your end of the table for your thumb, so the bat stays in sight above it
 const VH = 575
-const NEAR_Y = 418
-const FAR_Y = 78
-const NEAR_HALF = 128
-const FAR_HALF = 92
+const NEAR_Y = 372
+const FAR_Y = 120
+const NEAR_HALF = 136
+/** how big the far end is next to the near end */
+const FAR_S = 0.4
+/** the camera's distance behind the near edge, in table lengths (from FAR_S) */
+const CAM = FAR_S / (1 - FAR_S)
+/** where the table's lines would meet, above the far end */
+const HORIZON = (FAR_Y - FAR_S * NEAR_Y) / (1 - FAR_S)
 
 /** your bat moves this much further than your thumb, so short movements cover your whole half */
 const GAIN = 1.9
+/** a thumb's movement in table lengths (fixed, so the trackpad feels the same wherever the bat is) */
+const TRACK_LEN = 340
+
+/** behind your end things grow at half the rate the perspective would give, so the bat stays on screen */
+const BEHIND = 0.5
+/** how big things are at depth y: perspective over the table, and growing steadily (not exploding) behind your end */
+const scaleAt = (y: number) => (y >= 0 ? CAM / (y + CAM) : 1 - (BEHIND * y) / CAM)
 
 /** table coordinates (x -1…1, y 0…1, z height) to the drawing */
 function proj(x: number, y: number, z = 0) {
-  const half = NEAR_HALF + (FAR_HALF - NEAR_HALF) * y
-  const s = half / NEAR_HALF
-  return { px: VW / 2 + x * half, py: NEAR_Y - y * (NEAR_Y - FAR_Y) - z * 70 * s, s }
+  const s = scaleAt(y)
+  return { px: VW / 2 + x * NEAR_HALF * s, py: HORIZON + (NEAR_Y - HORIZON) * s - z * 70 * s, s }
 }
+/** the other way: a spot on the drawing to the table (at z 0) */
+function unproj(px: number, py: number) {
+  const s = Math.max(0.2, (py - HORIZON) / (NEAR_Y - HORIZON))
+  return { x: (px - VW / 2) / (NEAR_HALF * s), y: s <= 1 ? CAM / s - CAM : ((1 - s) * CAM) / BEHIND }
+}
+/** the net's height, at its depth; the table top's thickness at your end */
+const NET_H = Math.round(26 * scaleAt(0.5))
+const EDGE = 9
+/** the ball and its marks shrink less than true size at the far end, so you can still see them there */
+const seen = (s: number) => s ** 0.6
 const corner = (x: number, y: number) => {
   const p = proj(x, y)
   return `${p.px},${p.py}`
@@ -371,8 +396,9 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     const px = ((e.clientX - box.left) / box.width) * VW
     const py = ((e.clientY - box.top) / box.height) * VH
     const r = rally.current
-    r.myY = (NEAR_Y - py) / (NEAR_Y - FAR_Y)
-    r.myX = (px - VW / 2) / (NEAR_HALF + (FAR_HALF - NEAR_HALF) * r.myY)
+    const at = unproj(px, py)
+    r.myX = at.x
+    r.myY = at.y
     keepBat()
   }
   const moveP = (e: ReactPointerEvent) => {
@@ -389,7 +415,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const k = (VW / box.width) * GAIN
       const r = rally.current
       r.myX += ((e.clientX - last.x) * k) / NEAR_HALF
-      r.myY -= ((e.clientY - last.y) * k) / (NEAR_Y - FAR_Y)
+      r.myY -= ((e.clientY - last.y) * k) / TRACK_LEN
       keepBat()
     }
     // serving: a quick flick up sends it, without lifting the thumb
@@ -538,7 +564,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         const g = proj(ball.x, ball.y, 0)
         // it squashes for a moment where it meets the table
         const sq = Math.max(0, 1 - (t - r.bounceAt) / 110)
-        const size = p.s * (1 + ball.z * 0.45)
+        const size = seen(p.s) * (1 + ball.z * 0.45)
         ballEl.current.setAttribute('transform', `translate(${p.px} ${p.py}) scale(${size * (1 + 0.35 * sq)} ${size * (1 - 0.3 * sq)})`)
         ballEl.current.style.opacity = '1'
         // the streak behind it: tinted for topspin (orange) or backspin (blue) on a quick ball
@@ -561,8 +587,8 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         })
         shadowEl.current.setAttribute('cx', String(g.px))
         shadowEl.current.setAttribute('cy', String(g.py))
-        shadowEl.current.setAttribute('rx', String(6 * g.s))
-        shadowEl.current.setAttribute('ry', String(3 * g.s))
+        shadowEl.current.setAttribute('rx', String(6 * seen(g.s)))
+        shadowEl.current.setAttribute('ry', String(3 * seen(g.s)))
         shadowEl.current.style.opacity = String(Math.max(0.12, 0.45 - ball.z * 0.4))
       } else if (ballEl.current && shadowEl.current) {
         ballEl.current.style.opacity = '0'
@@ -577,7 +603,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           const at = proj(r.puff.x, r.puff.y)
           puffEl.current.setAttribute('cx', String(at.px))
           puffEl.current.setAttribute('cy', String(at.py))
-          puffEl.current.setAttribute('r', String((4 + 16 * k) * at.s))
+          puffEl.current.setAttribute('r', String((4 + 16 * k) * seen(at.s)))
           puffEl.current.style.opacity = String(0.85 * (1 - k))
         } else puffEl.current.style.opacity = '0'
       }
@@ -594,11 +620,14 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const swing = (since: number) => Math.max(0, 1 - (t - since) / 180)
       if (myPad.current) {
         const p = proj(r.myX, r.myY - 0.02)
-        myPad.current.setAttribute('transform', `translate(${p.px} ${p.py + 6}) rotate(${(r.big ? -60 : -30) * swing(r.swingAt)}) scale(${(1.65 * p.s).toFixed(3)})`)
+        // out to the side it leans like a backhand (left) or a forehand (right); upright in the middle
+        const tilt = Math.max(-1.2, Math.min(1.2, r.myX)) * 28
+        myPad.current.setAttribute('transform', `translate(${p.px} ${p.py + 6}) rotate(${tilt + (r.big ? -60 : -30) * swing(r.swingAt)}) scale(${(1.65 * p.s).toFixed(3)})`)
       }
       if (opsPad.current) {
         const p = proj(r.opsX, r.oppY + 0.02)
-        opsPad.current.setAttribute('transform', `translate(${p.px} ${p.py - 10}) rotate(${180 + (fl?.smash && fl.by === 1 ? 60 : 30) * swing(r.opsSwingAt)}) scale(1)`)
+        const tilt = Math.max(-1.2, Math.min(1.2, r.opsX)) * 24
+        opsPad.current.setAttribute('transform', `translate(${p.px} ${p.py - 10 * p.s}) rotate(${180 - tilt + (fl?.smash && fl.by === 1 ? 60 : 30) * swing(r.opsSwingAt)}) scale(${(1.9 * p.s).toFixed(3)})`)
       }
     }
     raf = requestAnimationFrame(tick)
@@ -651,15 +680,20 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         <svg ref={tableEl} className="ppm-table" viewBox={`0 0 ${VW} ${VH}`} data-ult-board aria-label="The table">
           {/* the table, its shadow, the lines */}
           <polygon points={[corner(-1, 0), corner(1, 0), corner(1, 1), corner(-1, 1)].join(' ')} transform="translate(7 7)" fill="var(--ink)" />
+          {/* the table's front edge and legs: you're looking at its side from down here */}
+          {[-0.8, 0.8].map((x) => (
+            <rect key={x} x={proj(x, 0.06).px - 5} y={proj(x, 0.06).py} width="10" height={EDGE + 40} fill="var(--ink)" opacity=".75" />
+          ))}
+          <polygon points={`${corner(-1, 0)} ${corner(1, 0)} ${proj(1, 0).px},${proj(1, 0).py + EDGE} ${proj(-1, 0).px},${proj(-1, 0).py + EDGE}`} fill="#145c37" stroke="var(--ink)" strokeWidth="3" strokeLinejoin="round" />
           <polygon className="ppm-top" points={[corner(-1, 0), corner(1, 0), corner(1, 1), corner(-1, 1)].join(' ')} stroke="var(--ink)" strokeWidth="4" strokeLinejoin="round" />
           <polygon points={[corner(-0.97, 0.012), corner(0.97, 0.012), corner(0.97, 0.988), corner(-0.97, 0.988)].join(' ')} fill="none" stroke="#fbf7ee" strokeWidth="2.5" />
           <line x1={proj(0, 0.012).px} y1={proj(0, 0.012).py} x2={proj(0, 0.988).px} y2={proj(0, 0.988).py} stroke="#fbf7ee" strokeWidth="1.5" />
           {/* the net: posts, mesh and the white tape */}
           <g>
-            <rect x={proj(-1.08, NET_Y).px} y={proj(0, NET_Y).py - 15} width={proj(1.08, NET_Y).px - proj(-1.08, NET_Y).px} height="15" fill="url(#ppm-mesh)" stroke="var(--ink)" strokeWidth="2" />
-            <line x1={proj(-1.08, NET_Y).px} y1={proj(0, NET_Y).py - 15} x2={proj(1.08, NET_Y).px} y2={proj(0, NET_Y).py - 15} stroke="#fbf7ee" strokeWidth="3" />
-            <rect x={proj(-1.08, NET_Y).px - 4} y={proj(0, NET_Y).py - 19} width="5" height="21" fill="var(--ink)" />
-            <rect x={proj(1.08, NET_Y).px - 1} y={proj(0, NET_Y).py - 19} width="5" height="21" fill="var(--ink)" />
+            <rect x={proj(-1.08, NET_Y).px} y={proj(0, NET_Y).py - NET_H} width={proj(1.08, NET_Y).px - proj(-1.08, NET_Y).px} height={NET_H} fill="url(#ppm-mesh)" stroke="var(--ink)" strokeWidth="2" />
+            <line x1={proj(-1.08, NET_Y).px} y1={proj(0, NET_Y).py - NET_H} x2={proj(1.08, NET_Y).px} y2={proj(0, NET_Y).py - NET_H} stroke="#fbf7ee" strokeWidth="3" />
+            <rect x={proj(-1.08, NET_Y).px - 4} y={proj(0, NET_Y).py - NET_H - 4} width="5" height={NET_H + 6} fill="var(--ink)" />
+            <rect x={proj(1.08, NET_Y).px - 1} y={proj(0, NET_Y).py - NET_H - 4} width="5" height={NET_H + 6} fill="var(--ink)" />
           </g>
           <defs>
             <pattern id="ppm-mesh" width="4" height="4" patternUnits="userSpaceOnUse">
