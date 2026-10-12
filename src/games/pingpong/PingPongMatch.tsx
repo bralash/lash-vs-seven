@@ -99,9 +99,9 @@ const HORIZON = (FAR_Y - FAR_S * NEAR_Y) / (1 - FAR_S)
 
 /** your bat moves this much further than your thumb, so short movements cover your whole half */
 const GAIN = 1.9
-/** how much of your bat's move off centre the camera follows, and how quickly it catches up (ms) */
+/** how much of the ball's move off centre (or your bat's, with no ball in play) the camera follows, and how gently it catches up (ms) */
 const PAN = 0.5
-const CAM_EASE = 160
+const CAM_EASE = 220
 /** a thumb's movement in table lengths (fixed, so the trackpad feels the same wherever the bat is) */
 const TRACK_LEN = 340
 
@@ -645,9 +645,10 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           guideEl.current.style.opacity = String(t < fl.tb ? 0.55 : 0.55 * (1 - (t - fl.tb) / 120))
         } else guideEl.current.style.opacity = '0'
       }
-      // the camera slides after your bat, so a ball into the corner is still on screen when you get there;
+      // the camera slides after the ball (your bat between points), so a ball into the corner stays on screen;
       // the hall behind moves less than the table, so it looks far away
-      const aim = pointing.current ? 0 : (proj(r.myX, r.myY).px - VW / 2) * PAN
+      const watched = ball ?? { x: r.myX, y: r.myY }
+      const aim = pointing.current ? 0 : (proj(watched.x, watched.y).px - VW / 2) * PAN
       cam.current += (aim - cam.current) * (1 - Math.exp(-dt / CAM_EASE))
       worldEl.current?.setAttribute('transform', `translate(${(-cam.current).toFixed(2)} 0)`)
       hallEl.current?.setAttribute('transform', `translate(${(-cam.current * 0.35).toFixed(2)} 0)`)
