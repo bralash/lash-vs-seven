@@ -5,218 +5,143 @@ import { levelLabel } from '../match/bot'
 import { floorsFor, TOP, twistLine, type Floor } from '../tower/floors'
 import { TowerCrown } from '../tower/TowerCrown'
 import { Hearts } from '../tower/TowerSheet'
+import { Bush, Flowers, GameHouse, Goat, GROUND, Mound, OwnerTouch, pts, Rock, rng, shade, Tree, type P, type Zone } from './towerMapArt'
 import '../styles/tower.css'
 import '../styles/towermap.css'
 
 /*
  * Dev-only sandbox (route: /dev/towermap): Ops' Tower as a road trip instead of a building. A road
- * winds up the page from floor 1 at the bottom to Ops' tower in the city at the top; each guardian
- * lives in a house on their own little island along the way, and the land changes as you climb
- * (fields, savanna, forest, city). Your character waits on the road at your floor.
+ * winds up the page from floor 1 at the bottom to Ops' tower in the city at the top. Each guardian
+ * lives in a house built around their game, with a touch of their own beside it. The land changes
+ * as you climb (fields, savanna, forest, city), and the road crosses a river on a wooden bridge,
+ * pushes through the bush, and crosses a forest stream on a stone one. Your character waits on the
+ * road at your floor.
  */
 
 /* ── the map's geometry (SVG units; the map scales to the screen's width) ── */
 const W = 400
-const GAP = 168
+const GAP = 172
 const BOTTOM = 150
 const TOP_ROOM = 330
 const H = BOTTOM + (TOP - 1) * GAP + TOP_ROOM
 /** where floor n's stop is on the road */
-const stop = (n: number) => ({ x: n === TOP ? 200 : n % 2 ? 132 : 268, y: H - BOTTOM - (n - 1) * GAP })
+const stop = (n: number): P => [n === TOP ? 200 : n % 2 ? 136 : 264, H - BOTTOM - (n - 1) * GAP]
 /** which side of the road the house sits on (outwards from the bend) */
 const side = (n: number) => (n % 2 ? -1 : 1)
-const house = (n: number) => {
-  const s = stop(n)
-  return n === TOP ? { x: 200, y: s.y - 70 } : { x: s.x + side(n) * 78, y: s.y - 6 }
-}
-
-type Zone = 'field' | 'savanna' | 'forest' | 'city'
+const houseAt = (n: number): P => (n === TOP ? [200, stop(n)[1] - 72] : [stop(n)[0] + side(n) * 80, stop(n)[1] - 4])
 const zoneOf = (n: number): Zone => (n <= 3 ? 'field' : n <= 6 ? 'savanna' : n <= 9 ? 'forest' : 'city')
-const GROUND: Record<Zone, { top: string; side: string }> = {
-  field: { top: '#9ed36a', side: '#5f9a3c' },
-  savanna: { top: '#f4c27a', side: '#c98a3a' },
-  forest: { top: '#5cb06a', side: '#2f7a45' },
-  city: { top: '#d9d2c4', side: '#9d958a' },
-}
-const WALLS = ['#ff5a1f', '#2d5bff', '#ffd23f', '#9b3fd6', '#1f9d55', '#e8291c', '#f3ead8', '#17a2b8', '#ff8fb1']
+/** the boundary between floor n's land and the next floor's */
+const between = (n: number) => (stop(n)[1] + stop(n + 1)[1]) / 2
 
-/** a hex colour, darker by `k` (0–1) */
-function shade(hex: string, k: number) {
-  const n = parseInt(hex.slice(1), 16)
-  const f = (c: number) => Math.round(c * (1 - k))
-  return `rgb(${f(n >> 16)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`
-}
-
-/** a small seeded random, so the map looks the same every time */
-function rng(seed: number) {
-  let s = (seed * 2654435761) >>> 0 || 1
-  return () => {
-    s ^= s << 13
-    s ^= s >>> 17
-    s ^= s << 5
-    return ((s >>> 0) % 10000) / 10000
-  }
-}
-
-const pts = (p: [number, number][]) => p.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
-
-/** An island: a lumpy flat top with its earth showing underneath, like a low-poly tile. */
-function Island({ x, y, rx, seed, zone }: { x: number; y: number; rx: number; seed: number; zone: Zone }) {
-  const r = rng(seed)
-  const ry = rx * 0.52
-  const n = 11
-  const ring: [number, number][] = Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * Math.PI * 2
-    const k = 0.82 + r() * 0.3
-    return [x + Math.cos(a) * rx * k, y + Math.sin(a) * ry * k]
+/* ── the road: cubic curves from stop to stop ── */
+type Seg = [P, P, P, P]
+const SEGS: Seg[] = (() => {
+  const p: P[] = [[200, H + 30], ...Array.from({ length: TOP }, (_, i) => stop(i + 1))]
+  return p.slice(1).map((b, i) => {
+    const a = p[i]
+    const pull = (a[1] - b[1]) * 0.55
+    return [a, [a[0], a[1] - pull], [b[0], b[1] + pull], b]
   })
-  const drop = 12
+})()
+const bez = ([a, b, c, d]: Seg, t: number): P => {
+  const m = 1 - t
+  const k = [m * m * m, 3 * m * m * t, 3 * m * t * t, t * t * t]
+  return [k[0] * a[0] + k[1] * b[0] + k[2] * c[0] + k[3] * d[0], k[0] * a[1] + k[1] * b[1] + k[2] * c[1] + k[3] * d[1]]
+}
+const ROAD = SEGS.reduce((d, [, b, c, e]) => `${d} C${b[0]} ${b[1]} ${c[0]} ${c[1]} ${e[0]} ${e[1]}`, `M${SEGS[0][0][0]} ${SEGS[0][0][1]}`)
+const ROAD_PTS: P[] = SEGS.flatMap((s) => Array.from({ length: 40 }, (_, i) => bez(s, i / 40)))
+
+/* ── water: a river across the fields (between floors 2 and 3), a stream in the forest (7 and 8) ── */
+const waterLine = (y0: number, amp: number, phase: number): P[] => Array.from({ length: 45 }, (_, i) => [-20 + i * 10, y0 + Math.sin(i * 0.42 + phase) * amp])
+const RIVER = waterLine(between(2), 13, 0.4)
+const STREAM = waterLine(between(7), 9, 2.2)
+const pathOf = (p: P[]) => `M${p.map(([x, y]) => `${x} ${y}`).join(' L')}`
+const waterY = (line: P[], x: number) => line[Math.max(0, Math.min(line.length - 1, Math.round((x + 20) / 10)))][1]
+
+/** Land for a run of floors: a band across the map with a jagged top edge, facets catching the light. */
+function Land({ y0, y1, zone, seed }: { y0: number; y1: number; zone: Zone; seed: number }) {
+  const r = rng(seed)
+  const edge: P[] = Array.from({ length: 17 }, (_, i) => [-10 + i * 26, y0 + (r() - 0.5) * 22])
   const g = GROUND[zone]
+  const facets = Array.from({ length: 26 }, () => {
+    const x = r() * W
+    const y = y0 + 10 + r() * (y1 - y0 - 10)
+    const s = 18 + r() * 34
+    return { p: [[x, y], [x + s, y + s * 0.3], [x + s * 0.3, y + s * 0.62]] as P[], o: 0.04 + r() * 0.07, light: r() > 0.5 }
+  })
   return (
-    <g className="tm-island">
-      <polygon points={pts(ring.map(([a, b]) => [a, b + drop]))} fill={g.side} />
-      {/* the front edge, joining the top to the earth below */}
-      {ring.map(([a, b], i) => {
-        const [c, d] = ring[(i + 1) % n]
-        if (b < y - ry * 0.2 && d < y - ry * 0.2) return null
-        return <polygon key={i} points={pts([[a, b], [c, d], [c, d + drop], [a, b + drop]])} fill={i % 2 ? g.side : shade(g.side, 0.12)} />
-      })}
-      <polygon points={pts(ring)} fill={g.top} />
-      {/* a few facets catching the light */}
-      {ring.slice(0, 4).map(([a, b], i) => (
-        <polygon key={`f${i}`} points={pts([[x, y], [a, b], ring[(i + 1) % n]])} fill="#fff" opacity={0.05 + r() * 0.07} />
+    <g>
+      <polygon points={pts([...edge, [W + 10, y1 + 30], [-10, y1 + 30]])} fill={g.top} />
+      <polyline points={pts(edge)} fill="none" stroke={g.side} strokeWidth="5" opacity="0.55" />
+      {facets.map((f, i) => (
+        <polygon key={i} points={pts(f.p)} fill={f.light ? '#fff' : '#000'} opacity={f.o * (f.light ? 1 : 0.6)} />
       ))}
     </g>
   )
 }
 
-/** Trees for each kind of land: pines, round trees, baobabs; the city gets lamp posts. */
-function Tree({ x, y, kind, s = 1 }: { x: number; y: number; kind: Zone; s?: number }) {
-  if (kind === 'savanna')
-    return (
-      <g transform={`translate(${x} ${y}) scale(${s})`}>
-        <path d="M-5 0 L-3 -16 L3 -16 L5 0 Z" fill="#8a6a4a" />
-        <path d="M-3 -16 L-9 -22 M0 -16 L0 -24 M3 -16 L9 -22" stroke="#8a6a4a" strokeWidth="2.4" strokeLinecap="round" />
-        <ellipse cx="0" cy="-25" rx="13" ry="5" fill="#7d9b3a" />
-        <ellipse cx="3" cy="-25" rx="9" ry="4" fill="#5e7d2a" />
-      </g>
-    )
-  if (kind === 'field')
-    return (
-      <g transform={`translate(${x} ${y}) scale(${s})`}>
-        <rect x="-1.5" y="-8" width="3" height="8" fill="#7a5a3a" />
-        <circle cx="0" cy="-14" r="8" fill="#7cc35a" />
-        <path d="M0 -22 A8 8 0 0 1 0 -6 Z" fill="#5ea043" />
-      </g>
-    )
-  if (kind === 'city')
-    return (
-      <g transform={`translate(${x} ${y}) scale(${s})`}>
-        <rect x="-1" y="-20" width="2" height="20" fill="#3b3742" />
-        <rect x="-4" y="-23" width="8" height="4" fill="#ffd23f" stroke="#3b3742" strokeWidth="1" />
-      </g>
-    )
+/** A plot of flattened ground for a house: lumpy, a little lighter than the land around it. */
+function Plot({ x, y, rx, zone, seed }: { x: number; y: number; rx: number; zone: Zone; seed: number }) {
+  const r = rng(seed)
+  const ring: P[] = Array.from({ length: 10 }, (_, i) => {
+    const a = (i / 10) * Math.PI * 2
+    const k = 0.85 + r() * 0.25
+    return [x + Math.cos(a) * rx * k, y + Math.sin(a) * rx * 0.5 * k]
+  })
   return (
-    <g transform={`translate(${x} ${y}) scale(${s})`}>
-      <rect x="-1.5" y="-6" width="3" height="6" fill="#6a4a2a" />
-      <path d="M0 -30 L-9 -5 L0 -5 Z" fill="#3f9a55" />
-      <path d="M0 -30 L9 -5 L0 -5 Z" fill="#2c6e3c" />
+    <g>
+      <polygon points={pts(ring.map(([a, b]) => [a, b + 4]))} fill={GROUND[zone].side} opacity="0.7" />
+      <polygon points={pts(ring)} fill={GROUND[zone].plot} />
     </g>
   )
 }
 
-/** A guardian's house: a little box with a hip roof, seen from above at an angle. */
-function House({ x, y, wall, roof, w = 26, h = 22, big }: { x: number; y: number; wall: string; roof: string; w?: number; h?: number; big?: boolean }) {
-  const d = w * 0.52
-  const L: [number, number] = [x - w, y]
-  const F: [number, number] = [x, y + d]
-  const R: [number, number] = [x + w, y]
-  const B: [number, number] = [x, y - d]
-  const up = (p: [number, number], k = h): [number, number] => [p[0], p[1] - k]
-  const apex: [number, number] = [x, y - h - (big ? 34 : 22)]
+/** A lagoon around a house that sits on the water (Battleship's lighthouse). */
+function Lagoon({ x, y }: { x: number; y: number }) {
   return (
-    <g className="tm-house">
-      {/* shadow on the ground */}
-      <polygon points={pts([L, F, R, B].map(([a, b]) => [a + 7, b + 4]))} fill="#000" opacity="0.12" />
-      <polygon points={pts([L, F, up(F), up(L)])} fill={wall} stroke="#121016" strokeWidth="1.6" strokeLinejoin="round" />
-      <polygon points={pts([F, R, up(R), up(F)])} fill={shade(wall.startsWith('#') ? wall : '#888888', 0.28)} stroke="#121016" strokeWidth="1.6" strokeLinejoin="round" />
-      {/* door and window */}
-      <polygon points={pts([[x - w * 0.55, y + d * 0.45], [x - w * 0.3, y + d * 0.7], [x - w * 0.3, y + d * 0.7 - h * 0.62], [x - w * 0.55, y + d * 0.45 - h * 0.62]])} fill="#3b2a1c" />
-      <polygon points={pts([[x + w * 0.3, y + d * 0.7 - h * 0.4], [x + w * 0.62, y + d * 0.38 - h * 0.4], [x + w * 0.62, y + d * 0.38 - h * 0.78], [x + w * 0.3, y + d * 0.7 - h * 0.78]])} fill="#ffe9a8" stroke="#121016" strokeWidth="1" />
-      {/* the roof */}
-      <polygon points={pts([up(L), up(B), apex])} fill={shade(roof, 0.1)} stroke="#121016" strokeWidth="1.6" strokeLinejoin="round" />
-      <polygon points={pts([up(B), up(R), apex])} fill={shade(roof, 0.35)} stroke="#121016" strokeWidth="1.6" strokeLinejoin="round" />
-      <polygon points={pts([up(L), up(F), apex])} fill={roof} stroke="#121016" strokeWidth="1.6" strokeLinejoin="round" />
-      <polygon points={pts([up(F), up(R), apex])} fill={shade(roof, 0.22)} stroke="#121016" strokeWidth="1.6" strokeLinejoin="round" />
+    <g>
+      <ellipse cx={x + 14} cy={y + 12} rx="86" ry="40" fill="#bfe3ff" />
+      <ellipse cx={x + 14} cy={y + 12} rx="80" ry="36" fill="#4fa3e0" />
+      <ellipse className="tm-ripple" cx={x + 40} cy={y + 30} rx="10" ry="2.4" fill="none" stroke="#bfe3ff" strokeWidth="1.2" />
+      <ellipse className="tm-ripple tm-ripple--late" cx={x - 30} cy={y + 24} rx="8" ry="2" fill="none" stroke="#bfe3ff" strokeWidth="1.2" />
+      {/* the little island the lighthouse stands on */}
+      <ellipse cx={x - 4} cy={y + 6} rx="30" ry="13" fill="#c98a3a" />
+      <ellipse cx={x - 4} cy={y + 3} rx="30" ry="13" fill="#f7d9a6" />
     </g>
   )
 }
 
-/** Ops' tower at the top of the map: tall, dark, lit windows, an antenna. */
-function OpsTower({ x, y }: { x: number; y: number }) {
-  const w = 34
-  const d = w * 0.52
-  const h = 150
-  const L: [number, number] = [x - w, y]
-  const F: [number, number] = [x, y + d]
-  const R: [number, number] = [x + w, y]
-  const B: [number, number] = [x, y - d]
-  const up = (p: [number, number], k = h): [number, number] => [p[0], p[1] - k]
-  const rows = Array.from({ length: 9 }, (_, i) => i)
+/** A bridge where the road crosses water: the road drawn again, inside the water only, as a deck. */
+function Bridge({ id, water, deck, rail }: { id: string; water: string; deck: string; rail: string }) {
   return (
-    <g className="tm-opstower">
-      <polygon points={pts([L, F, R, B].map(([a, b]) => [a + 16, b + 8]))} fill="#000" opacity="0.14" />
-      <polygon points={pts([L, F, up(F), up(L)])} fill="#25222c" stroke="#121016" strokeWidth="2" />
-      <polygon points={pts([F, R, up(R), up(F)])} fill="#17151c" stroke="#121016" strokeWidth="2" />
-      <polygon points={pts([up(L), up(F), up(R), up(B)])} fill="#2f2b38" stroke="#121016" strokeWidth="2" />
-      {rows.map((i) =>
-        [0.25, 0.6].map((k) => (
-          <g key={`${i}-${k}`}>
-            <polygon
-              className={(i + k * 10) % 3 === 0 ? 'tm-blink' : undefined}
-              points={pts([
-                [x - w + w * k, y + d * k - 18 - i * 15],
-                [x - w + w * (k + 0.22), y + d * (k + 0.22) - 18 - i * 15],
-                [x - w + w * (k + 0.22), y + d * (k + 0.22) - 26 - i * 15],
-                [x - w + w * k, y + d * k - 26 - i * 15],
-              ])}
-              fill="#ffd23f"
-            />
-            <polygon
-              points={pts([
-                [x + w * k, y + d - d * k - 18 - i * 15],
-                [x + w * (k + 0.22), y + d - d * (k + 0.22) - 18 - i * 15],
-                [x + w * (k + 0.22), y + d - d * (k + 0.22) - 26 - i * 15],
-                [x + w * k, y + d - d * k - 26 - i * 15],
-              ])}
-              fill="#c9a12e"
-            />
-          </g>
-        )),
-      )}
-      <path d={`M${x} ${y - h} L${x} ${y - h - 46}`} stroke="#121016" strokeWidth="3" />
-      <circle className="tm-beacon" cx={x} cy={y - h - 48} r="5" fill="#e8291c" stroke="#121016" strokeWidth="1.5" />
+    <g>
+      <defs>
+        <mask id={id}>
+          <path d={water} stroke="#fff" strokeWidth="46" fill="none" />
+        </mask>
+      </defs>
+      <g mask={`url(#${id})`}>
+        <path d={ROAD} fill="none" stroke={rail} strokeWidth="38" />
+        <path d={ROAD} fill="none" stroke={deck} strokeWidth="31" />
+        <path d={ROAD} fill="none" stroke={shade(deck, 0.3)} strokeWidth="31" strokeDasharray="1.6 4.4" />
+      </g>
     </g>
   )
 }
 
-/** The road from the bottom of the map through every stop and up into the city. */
-function roadPath() {
-  const p = [{ x: 200, y: H + 20 }, ...Array.from({ length: TOP }, (_, i) => stop(i + 1))]
-  let d = `M${p[0].x} ${p[0].y}`
-  for (let i = 1; i < p.length; i++) {
-    const a = p[i - 1]
-    const b = p[i]
-    const pull = (a.y - b.y) * 0.55
-    d += ` C${a.x} ${a.y - pull} ${b.x} ${b.y + pull} ${b.x} ${b.y}`
-  }
-  return d
+/** Where the owner's touch goes: clear of the house's own extras (the die, the word board, the jetty). */
+function touchAt(f: Floor): P {
+  const [x, y] = houseAt(f.n)
+  if (f.game === 'battleship') return [x - 18, y + 10]
+  if (f.game === 'hangman') return [x - 36, y + 16]
+  return [x + 36, y + 16]
 }
 
 type St = 'cleared' | 'current' | 'locked'
 
 export default function TowerMapLab() {
-  const floors = useMemo(() => floorsFor(681), [])
+  const [season, setSeason] = useState(681)
+  const floors = useMemo(() => floorsFor(season), [season])
   const [at, setAt] = useState(4)
   const [hearts, setHearts] = useState(2)
   const [champ, setChamp] = useState(false)
@@ -224,36 +149,59 @@ export default function TowerMapLab() {
   const [picked, setPicked] = useState<Floor | null>(null)
   // your character (a robot if you haven't picked one)
   const me = useCrewLook() ?? 'bot'
-  const road = useMemo(roadPath, [])
   const mapRef = useRef<HTMLDivElement>(null)
 
   const stateOf = (n: number): St => (n < at || (champ && n < TOP) ? 'cleared' : n === at ? 'current' : 'locked')
+  const shipFloor = floors.find((f) => f.game === 'battleship')?.n
 
   // bring your stop into view whenever it moves
   useEffect(() => {
-    const el = mapRef.current?.querySelector<HTMLElement>('.tm-stop--current')
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [at, phone])
+    mapRef.current?.querySelector<HTMLElement>('.tm-me')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [at, phone, season])
 
-  // islands, trees and bits of scenery, the same every time
+  /** Trees, bushes, rocks and the rest, placed clear of the road, the houses and the water. */
   const scenery = useMemo(() => {
-    const r = rng(42)
-    const out: { x: number; y: number; zone: Zone; rx: number; seed: number; trees: { x: number; y: number; s: number }[] }[] = []
-    for (let n = 1; n < TOP; n++) {
-      const h = house(n)
-      const z = zoneOf(n)
-      out.push({ x: h.x, y: h.y + 4, zone: z, rx: 58, seed: n * 13, trees: [{ x: h.x - 32 + (r() - 0.5) * 8, y: h.y + 16, s: 0.9 }, { x: h.x + 30, y: h.y - 16, s: 0.75 }] })
-      // a loose island on the other side of the road
-      const o = stop(n)
-      const ox = o.x - side(n) * 92
-      out.push({ x: ox, y: o.y + 50, zone: z, rx: 34 + r() * 14, seed: n * 31, trees: [{ x: ox - 8, y: o.y + 52, s: 0.8 }, { x: ox + 12, y: o.y + 44, s: 0.65 }] })
+    const r = rng(season * 31 + 7)
+    const houses = Array.from({ length: TOP }, (_, i) => houseAt(i + 1))
+    const clear = (x: number, y: number) =>
+      ROAD_PTS.every(([a, b]) => (a - x) ** 2 + (b - y) ** 2 > 30 * 30) &&
+      houses.every(([a, b], i) => (a - x) ** 2 + ((b - y) * 1.4) ** 2 > (i === TOP - 1 ? 120 : i + 1 === shipFloor ? 96 : 58) ** 2) &&
+      Math.abs(y - waterY(RIVER, x)) > 26 &&
+      Math.abs(y - waterY(STREAM, x)) > 20
+    const out: { k: string; x: number; y: number; zone: Zone; s: number; f?: boolean }[] = []
+    const yTop = stop(TOP)[1] + 70
+    for (let tries = 0; tries < 1400 && out.length < 150; tries++) {
+      const x = 8 + r() * (W - 16)
+      const y = yTop + r() * (H - yTop - 10)
+      if (!clear(x, y)) continue
+      const n = Math.max(1, Math.min(TOP - 1, Math.round((H - BOTTOM - y) / GAP) + 1))
+      const zone = zoneOf(n)
+      const roll = r()
+      const k =
+        zone === 'field'
+          ? roll < 0.45 ? 'tree' : roll < 0.7 ? 'bush' : roll < 0.88 ? 'flowers' : 'rock'
+          : zone === 'savanna'
+            ? roll < 0.35 ? 'tree' : roll < 0.55 ? 'bush' : roll < 0.7 ? 'mound' : roll < 0.85 ? 'goat' : 'rock'
+            : roll < 0.75 ? 'tree' : roll < 0.92 ? 'bush' : 'rock'
+      out.push({ k, x, y, zone, s: 0.75 + r() * 0.4, f: r() > 0.5 })
     }
-    return out
-  }, [])
+    // the bush the road pushes through, between floors 5 and 6
+    const seg = SEGS[5]
+    for (let i = 1; i < 12; i++) {
+      const [x, y] = bez(seg, i / 12)
+      for (const d of [-1, 1]) {
+        const bx = x + d * (24 + r() * 10)
+        const by = y + (r() - 0.5) * 8
+        if (houses.every(([a, b]) => (a - bx) ** 2 + (b - by) ** 2 > 44 ** 2)) out.push({ k: 'bushy', x: bx, y: by, zone: 'savanna', s: 0.9 + r() * 0.3 })
+      }
+    }
+    return out.sort((a, b) => a.y - b.y)
+  }, [season, shipFloor])
 
   const width = phone ? 390 : 640
   const pos = (x: number, y: number): CSSProperties => ({ left: `${(x / W) * 100}%`, top: `${(y / H) * 100}%` })
   const meStop = stop(champ ? TOP : at)
+  const cityY = houseAt(TOP)[1]
 
   return (
     <div className="page tm-lab">
@@ -267,6 +215,14 @@ export default function TowerMapLab() {
           {[0, 1, 2, 3].map((n) => (
             <button key={n} type="button" className={`tm-chipbtn${hearts === n ? ' is-on' : ''}`} onClick={() => setHearts(n)}>
               {n}
+            </button>
+          ))}
+        </span>
+        <span className="tm-controls__group">
+          Season
+          {[681, 682, 683].map((s) => (
+            <button key={s} type="button" className={`tm-chipbtn${season === s ? ' is-on' : ''}`} onClick={() => setSeason(s)}>
+              {s - 680}
             </button>
           ))}
         </span>
@@ -294,60 +250,100 @@ export default function TowerMapLab() {
 
         <div className="tm-map" ref={mapRef}>
           <svg viewBox={`0 0 ${W} ${H}`} className="tm-svg" aria-hidden="true">
-            {/* the city at the top */}
-            <Island x={200} y={house(TOP).y + 26} rx={150} seed={7} zone="city" />
-            <House x={92} y={house(TOP).y + 30} wall="#cfc8bb" roof="#2d5bff" w={20} h={34} />
-            <House x={312} y={house(TOP).y + 34} wall="#f3ead8" roof="#ff5a1f" w={22} h={26} />
-            <Tree x={130} y={house(TOP).y + 70} kind="city" />
-            <Tree x={272} y={house(TOP).y + 72} kind="city" />
-
-            {scenery.map((s, i) => (
-              <g key={i}>
-                <Island x={s.x} y={s.y} rx={s.rx} seed={s.seed} zone={s.zone} />
-                {s.trees.map((t, j) => (
-                  <Tree key={j} x={t.x} y={t.y} kind={s.zone} s={t.s} />
-                ))}
-              </g>
+            {/* the land, from the city at the top down to the fields */}
+            <rect x="0" y="0" width={W} height={H} fill={GROUND.city.top} />
+            {Array.from({ length: 7 }, (_, i) => (
+              <line key={i} x1={i * 70 - 60} y1={0} x2={i * 70 + 110} y2={between(9)} stroke="#c8c0b1" strokeWidth="1.2" opacity="0.7" />
             ))}
+            <Land y0={between(9)} y1={between(6)} zone="forest" seed={3} />
+            <Land y0={between(6)} y1={between(3)} zone="savanna" seed={5} />
+            <Land y0={between(3)} y1={H} zone="field" seed={9} />
 
-            {/* the road: edge, tarmac, centre line; the part you've driven is lit */}
-            <path d={road} className="tm-road__edge" />
-            <path d={road} className="tm-road" />
-            <path d={road} className="tm-road__line" />
+            {/* water */}
+            <path d={pathOf(RIVER)} className="tm-water__bank" strokeWidth="44" />
+            <path d={pathOf(RIVER)} className="tm-water" strokeWidth="34" />
+            <path d={pathOf(RIVER)} className="tm-water__glint" />
+            <path d={pathOf(STREAM)} className="tm-water__bank" strokeWidth="30" />
+            <path d={pathOf(STREAM)} className="tm-water" strokeWidth="22" />
+            <path d={pathOf(STREAM)} className="tm-water__glint" />
+            {shipFloor && <Lagoon x={houseAt(shipFloor)[0]} y={houseAt(shipFloor)[1]} />}
 
-            {/* the houses */}
-            {floors.slice(0, TOP - 1).map((f) => {
-              const h = house(f.n)
-              const wall = WALLS[(f.n - 1) % WALLS.length]
-              return <House key={f.n} x={h.x} y={h.y} wall={wall} roof={stateOf(f.n) === 'locked' ? '#6f6a7a' : '#121016'} />
+            {/* plots for the houses */}
+            {floors.slice(0, TOP - 1).map((f) => (f.game === 'battleship' ? null : <Plot key={f.n} x={houseAt(f.n)[0]} y={houseAt(f.n)[1] + 4} rx={52} zone={zoneOf(f.n)} seed={f.n * 17} />))}
+
+            {/* the road, and its bridges */}
+            <path d={ROAD} className="tm-road__edge" />
+            <path d={ROAD} className="tm-road" />
+            <path d={ROAD} className="tm-road__line" />
+            <Bridge id="tm-bridge-river" water={pathOf(RIVER)} deck="#c08a55" rail="#5a3a20" />
+            <Bridge id="tm-bridge-stream" water={pathOf(STREAM)} deck="#b9b2a6" rail="#5f6672" />
+
+            {/* trees, bushes and the rest */}
+            {scenery.map((s, i) => {
+              if (s.k === 'tree') return <Tree key={i} x={s.x} y={s.y} kind={s.zone} s={s.s} />
+              if (s.k === 'bush') return <Bush key={i} x={s.x} y={s.y} s={s.s * 0.8} c={s.zone === 'savanna' ? '#8aa84a' : '#4c9a4a'} />
+              if (s.k === 'bushy') return <Bush key={i} x={s.x} y={s.y} s={s.s} c="#6f9a3a" />
+              if (s.k === 'flowers') return <Flowers key={i} x={s.x} y={s.y} />
+              if (s.k === 'mound') return <Mound key={i} x={s.x} y={s.y} />
+              if (s.k === 'goat') return <Goat key={i} x={s.x} y={s.y} flip={s.f} />
+              return <Rock key={i} x={s.x} y={s.y} s={s.s} />
             })}
-            <OpsTower x={200} y={house(TOP).y} />
+
+            {/* the city: Ops' tower and the buildings round it */}
+            <CityBlock x={46} y={cityY - 30} h={70} c="#9b3fd6" />
+            <CityBlock x={356} y={cityY - 24} h={62} c="#1f9d55" />
+            <CityBlock x={86} y={cityY + 40} h={56} c="#2d5bff" />
+            <CityBlock x={318} y={cityY + 46} h={40} c="#ff5a1f" />
+            <Tree x={140} y={cityY + 80} kind="city" />
+            <Tree x={262} y={cityY + 82} kind="city" />
+            <OpsTower x={200} y={cityY} />
+
+            {/* the houses, each with its owner's touch */}
+            {floors.slice(0, TOP - 1).map((f) => {
+              const [hx, hy] = houseAt(f.n)
+              const [tx, ty] = touchAt(f)
+              return (
+                <g key={f.n} className={stateOf(f.n) === 'locked' ? 'tm-house--locked' : undefined}>
+                  <GameHouse game={f.game} x={hx} y={hy} />
+                  <OwnerTouch look={f.guardian} x={tx} y={ty} />
+                </g>
+              )
+            })}
 
             {/* checkpoint flags beside the road */}
             {floors
               .filter((f) => f.checkpoint)
               .map((f) => {
-                const s = stop(f.n)
-                const fx = s.x - side(f.n) * 44
+                const [sx, sy] = stop(f.n)
+                const fx = sx - side(f.n) * 44
                 return (
                   <g key={f.n} className="tm-flag">
-                    <path d={`M${fx} ${s.y + 4} L${fx} ${s.y - 34}`} stroke="#121016" strokeWidth="2.5" />
-                    <path d={`M${fx} ${s.y - 34} L${fx + 22} ${s.y - 28} L${fx} ${s.y - 21} Z`} fill="#1f9d55" stroke="#121016" strokeWidth="1.5" />
+                    <path d={`M${fx} ${sy + 4} L${fx} ${sy - 34}`} stroke="#121016" strokeWidth="2.5" />
+                    <path className="tm-wave" d={`M${fx} ${sy - 34} L${fx + 22} ${sy - 28} L${fx} ${sy - 21} Z`} fill="#1f9d55" stroke="#121016" strokeWidth="1.5" />
                   </g>
                 )
               })}
 
             {/* a trotro doing laps */}
-            <g className="tm-trotro" style={{ offsetPath: `path('${road}')` } as CSSProperties}>
+            <g className="tm-trotro" style={{ offsetPath: `path('${ROAD}')` } as CSSProperties}>
               <rect x="-9" y="-6" width="18" height="11" rx="2" fill="#ffd23f" stroke="#121016" strokeWidth="1.5" />
               <rect x="-6" y="-4" width="12" height="4" fill="#bfe3ff" />
             </g>
           </svg>
 
+          {/* clouds drifting over */}
+          {[0, 1, 2].map((i) => (
+            <svg key={i} className={`tm-cloud tm-cloud--${i}`} style={{ top: `${12 + i * 31}%` }} viewBox="0 0 120 70" aria-hidden="true">
+              {/* its shadow on the ground, then the cloud */}
+              <ellipse cx="66" cy="62" rx="44" ry="7" fill="#000" opacity="0.07" />
+              <path d="M18 38 a14 14 0 0 1 10 -24 a20 20 0 0 1 36 -6 a16 16 0 0 1 28 10 a12 12 0 0 1 6 22 Z" fill="#fff" stroke="#121016" strokeWidth="1.5" opacity="0.92" />
+            </svg>
+          ))}
+
           {/* the stops: a sign over each house, tap for the floor */}
           {floors.map((f) => {
             const st = stateOf(f.n)
-            const h = house(f.n)
+            const [hx, hy] = houseAt(f.n)
             const boss = f.n === TOP
             const hidden = st === 'locked' && !boss && f.n > at + 2
             return (
@@ -355,7 +351,7 @@ export default function TowerMapLab() {
                 key={f.n}
                 type="button"
                 className={`tm-stop tm-stop--${st}${boss ? ' tm-stop--boss' : ''}`}
-                style={pos(h.x, h.y - (boss ? 128 : 70))}
+                style={pos(hx, hy - (boss ? 128 : f.game === 'connect4' ? 84 : f.game === 'battleship' ? 92 : 66))}
                 onClick={() => setPicked(f)}
                 aria-label={`Floor ${f.n}: ${boss ? 'Ops' : f.guardianName}, ${st}`}
               >
@@ -369,7 +365,7 @@ export default function TowerMapLab() {
           })}
 
           {/* you, on the road at your floor */}
-          <span className="tm-me" style={pos(meStop.x, meStop.y)}>
+          <span className="tm-me" style={pos(meStop[0], meStop[1])}>
             <OpsFace look={me} mood={champ ? 'win' : 'think'} size={38} />
             {champ && (
               <span className="tm-me__crown">
@@ -378,9 +374,9 @@ export default function TowerMapLab() {
             )}
           </span>
 
-          {/* the current floor's call to action, right under its sign */}
+          {/* the current floor's call to action, right under its house */}
           {!champ && (
-            <button type="button" className="btn btn--primary tm-go" style={pos(house(at).x, house(at).y + (at === TOP ? -110 : 30))} onClick={() => setPicked(floors[at - 1])}>
+            <button type="button" className="btn btn--primary tm-go" style={pos(houseAt(at)[0], houseAt(at)[1] + (at === TOP ? -104 : 26))} onClick={() => setPicked(floors[at - 1])}>
               {at === TOP ? 'Face Ops' : 'Play'}
             </button>
           )}
@@ -415,5 +411,86 @@ export default function TowerMapLab() {
         </div>
       )}
     </div>
+  )
+}
+
+/** A block of flats in the city. */
+function CityBlock({ x, y, h, c }: { x: number; y: number; h: number; c: string }) {
+  const w = 22
+  const d = w * 0.52
+  const L: P = [x - w, y]
+  const F: P = [x, y + d]
+  const R: P = [x + w, y]
+  const B: P = [x, y - d]
+  const up = (p: P): P => [p[0], p[1] - h]
+  const rows = Math.floor(h / 14)
+  return (
+    <g>
+      <polygon points={pts([L, F, R, B].map(([a, b]) => [a + 12, b + 6]))} fill="#000" opacity="0.12" />
+      <polygon points={pts([L, F, up(F), up(L)])} fill="#ece6da" stroke="#121016" strokeWidth="1.6" />
+      <polygon points={pts([F, R, up(R), up(F)])} fill="#cfc8bb" stroke="#121016" strokeWidth="1.6" />
+      <polygon points={pts([up(L), up(F), up(R), up(B)])} fill={c} stroke="#121016" strokeWidth="1.6" />
+      {Array.from({ length: rows }, (_, i) =>
+        [0.2, 0.6].map((k) => (
+          <polygon
+            key={`${i}${k}`}
+            points={pts([
+              [L[0] + w * k, L[1] + d * k - 8 - i * 14],
+              [L[0] + w * (k + 0.24), L[1] + d * (k + 0.24) - 8 - i * 14],
+              [L[0] + w * (k + 0.24), L[1] + d * (k + 0.24) - 15 - i * 14],
+              [L[0] + w * k, L[1] + d * k - 15 - i * 14],
+            ])}
+            fill={(i + k * 5) % 3 ? '#bfe3ff' : '#ffe9a8'}
+          />
+        )),
+      )}
+    </g>
+  )
+}
+
+/** Ops' tower at the top of the map: tall, dark, lit windows, an antenna with a beacon. */
+function OpsTower({ x, y }: { x: number; y: number }) {
+  const w = 34
+  const d = w * 0.52
+  const h = 150
+  const L: P = [x - w, y]
+  const F: P = [x, y + d]
+  const R: P = [x + w, y]
+  const B: P = [x, y - d]
+  const up = (p: P, k = h): P => [p[0], p[1] - k]
+  return (
+    <g className="tm-opstower">
+      <polygon points={pts([L, F, R, B].map(([a, b]) => [a + 18, b + 9]))} fill="#000" opacity="0.16" />
+      <polygon points={pts([L, F, up(F), up(L)])} fill="#25222c" stroke="#121016" strokeWidth="2" />
+      <polygon points={pts([F, R, up(R), up(F)])} fill="#17151c" stroke="#121016" strokeWidth="2" />
+      <polygon points={pts([up(L), up(F), up(R), up(B)])} fill="#2f2b38" stroke="#121016" strokeWidth="2" />
+      {Array.from({ length: 9 }, (_, i) =>
+        [0.25, 0.6].map((k) => (
+          <g key={`${i}-${k}`}>
+            <polygon
+              className={(i + k * 10) % 3 === 0 ? 'tm-blink' : undefined}
+              points={pts([
+                [x - w + w * k, y + d * k - 18 - i * 15],
+                [x - w + w * (k + 0.22), y + d * (k + 0.22) - 18 - i * 15],
+                [x - w + w * (k + 0.22), y + d * (k + 0.22) - 26 - i * 15],
+                [x - w + w * k, y + d * k - 26 - i * 15],
+              ])}
+              fill="#ffd23f"
+            />
+            <polygon
+              points={pts([
+                [x + w * k, y + d - d * k - 18 - i * 15],
+                [x + w * (k + 0.22), y + d - d * (k + 0.22) - 18 - i * 15],
+                [x + w * (k + 0.22), y + d - d * (k + 0.22) - 26 - i * 15],
+                [x + w * k, y + d - d * k - 26 - i * 15],
+              ])}
+              fill="#c9a12e"
+            />
+          </g>
+        )),
+      )}
+      <path d={`M${x} ${y - h} L${x} ${y - h - 46}`} stroke="#121016" strokeWidth="3" />
+      <circle className="tm-beacon" cx={x} cy={y - h - 48} r="5" fill="#e8291c" stroke="#121016" strokeWidth="1.5" />
+    </g>
   )
 }

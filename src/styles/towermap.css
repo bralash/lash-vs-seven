@@ -105,3 +105,47 @@
 @media (prefers-reduced-motion: reduce) {
   .tm-trotro, .tm-blink, .tm-beacon, .tm-stop--current { animation: none; }
 }
+
+/* water, and the life on the map */
+.tm-water__bank { fill: none; stroke: #bfe3ff; stroke-linecap: round; }
+.tm-water { fill: none; stroke: #4fa3e0; stroke-linecap: round; }
+.tm-water__glint { fill: none; stroke: #d8efff; stroke-width: 1.4; stroke-dasharray: 6 22; animation: tm-flow 4s linear infinite; }
+@keyframes tm-flow { to { stroke-dashoffset: -56; } }
+.tm-ripple { animation: tm-ripple 2.8s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.tm-ripple--late { animation-delay: 1.4s; }
+@keyframes tm-ripple { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.tm-bob { animation: tm-hop 1.4s ease-in-out infinite; }
+@keyframes tm-hop { 50% { transform: translateY(-4px); } }
+.tm-rock { animation: tm-rock 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center bottom; }
+@keyframes tm-rock { 50% { transform: rotate(1.5deg) translateY(1px); } }
+.tm-beam { animation: tm-beam 2.6s ease-in-out infinite alternate; }
+@keyframes tm-beam { from { opacity: .15; } to { opacity: .55; } }
+.tm-blink2 { animation: tm-beacon .9s steps(1) infinite alternate; }
+.tm-look { animation: tm-look 5s ease-in-out infinite; }
+@keyframes tm-look { 0%, 40% { transform: translateX(0); } 50%, 80% { transform: translateX(-3px); } }
+.tm-glow { filter: drop-shadow(0 0 4px #62c8ff); }
+.tm-dangle { animation: tm-hop 2.2s ease-in-out infinite; }
+.tm-float { animation: tm-float 3s ease-in-out infinite; }
+@keyframes tm-float { 50% { transform: translateY(-5px); } }
+.tm-wave { animation: tm-wave 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: left center; }
+@keyframes tm-wave { 50% { transform: skewY(6deg) scaleX(.92); } }
+/* houses you haven't reached yet sit a little greyed out */
+.tm-house--locked { filter: saturate(.45) brightness(.97); }
+
+/* clouds drifting across, their shadows on the ground */
+.tm-cloud {
+  position: absolute;
+  left: -40%;
+  z-index: 1;
+  width: 110px;
+  height: auto;
+  pointer-events: none;
+  animation: tm-cloud 70s linear infinite;
+}
+.tm-cloud--1 { animation-duration: 95s; animation-delay: -40s; transform: scale(.8); }
+.tm-cloud--2 { animation-duration: 82s; animation-delay: -65s; transform: scale(1.1); }
+@keyframes tm-cloud { to { left: 120%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-water__glint, .tm-ripple, .tm-bob, .tm-rock, .tm-beam, .tm-blink2, .tm-look, .tm-dangle, .tm-float, .tm-wave, .tm-cloud { animation: none; }
+}
