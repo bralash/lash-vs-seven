@@ -4,8 +4,8 @@ import { TARGETS } from './words'
 
 export const ROUNDS = 5
 export const ROUND_MS = 60_000
-/** Pause after each round showing the word (and its definition) before the next one starts. */
-export const REVEAL_MS = 4_000
+/** Pause after each round showing the word (and its definition) before the next one starts: long enough to read the meaning, which is looked up as the round ends. */
+export const REVEAL_MS = 8_000
 export const COUNTDOWN_MS = 3_000
 /** Word length per round: a gentle ramp from 5 to 7 letters. */
 const LENGTHS = [5, 5, 6, 6, 7]
