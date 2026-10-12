@@ -131,6 +131,21 @@ interface SoundApi {
 
 const SoundContext = createContext<SoundApi | null>(null)
 
+/**
+ * What kind of audio this page makes, on an iPhone (Safari 17+). By default the silent switch mutes
+ * the game's sounds (they're made in code, not played from a file); 'playback' plays them through
+ * it, like a video. The mic needs 'play-and-record' while a voice note is being recorded.
+ */
+export function setAudioSession(type: 'playback' | 'play-and-record') {
+  const s = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+  if (!s || s.type === type) return
+  try {
+    s.type = type
+  } catch {
+    /* not this browser */
+  }
+}
+
 export function SoundProvider({ children }: { children: ReactNode }) {
   const [muted, setMuted] = useState(() => load(KEYS.sound) === 'off')
   const ctxRef = useRef<AudioContext | null>(null)
@@ -148,6 +163,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   const unlocked = useRef<AudioContext | null>(null)
   /** a tap's wake: also a silent blip, which is what actually unlocks the audio on an iPhone */
   const unlock = useCallback(() => {
+    setAudioSession('playback')
     const ctx = wake()
     if (ctx.state === 'running' && unlocked.current === ctx) return
     const blip = ctx.createBufferSource()

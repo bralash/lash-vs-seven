@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Mic } from '../components/Icons'
 import { Portal } from '../components/Portal'
 import { db } from '../lib/firebase'
+import { setAudioSession } from '../lib/sound'
 import { KEYS, load, save } from '../lib/storage'
 import { roomPath, type Room } from '../lobby/rooms'
 import { mission } from './missions'
@@ -149,6 +150,7 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
         l.rec.onstop = null
         if (l.rec.state !== 'inactive') l.rec.stop()
         l.stream.getTracks().forEach((t) => t.stop())
+        setAudioSession('playback')
       }
       clearTimeout(wipe.current)
       remove(ref(db, `${base}/${pid}`)).catch(() => {})
@@ -175,6 +177,12 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
     reader.readAsDataURL(blob)
   }
 
+  /** the mic off, and the game's sounds back through the silent switch */
+  const stopMic = (stream: MediaStream) => {
+    stream.getTracks().forEach((t) => t.stop())
+    setAudioSession('playback')
+  }
+
   const begin = async () => {
     if (live.current) return
     const type = recordType()
@@ -182,15 +190,17 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
     if (Date.now() - sentAt.current < COOLDOWN_MS) return say('Hang on a sec')
     want.current = true
     let stream: MediaStream
+    setAudioSession('play-and-record')
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
     } catch {
       want.current = false
+      setAudioSession('playback')
       return say('Allow the mic to send voice notes')
     }
     // let go while the phone was asking for the mic: nothing to record yet
     if (!want.current) {
-      stream.getTracks().forEach((t) => t.stop())
+      stopMic(stream)
       return say('Mic ready: hold to talk')
     }
     let r: MediaRecorder
@@ -198,14 +208,14 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
       r = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32_000 })
     } catch {
       want.current = false
-      stream.getTracks().forEach((t) => t.stop())
+      stopMic(stream)
       return say('Couldn’t start the mic')
     }
     const chunks: Blob[] = []
     r.ondataavailable = (e) => e.data.size && chunks.push(e.data)
     const t0 = Date.now()
     r.onstop = () => {
-      stream.getTracks().forEach((t) => t.stop())
+      stopMic(stream)
       const ms = Date.now() - t0
       if (ms < MIN_MS) return say('Hold to talk')
       send(new Blob(chunks, { type: r.mimeType || type }), r.mimeType || type, ms)
@@ -214,7 +224,7 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
       r.start()
     } catch {
       want.current = false
-      stream.getTracks().forEach((t) => t.stop())
+      stopMic(stream)
       return say('Couldn’t start the mic')
     }
     live.current = { rec: r, stream, start: t0, stop: setTimeout(finish, MAX_MS) }
