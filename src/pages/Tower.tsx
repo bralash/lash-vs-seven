@@ -155,7 +155,7 @@ export function TowerPage() {
           <h2>How it works</h2>
           <ul>
             <li>
-              <b>Three hearts.</b> Lose a floor and you lose a heart. Out of hearts, you drop back to the last checkpoint (floor 4 or 7) and the hearts fill up.
+              <b>Three hearts.</b> Lose a floor and you lose a heart. Reach a checkpoint (floor 4 or 7) and your hearts fill up again. Out of hearts, you drop back to the last checkpoint, hearts full.
             </li>
             <li>
               <b>Leaving a floor</b> part-way counts as losing it. A draw costs nothing: go again.

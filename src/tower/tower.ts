@@ -70,6 +70,8 @@ export interface Outcome {
   fell?: number
   /** won the Tower crown just now (the first time ever) */
   crown?: boolean
+  /** climbed onto a checkpoint missing hearts: they're filled up again */
+  refilled?: boolean
 }
 
 /**
@@ -98,11 +100,17 @@ export async function settleFloor(floor: number, won: boolean, key: string): Pro
         let paid = 0
         let fell: number | undefined
         let crown = false
+        let refilled = false
         if (won) {
           const first = !c.got?.[floor]
           paid = first ? (floorOf(floor)?.reward ?? 0) : 0
           const up = Math.min(TOP, floor + 1)
           next = { ...c, at: floor === TOP ? TOP : up, best: Math.max(c.best, up), got: { ...c.got, [floor]: true } }
+          // reaching a checkpoint fills your hearts up again: you face the floors above at full strength
+          if (floor < TOP && floorOf(up)?.checkpoint && c.hearts < HEARTS) {
+            next.hearts = HEARTS
+            refilled = true
+          }
           if (floor === TOP) {
             next.champ = true
             crown = !cur.owned?.[CROWN_ID]
@@ -113,7 +121,7 @@ export async function settleFloor(floor: number, won: boolean, key: string): Pro
           next = { ...c, at: fell, hearts: HEARTS }
         }
         next.k = key.slice(0, 40)
-        out = { won, paid, climb: next, fell, crown }
+        out = { won, paid, climb: next, fell, crown, ...(refilled ? { refilled } : {}) }
         return { ...cur, chips: (cur.chips ?? 0) + paid, tower: next, ...(crown ? { owned: { ...cur.owned, [CROWN_ID]: true } } : {}) }
       },
       { applyLocally: false },

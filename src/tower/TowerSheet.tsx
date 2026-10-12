@@ -89,19 +89,23 @@ export function TowerSheet({ floor, sheet, onAgain, onTower, onRetry }: { floor:
           ? out.crown
             ? 'Ops is beaten. The Tower crown is yours: find it in the Locker.'
             : 'Ops is beaten again. Champion for another season.'
-          : out.paid
-            ? `${f.guardianName} steps aside.`
-            : `${f.guardianName} steps aside. (Chips for this floor were paid earlier this season.)`
+          : (out.paid ? `${f.guardianName} steps aside.` : `${f.guardianName} steps aside. (Chips for this floor were paid earlier this season.)`) +
+            (out.refilled ? ` Checkpoint reached: your hearts are full again.` : '')
       body = floor === 10 ? (
         <p className="tw-sheet__chips">
           <TowerCrown size={46} />
           {out.paid ? `+${out.paid} chips` : null}
         </p>
-      ) : out.paid ? (
-        <p className="tw-sheet__chips">
-          <Chip v={out.paid >= 100 ? 100 : out.paid >= 25 ? 25 : 5} size={34} /> +{out.paid} chips
-        </p>
-      ) : null
+      ) : (
+        <>
+          {out.paid > 0 && (
+            <p className="tw-sheet__chips">
+              <Chip v={out.paid >= 100 ? 100 : out.paid >= 25 ? 25 : 5} size={34} /> +{out.paid} chips
+            </p>
+          )}
+          {out.refilled && <Hearts n={out.climb.hearts} size={26} />}
+        </>
+      )
       actions = (
         <button type="button" className="btn btn--primary btn--block" onClick={onTower}>
           {floor === 10 ? 'Back to the Tower' : `Climb to floor ${floor + 1}`}

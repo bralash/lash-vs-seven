@@ -82,6 +82,8 @@ pool per difficulty), so every phone shows the same three with no server code.
   game brains.
 - **Hearts:** three per climb. Lose a floor: lose a heart and try again. At zero hearts, drop back to
   the last checkpoint (floors 4 and 7). (Decided over free retries: losing has to cost something.)
+  Reaching a checkpoint by winning also fills the hearts up again (added 2026-10-12, user: a heart
+  lost on floor 2 shouldn't follow you all the way to Ops; `refilled` on the floor outcome).
 - **Rewards:** first clear of each floor pays chips, rising from **10** (floor 1) to **100**
   (floor 9). Beating Ops: **300** chips, a **"Tower champion"** title on your score card, and an
   exclusive **Tower crown** in the wardrobe.
