@@ -149,6 +149,11 @@ export function setAudioSession(type: 'playback' | 'play-and-record') {
 export function SoundProvider({ children }: { children: ReactNode }) {
   const [muted, setMuted] = useState(() => load(KEYS.sound) === 'off')
   const ctxRef = useRef<AudioContext | null>(null)
+  /**
+   * The audio was taken away (another app, the lock screen, a call). An iPhone often leaves it stuck
+   * after that, silent even when it says it's running, so the next tap starts it afresh.
+   */
+  const stale = useRef(false)
 
   /**
    * The audio, awake. Phones put it to sleep (screen locked, another app, a call, the mic for a voice
@@ -156,7 +161,13 @@ export function SoundProvider({ children }: { children: ReactNode }) {
    */
   const wake = useCallback(() => {
     let ctx = ctxRef.current
-    if (!ctx || ctx.state === 'closed') ctx = ctxRef.current = new AudioContext()
+    if (!ctx || ctx.state === 'closed') {
+      const fresh = (ctx = ctxRef.current = new AudioContext())
+      // an iPhone call or alarm "interrupts" it, and it can stay stuck after
+      fresh.onstatechange = () => {
+        if ((fresh.state as string) === 'interrupted') stale.current = true
+      }
+    }
     if (ctx.state !== 'running') ctx.resume().catch(() => {})
     return ctx
   }, [])
@@ -164,6 +175,13 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   /** a tap's wake: also a silent blip, which is what actually unlocks the audio on an iPhone */
   const unlock = useCallback(() => {
     setAudioSession('playback')
+    const old = ctxRef.current
+    if (stale.current && old) {
+      stale.current = false
+      ctxRef.current = null
+      unlocked.current = null
+      old.close().catch(() => {})
+    }
     const ctx = wake()
     if (ctx.state === 'running' && unlocked.current === ctx) return
     const blip = ctx.createBufferSource()
@@ -172,7 +190,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     blip.start(0)
     if (ctx.state === 'running') unlocked.current = ctx
   }, [wake])
-  // every tap or key wakes it (browsers only let a tap do that), and so does coming back to the page
+  // every tap or key wakes it (browsers only let a tap do that)
   useEffect(() => {
     if (muted) return
     const onTap = () => {
@@ -182,14 +200,21 @@ export function SoundProvider({ children }: { children: ReactNode }) {
         /* audio unavailable */
       }
     }
-    const onShow = () => document.visibilityState === 'visible' && ctxRef.current && onTap()
+    // leaving the page (another app, the lock screen) marks it for a fresh start on the next tap,
+    // which is the only thing a phone lets start it again
+    const onShow = () => {
+      if (document.visibilityState === 'hidden') stale.current = true
+    }
+    const onHide = () => void (stale.current = true)
     // an iPhone only lets the end of a touch (or a click) start audio, not the touch going down
     window.addEventListener('pointerdown', onTap, true)
     window.addEventListener('touchend', onTap, true)
     window.addEventListener('click', onTap, true)
     window.addEventListener('keydown', onTap, true)
     document.addEventListener('visibilitychange', onShow)
+    window.addEventListener('pagehide', onHide)
     return () => {
+      window.removeEventListener('pagehide', onHide)
       window.removeEventListener('pointerdown', onTap, true)
       window.removeEventListener('touchend', onTap, true)
       window.removeEventListener('click', onTap, true)
