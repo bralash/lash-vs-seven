@@ -42,13 +42,30 @@ export function freshLive(starter: Side, game = 1, games: [number, number] = [0,
   return { points: [0, 0], games, game, starter, last: null, result: null, history }
 }
 
-/** Who serves now: two serves each, then one each from 10–10. */
+/** serves in a row before it passes over, the way it's played at home */
+const SERVES = 5
+
+/** Who serves now: five points each (however they go), then one each from Ace (10–10). */
 export function serverOf(l: Live): Side {
   const [a, b] = l.points
   const total = a + b
   const deuce = 2 * (POINTS - 1) // 10–10
-  const turns = a >= POINTS - 1 && b >= POINTS - 1 ? deuce / 2 + (total - deuce) : Math.floor(total / 2)
+  const turns = a >= POINTS - 1 && b >= POINTS - 1 ? deuce / SERVES + (total - deuce) : Math.floor(total / SERVES)
   return ((l.starter + turns) % 2) as Side
+}
+
+/**
+ * How the score is called once someone's on 10: "Down 6" (the other player's score) while one
+ * point from the game, "Ace" at 10–10 (and every level score after), "Down ace" one ahead from
+ * there. Before 10, and once the game's won, there's nothing to call.
+ */
+export function callOf(points: [number, number]): string | null {
+  const [a, b] = points
+  const hi = Math.max(a, b)
+  const lo = Math.min(a, b)
+  if (hi < POINTS - 1 || (hi - lo >= 2 && hi >= POINTS)) return null
+  if (lo >= POINTS - 1) return a === b ? 'Ace' : 'Down ace'
+  return `Down ${lo}`
 }
 
 /** The point goes to `winner` after a rally of `hits` shots; ends the game (and maybe the match, at `target` games) when it's won. */

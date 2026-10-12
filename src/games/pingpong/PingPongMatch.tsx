@@ -48,6 +48,7 @@ import {
   readSwipe,
   rebase,
   serverOf,
+  callOf,
   type Flight,
   type Live,
   type ShotMsg,
@@ -306,9 +307,13 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   useEffect(() => {
     if (live.result) {
       rally.current.phase = 'idle'
-      setPrompt(live.result.final ? '' : `${seatOf(live.result.winner) === 0 ? 'You take' : `${oppName} takes`} game ${live.game}`)
+      // "Game", with the score: winning raw (they never got a point) is worth saying
+      const w = live.result.winner
+      const [hi, lo] = [live.points[w], live.points[(1 - w) as Side]]
+      const who = seatOf(w) === 0 ? 'You take it' : `${oppName} takes it`
+      setPrompt(live.result.final ? '' : `Game · ${who} ${hi}–${lo}${lo === 0 ? ' raw' : ''}`)
     }
-  }, [live.result, live.game, seatOf, oppName])
+  }, [live.result, live.game, live.points, seatOf, oppName])
 
   /* ── your bat: moved like a trackpad, it hits whatever it meets ── */
   /** the thumb's (or mouse's) recent path, in screen px and event times */
@@ -633,7 +638,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         {card(0)}
         <div className="ppm-game">
           <span className="label">Game {live.game}</span>
-          <span className="ppm-to">to {POINTS}</span>
+          <span className="ppm-to">{live.result ? 'Game' : (callOf(live.points) ?? `to ${POINTS}`)}</span>
         </div>
         {card(1)}
       </div>

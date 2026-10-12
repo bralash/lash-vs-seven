@@ -406,7 +406,7 @@ export const GAMES: GameMeta[] = [
       { title: 'Hit', body: 'Your bat has to meet the ball after it bounces on your side. Push up as it reaches the bat: a fast push is a drive, a slow one a block, and a still bat just blocks it back. Push up and to the left or right to aim; curve the push for spin. Catch it on the edge and it goes astray; miss it and it’s their point. A faint ring shows where each of their shots will bounce.' },
       { title: 'Early or late', body: 'Step in toward the net and take it just after the bounce for a faster, sharper return (easier to misjudge). Hang back and take it late for more time, but a softer ball.' },
       { title: 'Smash', body: 'When a ball sits up high off the bounce it glows yellow and you’ll see Smash it! Push up hard as it meets your bat: it goes back flat and fast, straighter than a normal drive, and it rarely comes back. Careful: a weak block of yours floats up high too, and it can be smashed back at you.' },
-      { title: 'Scoring', body: 'Games to 11, win by 2. Two serves each, then one each from 10–10. Win a single game, or the best of 3 or 5.' },
+      { title: 'Scoring', body: 'The way it’s played at home. Serve five points (however they go), then the other player serves five. Once you’re on 10 you’re down: “down 6” is the other player’s score, and one more point is Game. At 10–10 it’s Ace and you serve one each: win a point for down ace, win the next for the game, lose it and it’s Ace again. Win a single game, or the best of 3 or 5.' },
     ],
   },
   {
