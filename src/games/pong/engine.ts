@@ -98,3 +98,29 @@ export function opsPlan(level: Level, f: Flight, rand: () => number = Math.rando
 /** Ops' serve: either side, after a moment */
 export const opsServeLane = (rand: () => number = Math.random): Lane => (rand() < 0.5 ? -1 : 1)
 
+
+/* ── online: one message per shot ── */
+
+export interface ShotMsg {
+  id: string
+  /** the seat that hit it */
+  by: Side
+  /** server time of the hit */
+  at: number
+  /** which point it belongs to, so a stray shot from the last rally is never played */
+  pt: string
+  /** the flight in seat 0's view (seat 0 at the near end), its times counted from the hit */
+  f: Flight
+}
+
+/** the other end's view of a flight: left and right swap, and so do the ends */
+export const mirror = (f: Flight): Flight => ({ ...f, by: (1 - f.by) as Side, from: (-f.from) as Lane, to: (-f.to) as Lane })
+
+/**
+ * A shot from the other phone, starting here now, `late` ms after it was hit there: the flight to the
+ * bounce is cut short by the lag (never under 140ms) so the bounce and the arrival stay on schedule.
+ */
+export function rebase(f: Flight, now: number, late: number): Flight {
+  const pre = Math.max(140, f.tb - f.t0 - late)
+  return { ...f, t0: now, tb: now + pre, t1: now + pre + (f.t1 - f.tb) }
+}

@@ -1,9 +1,13 @@
+import { ref as dbRef, set } from 'firebase/database'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { db } from '../../lib/firebase'
+import { useServerOffset } from '../../lib/serverTime'
 import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
+import { load, save } from '../../lib/storage'
 import { useScrollLock } from '../../lib/useScrollLock'
 import type { MatchExit, Me } from '../../lobby/Lobby'
-import { playersBySeat, type Room } from '../../lobby/rooms'
+import { playersBySeat, roomPath, type Room } from '../../lobby/rooms'
 import { Confetti } from '../../match/Confetti'
 import { MatchEnded } from '../../match/MatchEnded'
 import { pingMoments } from '../../match/moments'
@@ -16,21 +20,25 @@ import { shareLink, shareMessage } from '../../match/share'
 import type { CardInput } from '../../match/shareCard'
 import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
+import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
 import { POINTS, RESULT_MS, awardPoint, callOf, freshLive, nextGame, pointKey, serverOf, type Live, type Side, type Why } from '../pingpong/engine'
-import { LATE, ON_TIME, opsPlan, opsServeLane, plan, returnOf, timing, windowOf, type Flight, type Lane } from './engine'
+import { LATE, ON_TIME, mirror, opsPlan, opsServeLane, plan, rebase, returnOf, timing, windowOf, type Flight, type Lane, type ShotMsg } from './engine'
+import { pongFeats } from './feats'
 import orangeSheet from './sprites/player.png'
 import blueSheet from './sprites/player-blue.png'
 import '../../styles/pong.css'
 
 const GAME = 'pong'
+/** set once you've been through the how-to on easy */
+const HOWTO_KEY = 'lvs_pong_howto'
 export const seriesLabel = (target: number) => (target === 1 ? 'Single game' : `Best of ${target * 2 - 1}`)
 
 export interface PongState {
   /** games needed to win the match */
   target: number
   match: number
-  live: Live
+  live: Live & { shot?: ShotMsg }
   ready?: Record<string, boolean>
 }
 
@@ -161,10 +169,18 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const st = room.state as unknown as PongState
   const live = st.live
   const session = useSession(GAME, room.code)
+  const vsOps = !!session.bot
+  const online = !session.local && !vsOps
   const level = session.level ?? 'medium'
+  /** the ring and the lit side are for learning: easy Ops only */
+  const assists = vsOps && level === 'easy'
   const { play: sound } = useSound()
   const seats = playersBySeat(room)
-  const oppName = seats[1]?.name ?? 'Ops'
+  // you're always at the near end (side 0); seat 1 online sees the table turned round
+  const flip = me.seat === 1
+  const seatOf = useCallback((s: Side): Side => (flip ? ((1 - s) as Side) : s), [flip])
+  const opp = seats[seatOf(1)]
+  const oppName = opp?.name ?? 'Ops'
 
   const seriesOver = live.games[0] >= st.target || live.games[1] >= st.target
   const showResults = useHold(seriesOver, RESULT_MS)
@@ -172,6 +188,10 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const inMatch = !abandoned && !seriesOver
   useBeforeUnload(inMatch)
   useScrollLock(inMatch)
+  const awaySecs = useOpponentAway(GAME, room.code, online ? opp : null, inMatch)
+  const offset = useServerOffset()
+  const offsetRef = useRef(offset)
+  offsetRef.current = offset
 
   const liveRef = useRef(live)
   liveRef.current = live
@@ -193,6 +213,10 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     /** Ops' answer to the ball heading her way */
     ops: null as ReturnType<typeof opsPlan> | null,
     bounced: null as Flight | null,
+    /** online: the other phone's latest shot, waiting to be played here */
+    inbox: null as ShotMsg | null,
+    /** the how-to is up: the rally waits */
+    paused: false,
     /** where the ball has just been, for the line behind it */
     trail: [] as { x: number; y: number }[],
   })
@@ -206,6 +230,8 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const [banner, setBanner] = useState<{ text: string; mine: boolean; n: number } | null>(null)
   const [pow, setPow] = useState<{ n: number; mine: boolean } | null>(null)
   const [hint, setHint] = useState(true)
+  const [howTo, setHowTo] = useState(() => assists && load(HOWTO_KEY) !== 'seen')
+  rally.current.paused = howTo
 
   const nextServe = useCallback(() => {
     const l = liveRef.current
@@ -218,17 +244,18 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       return
     }
     r.act = [{ kind: 'idle' }, { kind: 'idle' }]
-    if (serverOf(l) === 0) {
+    if (seatOf(serverOf(l)) === 0) {
       r.phase = 'serve-me'
       r.act[0] = { kind: 'serve' }
       setPrompt('Your serve · tap a side')
     } else {
       r.phase = 'serve-them'
       r.act[1] = { kind: 'serve' }
+      // Ops serves after a moment; a friend's serve arrives as a message
       r.serveAt = r.clock + 900
       setPrompt(`${oppName} to serve`)
     }
-  }, [oppName])
+  }, [oppName, seatOf])
 
   const point = useCallback(
     (winner: Side, why: Why, hits: number) => {
@@ -237,9 +264,9 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       r.phase = 'point'
       setPrompt('')
       const key = pointKey(liveRef.current)
-      session.move<Live>((cur) => (pointKey(cur) === key ? awardPoint(cur, winner, why, st.target, hits) : undefined)).catch(() => {})
+      session.move<Live>((cur) => (pointKey(cur) === key ? awardPoint(cur, seatOf(winner), why, st.target, hits) : undefined)).catch(() => {})
     },
-    [session, st.target],
+    [session, st.target, seatOf],
   )
 
   // a point went in: the banner, both players react, then the next serve
@@ -250,8 +277,9 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     pointSeen.current = key
     const r = rally.current
     r.phase = 'point'
-    const { why, winner } = live.last
-    const mine = winner === 0
+    r.inbox = r.inbox && r.inbox.pt === pointKey(live) ? r.inbox : null
+    const { why } = live.last
+    const mine = seatOf(live.last.winner) === 0
     const game = !!live.result
     const final = !!live.result?.final
     r.act = [
@@ -260,7 +288,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     ]
     sound(mine ? 'find' : 'error')
     const n = Date.now()
-    const yours = why === 'miss' && r.missed ? (r.missed === 'wrong' ? 'Wrong side' : 'Too late · tap as it reaches the ring') : WHY_SAID[why]
+    const yours = why === 'miss' && r.missed ? (r.missed === 'wrong' ? 'Wrong side' : assists ? 'Too late · tap as it reaches the ring' : 'Too late') : WHY_SAID[why]
     r.missed = null
     const text = mine ? `Your point · ${why === 'miss' || why === 'winner' ? `${oppName} missed it` : `${oppName}: ${WHY_SAID[why].toLowerCase()}`}` : `${poss(oppName)} point · ${yours}`
     setBanner({ text, mine, n })
@@ -269,7 +297,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       setBanner((b) => (b?.n === n ? null : b))
       if (rally.current.phase === 'point' && !liveRef.current.result) nextServe()
     }, 1100)
-  }, [live, oppName, sound, nextServe])
+  }, [live, oppName, sound, nextServe, seatOf, assists])
 
   // a new game (or a fresh match): get the first serve ready
   useEffect(() => {
@@ -287,8 +315,29 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     if (!live.result) return
     const w = live.result.winner
     const [hi, lo] = [live.points[w], live.points[1 - w]]
-    setPrompt(live.result.final ? '' : `Game · ${w === 0 ? 'you' : oppName} ${hi}–${lo}${lo === 0 ? ' raw' : ''}`)
-  }, [live.result, live.points, oppName])
+    setPrompt(live.result.final ? '' : `Game · ${seatOf(w) === 0 ? 'you' : oppName} ${hi}–${lo}${lo === 0 ? ' raw' : ''}`)
+  }, [live.result, live.points, oppName, seatOf])
+
+  // online: the other phone's shot comes in, to be played on the next frame
+  const shotSeen = useRef(live.shot?.id)
+  useEffect(() => {
+    const s = live.shot
+    if (!online || !s || s.id === shotSeen.current) return
+    shotSeen.current = s.id
+    if (s.by !== me.seat) rally.current.inbox = s
+  }, [online, live.shot, me.seat])
+
+  /** online: your shot goes to the other phone (in seat 0's view, its times counted from the hit) */
+  const send = useCallback(
+    (f: Flight) => {
+      const w = flip ? mirror(f) : f
+      const rel: Flight = { ...w, t0: 0, tb: w.tb - w.t0, t1: w.t1 - w.t0 }
+      const msg: ShotMsg = { id: Math.random().toString(36).slice(2, 10), by: me.seat as Side, at: Date.now() + offsetRef.current, pt: pointKey(liveRef.current), f: rel }
+      shotSeen.current = msg.id
+      set(dbRef(db, `${roomPath(GAME, room.code)}/state/live/shot`), msg).catch(() => {})
+    },
+    [flip, me.seat, room.code],
+  )
 
   /** a shot goes off: its flight, Ops' answer if it's heading her way, the sound */
   const launch = useCallback(
@@ -297,8 +346,13 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       r.flight = f
       r.bounced = null
       r.phase = 'rally'
-      r.ops = f.by === 0 && !f.fault ? opsPlan(level, f) : null
-      if (f.by === 0 && f.smash) r.act[1] = { kind: 'sweat' }
+      r.ops = vsOps && f.by === 0 && !f.fault ? opsPlan(level, f) : null
+      if (f.by === 0) {
+        if (online) send(f)
+        // the other player heads for the ball's side as soon as it's hit (and sweats at a smash)
+        if (!f.fault) r.lane[1] = f.to
+        if (f.smash) r.act[1] = { kind: 'sweat' }
+      }
       sound(f.smash ? 'smash' : 'pong')
       if (f.smash) {
         const n = Date.now()
@@ -306,7 +360,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         setTimeout(() => setPow((p) => (p?.n === n ? null : p)), 700)
       }
     },
-    [level, sound],
+    [level, sound, vsOps, online, send],
   )
 
   /** a tap on a side of the screen: serve to it, or swing at a ball coming to it */
@@ -314,6 +368,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     (side: Lane) => {
       const r = rally.current
       const t = r.clock
+      if (r.paused) return
       if (r.phase === 'serve-me') {
         r.act[0] = { kind: 'swing', side: r.lane[0], at: t, smash: false }
         setPrompt('')
@@ -363,12 +418,26 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       const dt = Math.min(50, now - last)
       last = now
       const r = rally.current
+      if (r.paused) return
       r.clock += dt
       const t = r.clock
 
-      if (r.phase === 'serve-them' && t >= r.serveAt) {
+      if (vsOps && r.phase === 'serve-them' && t >= r.serveAt) {
         r.act[1] = { kind: 'swing', side: r.lane[1], at: t, smash: false }
         launch(plan(1, r.lane[1], opsServeLane(), t, 1, { serve: true }))
+        setPrompt('')
+      }
+
+      // online: the other phone's shot (or serve) for this point starts flying here
+      const msg = r.inbox
+      if (msg && msg.pt === pointKey(liveRef.current) && (r.phase === 'serve-them' || (r.phase === 'rally' && r.flight?.by === 0))) {
+        r.inbox = null
+        const mine = flip ? mirror(msg.f) : msg.f
+        const late = Math.max(0, Math.min(1500, Date.now() + offsetRef.current - msg.at))
+        const g = rebase(mine, t, late)
+        r.lane[1] = g.from
+        r.act[1] = { kind: 'swing', side: g.from, at: t, smash: g.smash }
+        launch(g)
         setPrompt('')
       }
 
@@ -379,12 +448,12 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           sound('ping')
         }
         const recv = (1 - f.by) as Side
-        if (f.fault && t >= f.tb + 260) point(recv, f.fault, f.hits)
-        else if (!f.fault && recv === 1) {
+        // only the phone the ball is heading to judges it (vs Ops, this phone judges both ends)
+        if (f.fault && t >= f.tb + 260) {
+          if (vsOps || recv === 0) point(recv, f.fault, f.hits)
+        } else if (vsOps && !f.fault && recv === 1) {
           const ops = r.ops
           const w = windowOf(f)
-          // she heads for the ball's side as soon as it's hit
-          r.lane[1] = f.to
           if (ops && ops !== 'miss' && 'd' in ops && t >= f.t1 + ops.d * w) {
             const ret = returnOf(ops.d, f.to, () => 1)
             r.act[1] = { kind: 'swing', side: f.to, at: t, smash: ret.smash }
@@ -423,7 +492,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
       // the ring where a ball coming at you will reach your bat: it closes in as the ball comes,
       // opens (solid) once you can hit it and lights up when it's right on time; that side's letter lights too
-      const coming = r.phase === 'rally' && f && f.by === 1 && !f.fault && t <= f.t1 + windowOf(f) * LATE ? f : null
+      const coming = assists && r.phase === 'rally' && f && f.by === 1 && !f.fault && t <= f.t1 + windowOf(f) * LATE ? f : null
       const ring = ringEl.current
       if (ring) {
         if (!coming) ring.style.opacity = '0'
@@ -467,7 +536,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [showResults, launch, point, sound, level])
+  }, [showResults, launch, point, sound, level, vsOps, flip, assists])
 
   /* ── screens ── */
 
@@ -498,7 +567,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       ref={(el) => void (figEls.current[s] = el)}
       className={`pong-fig pong-fig--${s === 0 ? 'near' : 'far'}`}
       style={{
-        backgroundImage: `url(${s === 0 ? orangeSheet : blueSheet})`,
+        backgroundImage: `url(${seatOf(s) === 0 ? orangeSheet : blueSheet})`,
         top: `${((FEET_Y[s] - CELL_H * FOOT.y) / H) * 100}%`,
         width: `${CELL_W}%`,
       }}
@@ -551,12 +620,27 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
             Smash!
           </div>
         )}
-        {hint && (
+        {hint && !howTo && (
           <p className="pong-hint" aria-hidden="true">
-            Tap the side the ball is coming to (it lights up) as the ball reaches the ring · on time smashes
+            {assists
+              ? 'Tap the side the ball is coming to (it lights up) as the ball reaches the ring · on time smashes'
+              : 'Tap the side the ball is coming to as it reaches you · early goes across, late down the line, on time smashes'}
           </p>
         )}
       </div>
+      {howTo && (
+        <HowTo
+          onDone={() => {
+            save(HOWTO_KEY, 'seen')
+            setHowTo(false)
+          }}
+        />
+      )}
+      {awaySecs !== null && opp && (
+        <p className="mt-banner" role="status">
+          {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back
+        </p>
+      )}
     </main>
   )
 }
@@ -575,6 +659,47 @@ function Table() {
       <rect x={x0 - 3} y={NET_Y - 2.4} width={x1 - x0 + 6} height={4.2} className="pong-table__net" />
       <line x1={x0 - 3} y1={NET_Y - 0.2} x2={x1 + 3} y2={NET_Y - 0.2} />
     </g>
+  )
+}
+
+/*
+ * How to play, acted out: a ball comes over to the right, that side lights up, the ring closes in
+ * on the bat and a thumb taps the right half just as the ball meets it. Three steps underneath.
+ */
+function HowTo({ onDone }: { onDone: () => void }) {
+  return (
+    <div className="pong-howto" role="dialog" aria-label="How to play" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="pong-howto__card">
+        <p className="label">How to play</p>
+        <div className="pong-howto__demo" aria-hidden="true">
+          <svg viewBox="0 0 100 56">
+            <rect x="36" y="6" width="28" height="30" className="pong-howto__table" />
+            <line x1="33" y1="21" x2="67" y2="21" className="pong-howto__net" />
+            <line x1="50" y1="6" x2="50" y2="36" className="pong-howto__line" />
+            <circle cx="72" cy="44" r="2.6" className="pong-howto__ring" />
+            <circle cx="42" cy="2" r="2" className="pong-howto__ball" />
+          </svg>
+          <span className="pong-howto__l">L</span>
+          <span className="pong-howto__r">R</span>
+          <span className="pong-howto__half" />
+          <span className="pong-howto__thumb" />
+        </div>
+        <ol className="pong-howto__steps">
+          <li>
+            <b>Watch the letters.</b> The side the ball is coming to lights up.
+          </li>
+          <li>
+            <b>Wait for the ring.</b> It closes in where the ball will reach you.
+          </li>
+          <li>
+            <b>Tap that half of the screen</b> as the ball reaches the ring. Right on time is a smash.
+          </li>
+        </ol>
+        <button type="button" className="btn btn--primary btn--block" onClick={onDone}>
+          Got it
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -607,8 +732,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: PongSt
   }, [session, me.isHost, imReady, oppReady, st.target, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'You', seats[1]?.name ?? 'Ops']
-  // no feats yet: Ping Pong is only against Ops for now, and feats are never kept against her
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, [[], []], pingMoments(st.live))
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, pongFeats(st.live), pingMoments(st.live))
   const scoreLine = `${g[0]} — ${g[1]}`
   const history = st.live.history ?? []
   const card: CardInput = {

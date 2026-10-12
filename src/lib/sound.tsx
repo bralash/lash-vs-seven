@@ -145,26 +145,42 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     if (ctx.state !== 'running') ctx.resume().catch(() => {})
     return ctx
   }, [])
+  const unlocked = useRef<AudioContext | null>(null)
+  /** a tap's wake: also a silent blip, which is what actually unlocks the audio on an iPhone */
+  const unlock = useCallback(() => {
+    const ctx = wake()
+    if (ctx.state === 'running' && unlocked.current === ctx) return
+    const blip = ctx.createBufferSource()
+    blip.buffer = ctx.createBuffer(1, 1, 22050)
+    blip.connect(ctx.destination)
+    blip.start(0)
+    if (ctx.state === 'running') unlocked.current = ctx
+  }, [wake])
   // every tap or key wakes it (browsers only let a tap do that), and so does coming back to the page
   useEffect(() => {
     if (muted) return
     const onTap = () => {
       try {
-        wake()
+        unlock()
       } catch {
         /* audio unavailable */
       }
     }
     const onShow = () => document.visibilityState === 'visible' && ctxRef.current && onTap()
+    // an iPhone only lets the end of a touch (or a click) start audio, not the touch going down
     window.addEventListener('pointerdown', onTap, true)
+    window.addEventListener('touchend', onTap, true)
+    window.addEventListener('click', onTap, true)
     window.addEventListener('keydown', onTap, true)
     document.addEventListener('visibilitychange', onShow)
     return () => {
       window.removeEventListener('pointerdown', onTap, true)
+      window.removeEventListener('touchend', onTap, true)
+      window.removeEventListener('click', onTap, true)
       window.removeEventListener('keydown', onTap, true)
       document.removeEventListener('visibilitychange', onShow)
     }
-  }, [muted, wake])
+  }, [muted, unlock])
 
   const play = useCallback(
     (cue: Cue) => {

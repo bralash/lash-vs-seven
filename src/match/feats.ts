@@ -11,6 +11,7 @@ import { MEMORY_FEATS } from '../games/memory/feats'
 import { OTHELLO_FEATS } from '../games/othello/feats'
 import { OWARE_FEATS } from '../games/oware/feats'
 import { PINGPONG_FEATS } from '../games/pingpong/feats'
+import { PONG_FEATS } from '../games/pong/feats'
 import { POOL_FEATS } from '../games/pool/feats'
 import { QUORIDOR_FEATS } from '../games/quoridor/feats'
 import { SPAR_FEATS } from '../games/spar/feats'
@@ -47,6 +48,7 @@ const ALL: FeatDef[] = [
   ...OTHELLO_FEATS,
   ...OWARE_FEATS,
   ...PINGPONG_FEATS,
+  ...PONG_FEATS,
   ...POOL_FEATS,
   ...QUORIDOR_FEATS,
   ...SPAR_FEATS,
