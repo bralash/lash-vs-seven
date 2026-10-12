@@ -36,7 +36,7 @@ export const PAY = {
   firstToday: 15,
   /** each win from the 3rd in a row against the same rival(s) */
   streak: 10,
-  feat: 100,
+  feat: 50,
   /** a 3–4 player match seen through to the end */
   stayed: 5,
   opsWin: 5,
