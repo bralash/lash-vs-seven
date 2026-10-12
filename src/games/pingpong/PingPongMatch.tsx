@@ -95,6 +95,9 @@ const HORIZON = (FAR_Y - FAR_S * NEAR_Y) / (1 - FAR_S)
 
 /** your bat moves this much further than your thumb, so short movements cover your whole half */
 const GAIN = 1.9
+/** how much of your bat's move off centre the camera follows, and how quickly it catches up (ms) */
+const PAN = 0.5
+const CAM_EASE = 160
 /** a thumb's movement in table lengths (fixed, so the trackpad feels the same wherever the bat is) */
 const TRACK_LEN = 340
 
@@ -225,6 +228,10 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const tableEl = useRef<SVGSVGElement>(null)
   const ballEl = useRef<SVGGElement>(null)
   const seamEl = useRef<SVGGElement>(null)
+  /** the scene that slides with the camera (the table and everything on it), the hall behind it, and how far it has slid */
+  const worldEl = useRef<SVGGElement>(null)
+  const hallEl = useRef<SVGGElement>(null)
+  const cam = useRef(0)
   const puffEl = useRef<SVGCircleElement>(null)
   const trailEls = useRef<(SVGCircleElement | null)[]>([])
   const shadowEl = useRef<SVGEllipseElement>(null)
@@ -396,7 +403,8 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const aimMouse = (e: ReactPointerEvent) => {
     const box = tableEl.current?.getBoundingClientRect()
     if (!box?.width) return
-    const px = ((e.clientX - box.left) / box.width) * VW
+    // the spot on the table under the pointer, wherever the camera has slid to
+    const px = ((e.clientX - box.left) / box.width) * VW + cam.current
     const py = ((e.clientY - box.top) / box.height) * VH
     const r = rally.current
     const at = unproj(px, py)
@@ -622,11 +630,15 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           guideEl.current.style.opacity = String(t < fl.tb ? 0.55 : 0.55 * (1 - (t - fl.tb) / 120))
         } else guideEl.current.style.opacity = '0'
       }
+      // the camera slides after your bat, so a ball into the corner is still on screen when you get there;
+      // the hall behind moves less than the table, so it looks far away
+      const aim = (proj(r.myX, r.myY).px - VW / 2) * PAN
+      cam.current += (aim - cam.current) * (1 - Math.exp(-dt / CAM_EASE))
+      worldEl.current?.setAttribute('transform', `translate(${(-cam.current).toFixed(2)} 0)`)
+      hallEl.current?.setAttribute('transform', `translate(${(-cam.current * 0.35).toFixed(2)} 0)`)
       const swing = (since: number) => Math.max(0, 1 - (t - since) / 180)
       if (myPad.current) {
         const p = proj(r.myX, r.myY - 0.02)
-        // reaching wide, the bat stays on screen (its reach is still measured on the table)
-        p.px = Math.max(26, Math.min(VW - 26, p.px))
         // out to the side it leans like a backhand (left) or a forehand (right); upright in the middle
         const tilt = Math.max(-1.2, Math.min(1.2, r.myX)) * 28
         myPad.current.setAttribute('transform', `translate(${p.px} ${p.py + 6}) rotate(${tilt + (r.big ? -60 : -30) * swing(r.swingAt)}) scale(${(1.65 * p.s).toFixed(3)})`)
@@ -686,7 +698,11 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       <div className="ppm-stage" onPointerDown={down} onPointerMove={moveP} onPointerUp={up} onPointerCancel={() => (touching.current = false)}>
         <svg ref={tableEl} className="ppm-table" viewBox={`0 0 ${VW} ${VH}`} data-ult-board aria-label="The table">
           <SceneDefs />
-          <Hall />
+          <g ref={hallEl}>
+            <Hall />
+          </g>
+          <rect width={VW} height={VH} fill="url(#ppm-vignette)" />
+          <g ref={worldEl}>
           <Table />
 
           {/* their racket at the far end, the ball and its shadow, yours at the near end (each in its seat's colour) */}
@@ -709,6 +725,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           </g>
           <g ref={myPad} className="ppm-pad">
             <Racket colour={flip ? 'var(--seven)' : 'var(--lash)'} />
+          </g>
           </g>
         </svg>
 
@@ -741,6 +758,8 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 /* ── the scene: a sports hall, drawn to look real (the HUD around it keeps the app's look) ── */
 
 const BALL = 'url(#ppm-ball)'
+/** the hall runs this far past both sides, so it never runs out when the camera slides */
+const HALL_OVER = 140
 
 /** gradients, textures and the soft blur the scene shares */
 function SceneDefs() {
@@ -847,18 +866,17 @@ function Hall() {
   })
   return (
     <g aria-hidden="true">
-      <rect width={VW} height={SEAM} fill="url(#ppm-wall)" />
-      <rect width={VW} height={SEAM} fill="url(#ppm-planks)" />
-      <rect y={SEAM - 52} width={VW} height="3" fill="rgb(40 22 10 / .35)" />
-      <rect y={SEAM} width={VW} height={VH - SEAM} fill="url(#ppm-floor)" />
+      <rect x={-HALL_OVER} width={VW + 2 * HALL_OVER} height={SEAM} fill="url(#ppm-wall)" />
+      <rect x={-HALL_OVER} width={VW + 2 * HALL_OVER} height={SEAM} fill="url(#ppm-planks)" />
+      <rect x={-HALL_OVER} y={SEAM - 52} width={VW + 2 * HALL_OVER} height="3" fill="rgb(40 22 10 / .35)" />
+      <rect x={-HALL_OVER} y={SEAM} width={VW + 2 * HALL_OVER} height={VH - SEAM} fill="url(#ppm-floor)" />
       {boards.map((b, i) => (
         <line key={i} x1={b.x1} y1={SEAM + 6} x2={b.x2} y2={VH} stroke="rgb(70 40 18 / .22)" strokeWidth="1" />
       ))}
       {/* the light off the varnish, and the skirting */}
       <ellipse cx={VW / 2} cy={SEAM + 40} rx={VW * 0.55} ry="26" fill="#fff3dd" opacity=".18" filter="url(#ppm-softer)" />
-      <rect y={SEAM} width={VW} height="6" fill="#3a2414" />
-      <rect y={SEAM + 6} width={VW} height="2" fill="rgb(0 0 0 / .25)" />
-      <rect width={VW} height={VH} fill="url(#ppm-vignette)" />
+      <rect x={-HALL_OVER} y={SEAM} width={VW + 2 * HALL_OVER} height="6" fill="#3a2414" />
+      <rect x={-HALL_OVER} y={SEAM + 6} width={VW + 2 * HALL_OVER} height="2" fill="rgb(0 0 0 / .25)" />
     </g>
   )
 }
