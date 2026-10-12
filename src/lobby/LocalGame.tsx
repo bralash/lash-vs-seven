@@ -87,9 +87,16 @@ export function LocalSetup({
   const [count, setCount] = useState(fewest)
   const seats = vsBot ? 1 : count
   const { play } = useSound()
+  // against Ops your name is the one thing we ask for: it goes on your score card and the admin's list
+  const [noName, setNoName] = useState(false)
 
   const start = (e: FormEvent) => {
     e.preventDefault()
+    if (vsBot && !names[0].trim()) {
+      setNoName(true)
+      play('error')
+      return
+    }
     const clean = names.slice(0, vsBot ? 2 : count).map((n, i) => n.trim().slice(0, 16) || `Player ${i + 1}`)
     if (names[0].trim()) {
       save(KEYS.name, clean[0])
@@ -128,10 +135,18 @@ export function LocalSetup({
               value={names[i]}
               autoFocus={i === 0 && !names[0]}
               label={vsBot ? 'Your name' : undefined}
-              onChange={(v) => setNames((n) => n.map((x, j) => (j === i ? v : x)))}
+              onChange={(v) => {
+                setNoName(false)
+                setNames((n) => n.map((x, j) => (j === i ? v : x)))
+              }}
             />
           ))}
         </div>
+        {noName && (
+          <p className="lobby__error error-text" role="alert">
+            Add your name first.
+          </p>
+        )}
         {vsBot && (
           <OptionPicker
             options={[{ label: `How hard ${BOT_NAME} plays`, initial: 'medium', choices: LEVELS }]}

@@ -1,8 +1,12 @@
+import { useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from '../components/Icons'
 import { useCrewLook } from '../components/OpsFace'
 import { TopBar } from '../components/TopBar'
+import { touchProfile } from '../lib/profile'
 import { useSound } from '../lib/sound'
+import { KEYS, load, save } from '../lib/storage'
 import { floorsFor, gameAt, seasonDaysLeft, seasonName, TOP, type Floor } from '../tower/floors'
 import { TowerCrown } from '../tower/TowerCrown'
 import { TowerMap } from '../tower/TowerMap'
@@ -23,10 +27,13 @@ export function TowerPage() {
   const navigate = useNavigate()
   const { play } = useSound()
 
-  const climbFloor = (f: Floor) => {
+  // no name yet: ask for one before the first floor (the guardians and the admin's list use it)
+  const [askName, setAskName] = useState<Floor | null>(null)
+  const go = (f: Floor) => {
     play('start')
     navigate(`/${gameAt(f, [0, 0])}`, { state: { tower: f.n } })
   }
+  const climbFloor = (f: Floor) => (load(KEYS.name)?.trim() ? go(f) : setAskName(f))
 
   return (
     <div className="page screen-in tower-page">
@@ -65,6 +72,17 @@ export function TowerPage() {
         </header>
         {climb ? <TowerMap floors={floorsFor(climb.s)} climb={climb} me={me} onPlay={climbFloor} /> : <p className="hint tower-map__loading">Loading your climb…</p>}
       </section>
+      {askName &&
+        createPortal(
+          <NameSheet
+            onDone={() => {
+              setAskName(null)
+              go(askName)
+            }}
+            onClose={() => setAskName(null)}
+          />,
+          document.body,
+        )}
 
       <main className="tower">
         <section className="tower__rules" aria-label="How the Tower works">
@@ -91,6 +109,55 @@ export function TowerPage() {
           </ul>
         </section>
       </main>
+    </div>
+  )
+}
+
+/** Your name, asked once before your first floor. */
+function NameSheet({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [err, setErr] = useState(false)
+  const { play } = useSound()
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const clean = name.trim().slice(0, 16)
+    if (!clean) {
+      setErr(true)
+      play('error')
+      return
+    }
+    save(KEYS.name, clean)
+    touchProfile()
+    onDone()
+  }
+  return (
+    <div className="tm-sheet-wrap" onClick={onClose}>
+      <form className="tm-sheet tm-sheet--name" role="dialog" aria-label="Your name" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
+        <p className="tower__kicker">Before you climb</p>
+        <h2 className="tm-sheet__title">What do we call you?</h2>
+        <p className="tm-sheet__line">The guardians want to know who’s coming for them.</p>
+        <input
+          className="tm-name"
+          value={name}
+          onChange={(e) => {
+            setErr(false)
+            setName(e.target.value)
+          }}
+          placeholder="Your name"
+          maxLength={16}
+          autoFocus
+          autoComplete="nickname"
+          aria-label="Your name"
+        />
+        {err && (
+          <p className="lobby__error error-text" role="alert">
+            Add your name first.
+          </p>
+        )}
+        <button type="submit" className="btn btn--primary btn--block">
+          Start climbing
+        </button>
+      </form>
     </div>
   )
 }

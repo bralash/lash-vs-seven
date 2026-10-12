@@ -36,6 +36,8 @@ interface Wallet {
   seen?: number
   first?: number
   owned?: Record<string, true>
+  /** matches paid out (the last 30 days) */
+  paid?: Record<string, unknown>
   tower?: { s: number; at: number; hearts: number; best: number; champ?: boolean; got?: Record<string, true> }
   missions?: { w: number; got?: Record<string, true>; n?: Record<string, number> }
   gifts?: Record<string, Gift>
@@ -54,12 +56,20 @@ interface Data {
 
 const DAY = 864e5
 
+/**
+ * Has this wallet ever been played with? Opening the app makes one (with when we first saw you), so
+ * visitors who looked around and left have a wallet too; anything earned, bought or climbed counts.
+ */
+const hasPlayed = (w: Wallet) => !!((w.chips ?? 0) > 0 || Object.keys(w.paid ?? {}).length || w.tower || Object.keys(w.owned ?? {}).length || w.missions)
+
 /* the Everyone list: rows per page, what to show and in what order */
 const PAGE = 25
 type Climb = NonNullable<Wallet['tower']>
 type Row = { w: Wallet; climb: Climb | null; name: string }
 const FILTERS: Record<string, { label: string; keep: (w: Wallet, climb: Climb | null, now: number) => boolean }> = {
+  played: { label: 'Has played', keep: (w) => hasPlayed(w) },
   all: { label: 'Everyone', keep: () => true },
+  visitors: { label: 'Never played', keep: (w) => !hasPlayed(w) },
   today: { label: 'Active today', keep: (w, _, now) => !!w.seen && now - w.seen < DAY },
   week: { label: 'Active this week', keep: (w, _, now) => !!w.seen && now - w.seen < 7 * DAY },
   new: { label: 'New this week', keep: (w, _, now) => !!w.first && now - w.first < 7 * DAY },
@@ -300,7 +310,7 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
   const floors = floorsFor(season)
   const week = weekOf(now)
   const [q, setQ] = useState('')
-  const [filter, setFilter] = useState<keyof typeof FILTERS>('all')
+  const [filter, setFilter] = useState<keyof typeof FILTERS>('played')
   const [sort, setSort] = useState<keyof typeof SORTS>('seen')
   const [page, setPage] = useState(0)
   // a new search, filter or order starts from the first page
@@ -327,6 +337,7 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
   const active = (ms: number) => players.filter((p) => p.w.seen && now - p.w.seen < ms).length
   const newThisWeek = players.filter((p) => p.w.first && now - p.w.first < 7 * DAY).length
   const named = players.filter((p) => p.name).length
+  const played = players.filter((p) => hasPlayed(p.w)).length
 
   /* tower */
   const climbers = players.filter((p) => p.climb).sort((a, b) => Number(!!b.climb!.champ) - Number(!!a.climb!.champ) || b.climb!.at - a.climb!.at || b.climb!.best - a.climb!.best)
@@ -378,7 +389,7 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
       <section className="admin-sec">
         <h2>Players</h2>
         <div className="admin-tiles">
-          <Tile label="Players" value={players.length} note={`${named} with a name`} />
+          <Tile label="Players" value={played} note={`${named} with a name · ${players.length - played} more opened the app and never played`} />
           <Tile label="Active today" value={active(DAY)} />
           <Tile label="Active this week" value={active(7 * DAY)} />
           <Tile label="New this week" value={newThisWeek} />

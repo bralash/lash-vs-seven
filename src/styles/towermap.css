@@ -172,3 +172,6 @@ body:has(.tower-page) { overflow-x: clip; }
 .tower-bar__status { display: grid; justify-items: end; gap: 4px; flex: none; }
 .tower-map__loading { padding: 60px var(--gutter); text-align: center; }
 .tower-page .tower { margin-top: 24px; }
+.tm-sheet--name { padding-top: 22px; }
+.tm-name { padding: 12px 14px; border: var(--edge) solid var(--ink); background: var(--slot); color: var(--ink); font: 400 20px var(--display); text-transform: uppercase; }
+.tm-name:focus { outline: 3px solid var(--hit); outline-offset: 0; }
