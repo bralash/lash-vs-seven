@@ -12,6 +12,7 @@ import { OTHELLO_FEATS } from '../games/othello/feats'
 import { OWARE_FEATS } from '../games/oware/feats'
 import { PINGPONG_FEATS } from '../games/pingpong/feats'
 import { PONG_FEATS } from '../games/pong/feats'
+import { AMPE_FEATS } from '../games/ampe/feats'
 import { POOL_FEATS } from '../games/pool/feats'
 import { QUORIDOR_FEATS } from '../games/quoridor/feats'
 import { SPAR_FEATS } from '../games/spar/feats'
@@ -35,6 +36,7 @@ export interface FeatDef {
 }
 
 const ALL: FeatDef[] = [
+  ...AMPE_FEATS,
   ...ANAGRAM_FEATS,
   ...BATTLESHIP_FEATS,
   ...BATTLEWORD_FEATS,
