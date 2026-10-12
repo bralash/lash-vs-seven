@@ -80,12 +80,12 @@ export function initialPPState(target = 2, match = 1): PPState {
  * (bigger than the thumb under it) and shrinks as you step in toward the net.
  */
 
-const VW = 300
+const VW = 340
 // room under your end of the table for your thumb, so the bat stays in sight above it
 const VH = 575
-const NEAR_Y = 372
-const FAR_Y = 120
-const NEAR_HALF = 136
+const NEAR_Y = 340
+const FAR_Y = 190
+const NEAR_HALF = 160
 /** how big the far end is next to the near end */
 const FAR_S = 0.4
 /** the camera's distance behind the near edge, in table lengths (from FAR_S) */
@@ -115,7 +115,10 @@ function unproj(px: number, py: number) {
 }
 /** the net's height, at its depth; the table top's thickness at your end */
 const NET_H = Math.round(26 * scaleAt(0.5))
-const EDGE = 9
+const EDGE = 12
+/** where the hall's wall meets the floor, and how far below the table top the floor is (in ball heights) */
+const SEAM = 160
+const FLOOR_Z = -1.4
 /** the ball and its marks shrink less than true size at the far end, so you can still see them there */
 const seen = (s: number) => s ** 0.6
 const corner = (x: number, y: number) => {
@@ -554,7 +557,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const sit = !!(fl && fl.by === 1 && r.phase === 'flight' && !fl.fault && t > fl.tb && ballAt(fl, t).z >= SMASH_Z)
       if (sit !== r.sitter) {
         r.sitter = sit
-        faceEl.current?.setAttribute('fill', sit ? 'var(--hit)' : '#fbf7ee')
+        faceEl.current?.setAttribute('fill', sit ? 'var(--hit)' : BALL)
         if (sit || r.phase === 'flight') setPrompt(sit ? 'Smash it!' : '')
       }
       if (seamEl.current) seamEl.current.setAttribute('transform', `rotate(${r.turn}) scale(1 ${Math.cos(r.tumble).toFixed(3)})`)
@@ -620,6 +623,8 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const swing = (since: number) => Math.max(0, 1 - (t - since) / 180)
       if (myPad.current) {
         const p = proj(r.myX, r.myY - 0.02)
+        // reaching wide, the bat stays on screen (its reach is still measured on the table)
+        p.px = Math.max(26, Math.min(VW - 26, p.px))
         // out to the side it leans like a backhand (left) or a forehand (right); upright in the middle
         const tilt = Math.max(-1.2, Math.min(1.2, r.myX)) * 28
         myPad.current.setAttribute('transform', `translate(${p.px} ${p.py + 6}) rotate(${tilt + (r.big ? -60 : -30) * swing(r.swingAt)}) scale(${(1.65 * p.s).toFixed(3)})`)
@@ -678,29 +683,9 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 
       <div className="ppm-stage" onPointerDown={down} onPointerMove={moveP} onPointerUp={up} onPointerCancel={() => (touching.current = false)}>
         <svg ref={tableEl} className="ppm-table" viewBox={`0 0 ${VW} ${VH}`} data-ult-board aria-label="The table">
-          {/* the table, its shadow, the lines */}
-          <polygon points={[corner(-1, 0), corner(1, 0), corner(1, 1), corner(-1, 1)].join(' ')} transform="translate(7 7)" fill="var(--ink)" />
-          {/* the table's front edge and legs: you're looking at its side from down here */}
-          {[-0.8, 0.8].map((x) => (
-            <rect key={x} x={proj(x, 0.06).px - 5} y={proj(x, 0.06).py} width="10" height={EDGE + 40} fill="var(--ink)" opacity=".75" />
-          ))}
-          <polygon points={`${corner(-1, 0)} ${corner(1, 0)} ${proj(1, 0).px},${proj(1, 0).py + EDGE} ${proj(-1, 0).px},${proj(-1, 0).py + EDGE}`} fill="#145c37" stroke="var(--ink)" strokeWidth="3" strokeLinejoin="round" />
-          <polygon className="ppm-top" points={[corner(-1, 0), corner(1, 0), corner(1, 1), corner(-1, 1)].join(' ')} stroke="var(--ink)" strokeWidth="4" strokeLinejoin="round" />
-          <polygon points={[corner(-0.97, 0.012), corner(0.97, 0.012), corner(0.97, 0.988), corner(-0.97, 0.988)].join(' ')} fill="none" stroke="#fbf7ee" strokeWidth="2.5" />
-          <line x1={proj(0, 0.012).px} y1={proj(0, 0.012).py} x2={proj(0, 0.988).px} y2={proj(0, 0.988).py} stroke="#fbf7ee" strokeWidth="1.5" />
-          {/* the net: posts, mesh and the white tape */}
-          <g>
-            <rect x={proj(-1.08, NET_Y).px} y={proj(0, NET_Y).py - NET_H} width={proj(1.08, NET_Y).px - proj(-1.08, NET_Y).px} height={NET_H} fill="url(#ppm-mesh)" stroke="var(--ink)" strokeWidth="2" />
-            <line x1={proj(-1.08, NET_Y).px} y1={proj(0, NET_Y).py - NET_H} x2={proj(1.08, NET_Y).px} y2={proj(0, NET_Y).py - NET_H} stroke="#fbf7ee" strokeWidth="3" />
-            <rect x={proj(-1.08, NET_Y).px - 4} y={proj(0, NET_Y).py - NET_H - 4} width="5" height={NET_H + 6} fill="var(--ink)" />
-            <rect x={proj(1.08, NET_Y).px - 1} y={proj(0, NET_Y).py - NET_H - 4} width="5" height={NET_H + 6} fill="var(--ink)" />
-          </g>
-          <defs>
-            <pattern id="ppm-mesh" width="4" height="4" patternUnits="userSpaceOnUse">
-              <rect width="4" height="4" fill="rgb(18 16 22 / .35)" />
-              <path d="M0 0L4 4M4 0L0 4" stroke="rgb(251 247 238 / .5)" strokeWidth=".6" />
-            </pattern>
-          </defs>
+          <SceneDefs />
+          <Hall />
+          <Table />
 
           {/* their racket at the far end, the ball and its shadow, yours at the near end (each in its seat's colour) */}
           <g ref={opsPad} className="ppm-pad ppm-pad--ops">
@@ -708,17 +693,17 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           </g>
           <ellipse ref={guideEl} rx="14" ry="8" fill="none" stroke="#fbf7ee" strokeWidth="2" strokeDasharray="4 4" style={{ opacity: 0 }} />
           <circle ref={puffEl} r="4" fill="none" stroke="#fbf7ee" strokeWidth="2" style={{ opacity: 0 }} />
-          <ellipse ref={shadowEl} rx="6" ry="3" fill="var(--ink)" opacity="0" />
+          <ellipse ref={shadowEl} rx="6" ry="3" fill="#000" filter="url(#ppm-soft)" opacity="0" />
           {[0, 1, 2].map((i) => (
             <circle key={i} ref={(el) => void (trailEls.current[i] = el)} r="5" style={{ opacity: 0 }} />
           ))}
           <g ref={ballEl} style={{ opacity: 0 }}>
-            <circle ref={faceEl} r="7" fill="#fbf7ee" stroke="var(--ink)" strokeWidth="2.5" />
+            <circle ref={faceEl} r="7" fill={BALL} stroke="rgb(0 0 0 / .28)" strokeWidth="1" />
             {/* the seam: turns with sidespin, tumbles with top or backspin */}
             <g ref={seamEl}>
-              <path d="M-4.5 -4.6Q-1 0 -4.5 4.6M4.5 -4.6Q1 0 4.5 4.6" fill="none" stroke="var(--lash)" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M-4.5 -4.6Q-1 0 -4.5 4.6M4.5 -4.6Q1 0 4.5 4.6" fill="none" stroke="var(--lash)" strokeWidth="1.3" strokeLinecap="round" opacity=".8" />
             </g>
-            <circle cx="-2" cy="-2.6" r="1.5" fill="#fff" />
+            <circle r="7" fill="url(#ppm-ball-shade)" />
           </g>
           <g ref={myPad} className="ppm-pad">
             <Racket colour={flip ? 'var(--seven)' : 'var(--lash)'} />
@@ -751,13 +736,176 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   )
 }
 
-/** A racket from above: the blade and a short handle, the blade facing the table. */
+/* ── the scene: a sports hall, drawn to look real (the HUD around it keeps the app's look) ── */
+
+const BALL = 'url(#ppm-ball)'
+
+/** gradients, textures and the soft blur the scene shares */
+function SceneDefs() {
+  return (
+    <defs>
+      <linearGradient id="ppm-wall" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#5a3d26" />
+        <stop offset=".55" stopColor="#b98250" />
+        <stop offset="1" stopColor="#d9a46c" />
+      </linearGradient>
+      <pattern id="ppm-planks" width="9" height="40" patternUnits="userSpaceOnUse">
+        <rect width="9" height="40" fill="transparent" />
+        <rect width="1" height="40" fill="rgb(60 34 16 / .35)" />
+        <rect x="1" width="1" height="40" fill="rgb(255 225 180 / .12)" />
+      </pattern>
+      <linearGradient id="ppm-floor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#c48a55" />
+        <stop offset=".35" stopColor="#d9a26a" />
+        <stop offset="1" stopColor="#8a5a33" />
+      </linearGradient>
+      <radialGradient id="ppm-vignette" cx=".5" cy=".45" r=".75">
+        <stop offset=".55" stopColor="#000" stopOpacity="0" />
+        <stop offset="1" stopColor="#000" stopOpacity=".55" />
+      </radialGradient>
+      <radialGradient id="ppm-under" cx=".5" cy=".35" r=".6">
+        <stop offset="0" stopColor="#0d0907" stopOpacity=".95" />
+        <stop offset=".7" stopColor="#1c120b" stopOpacity=".8" />
+        <stop offset="1" stopColor="#1c120b" stopOpacity="0" />
+      </radialGradient>
+      <linearGradient id="ppm-top" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stopColor="#1f9a59" />
+        <stop offset=".6" stopColor="#1a8a4f" />
+        <stop offset="1" stopColor="#157443" />
+      </linearGradient>
+      <radialGradient id="ppm-sheen" cx=".3" cy=".7" r=".5">
+        <stop offset="0" stopColor="#fff" stopOpacity=".16" />
+        <stop offset="1" stopColor="#fff" stopOpacity="0" />
+      </radialGradient>
+      <linearGradient id="ppm-edge" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#e9e6e0" />
+        <stop offset=".35" stopColor="#a9a59d" />
+        <stop offset="1" stopColor="#5e5a54" />
+      </linearGradient>
+      <pattern id="ppm-mesh" width="3" height="3" patternUnits="userSpaceOnUse">
+        <rect width="3" height="3" fill="rgb(20 16 12 / .45)" />
+        <path d="M0 0L3 3M3 0L0 3" stroke="rgb(255 255 255 / .35)" strokeWidth=".45" />
+      </pattern>
+      <radialGradient id="ppm-ball" cx=".38" cy=".32" r=".75">
+        <stop offset="0" stopColor="#ffffff" />
+        <stop offset=".55" stopColor="#f4ede0" />
+        <stop offset="1" stopColor="#cdbfa8" />
+      </radialGradient>
+      <radialGradient id="ppm-ball-shade" cx=".35" cy=".3" r=".7">
+        <stop offset="0" stopColor="#fff" stopOpacity=".7" />
+        <stop offset=".25" stopColor="#fff" stopOpacity="0" />
+        <stop offset="1" stopColor="#000" stopOpacity=".18" />
+      </radialGradient>
+      {/* the rubber: light from the top left, darker to the rim, and its fine grain */}
+      <radialGradient id="ppm-rubber" cx=".36" cy=".3" r=".8">
+        <stop offset="0" stopColor="#fff" stopOpacity=".32" />
+        <stop offset=".35" stopColor="#fff" stopOpacity=".04" />
+        <stop offset=".8" stopColor="#000" stopOpacity=".12" />
+        <stop offset="1" stopColor="#000" stopOpacity=".32" />
+      </radialGradient>
+      <pattern id="ppm-grain" width="2.2" height="2.2" patternUnits="userSpaceOnUse">
+        <circle cx="1.1" cy="1.1" r=".45" fill="#000" opacity=".13" />
+      </pattern>
+      <linearGradient id="ppm-wood" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#a86a36" />
+        <stop offset=".45" stopColor="#f0c48a" />
+        <stop offset="1" stopColor="#b97a42" />
+      </linearGradient>
+      <filter id="ppm-soft" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="1.6" />
+      </filter>
+      <filter id="ppm-softer" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="5" />
+      </filter>
+    </defs>
+  )
+}
+
+/** the wall (wooden slats, a skirting board) and the floor (boards running away from you) */
+function Hall() {
+  const vp = { x: VW / 2, y: HORIZON }
+  // floor boards: lines from the vanishing point, drawn from the skirting down
+  const boards = Array.from({ length: 25 }, (_, i) => {
+    const bx = VW / 2 + (i - 12) * 46
+    const k = (SEAM + 6 - vp.y) / (VH - vp.y)
+    return { x1: vp.x + (bx - vp.x) * k, x2: bx }
+  })
+  return (
+    <g aria-hidden="true">
+      <rect width={VW} height={SEAM} fill="url(#ppm-wall)" />
+      <rect width={VW} height={SEAM} fill="url(#ppm-planks)" />
+      <rect y={SEAM - 52} width={VW} height="3" fill="rgb(40 22 10 / .35)" />
+      <rect y={SEAM} width={VW} height={VH - SEAM} fill="url(#ppm-floor)" />
+      {boards.map((b, i) => (
+        <line key={i} x1={b.x1} y1={SEAM + 6} x2={b.x2} y2={VH} stroke="rgb(70 40 18 / .22)" strokeWidth="1" />
+      ))}
+      {/* the light off the varnish, and the skirting */}
+      <ellipse cx={VW / 2} cy={SEAM + 40} rx={VW * 0.55} ry="26" fill="#fff3dd" opacity=".18" filter="url(#ppm-softer)" />
+      <rect y={SEAM} width={VW} height="6" fill="#3a2414" />
+      <rect y={SEAM + 6} width={VW} height="2" fill="rgb(0 0 0 / .25)" />
+      <rect width={VW} height={VH} fill="url(#ppm-vignette)" />
+    </g>
+  )
+}
+
+const TOP = [corner(-1, 0), corner(1, 0), corner(1, 1), corner(-1, 1)].join(' ')
+
+/** the table: its shadow and legs on the floor, the slab, the green top with its lines, and the net */
+function Table() {
+  const floor = (x: number, y: number) => proj(x, y, FLOOR_Z)
+  const leg = (x: number, y: number) => {
+    const top = proj(x, y)
+    const bot = floor(x, y)
+    const w = 9 * top.s
+    return <rect key={`${x}:${y}`} x={top.px - w / 2} y={top.py} width={w} height={bot.py - top.py} fill="#17120e" />
+  }
+  // the slab under the top: the same outline, dropped by the table's thickness
+  const drop = (x: number, y: number) => {
+    const p = proj(x, y)
+    return `${p.px},${p.py + EDGE * p.s}`
+  }
+  const n0 = proj(-1, 0)
+  const n1 = proj(1, 0)
+  const net = proj(0, NET_Y)
+  const nl = proj(-1.12, NET_Y).px
+  const nr = proj(1.12, NET_Y).px
+  return (
+    <g aria-hidden="true">
+      {/* the dark under the table, spread on the floor */}
+      <polygon points={[floor(-1.15, -0.05), floor(1.15, -0.05), floor(1.15, 1.05), floor(-1.15, 1.05)].map((p) => `${p.px},${p.py}`).join(' ')} fill="#120c08" opacity=".78" filter="url(#ppm-softer)" />
+      {leg(-0.86, 0.94)}
+      {leg(0.86, 0.94)}
+      {leg(-0.86, 0.08)}
+      {leg(0.86, 0.08)}
+      <polygon points={[drop(-1, 0), drop(1, 0), drop(1, 1), drop(-1, 1)].join(' ')} fill="#3d3a36" />
+      {/* the front edge you're looking at: a white lip, then the metal-grey side */}
+      <polygon points={`${n0.px},${n0.py} ${n1.px},${n1.py} ${n1.px},${n1.py + EDGE} ${n0.px},${n0.py + EDGE}`} fill="url(#ppm-edge)" />
+      <polygon points={TOP} fill="url(#ppm-top)" />
+      <polygon points={TOP} fill="url(#ppm-sheen)" />
+      <polygon points={[corner(-0.985, 0.006), corner(0.985, 0.006), corner(0.985, 0.994), corner(-0.985, 0.994)].join(' ')} fill="none" stroke="#f6f4ee" strokeWidth="2.6" strokeLinejoin="round" />
+      <line x1={proj(0, 0.006).px} y1={proj(0, 0.006).py} x2={proj(0, 0.994).px} y2={proj(0, 0.994).py} stroke="#f6f4ee" strokeWidth="1.6" />
+      {/* the net: the mesh, its shadow on the top, the white tape, the clamps */}
+      <rect x={nl} y={net.py - 1} width={nr - nl} height="3" fill="#000" opacity=".25" filter="url(#ppm-soft)" />
+      <rect x={nl} y={net.py - NET_H} width={nr - nl} height={NET_H} fill="url(#ppm-mesh)" />
+      <rect x={nl} y={net.py - NET_H - 1.5} width={nr - nl} height="3" fill="#f6f4ee" />
+      <rect x={nl - 3} y={net.py - NET_H - 3} width="4" height={NET_H + 6} fill="#2a2724" />
+      <rect x={nr - 1} y={net.py - NET_H - 3} width="4" height={NET_H + 6} fill="#2a2724" />
+    </g>
+  )
+}
+
+/** A racket, face on: the blade's rubber (shaded, with its grain and a dark wooden rim) on a flared wooden handle. */
 function Racket({ colour }: { colour: string }) {
+  const blade = 'M0 -17C10 -17 17.5 -10 17.5 -1C17.5 8 11 14.5 4 15.5L-4 15.5C-11 14.5 -17.5 8 -17.5 -1C-17.5 -10 -10 -17 0 -17Z'
   return (
     <>
-      <rect x="-3.5" y="10" width="7" height="16" rx="2" fill="#a0683a" stroke="var(--ink)" strokeWidth="2.5" />
-      <ellipse rx="17" ry="14" fill={colour} stroke="var(--ink)" strokeWidth="3" />
-      <ellipse rx="11" ry="8" cx="-2" cy="-2" fill="#fff" opacity=".18" />
+      <path d="M-3.6 13L3.6 13L4.6 31Q4.8 34 0 34Q-4.8 34 -4.6 31Z" fill="url(#ppm-wood)" stroke="rgb(60 30 10 / .55)" strokeWidth=".8" />
+      <path d="M-1 16V32M1.4 17V31" stroke="rgb(90 50 20 / .25)" strokeWidth=".5" />
+      <path d={blade} fill="#2b1a0f" transform="scale(1.06)" />
+      <path d={blade} fill={colour} />
+      <path d={blade} fill="url(#ppm-grain)" />
+      <path d={blade} fill="url(#ppm-rubber)" />
+      <path d="M-3.4 12.5L3.4 12.5L2.6 16L-2.6 16Z" fill="#2b1a0f" />
     </>
   )
 }

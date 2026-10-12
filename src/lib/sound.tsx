@@ -33,6 +33,96 @@ const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; le
   error: { type: 'sawtooth', notes: [180, 140], gap: 0.09, len: 0.14, vol: 0.06 },
 }
 
+/*
+ * Knocks: a ball on a bat or a table is a click of noise ringing through a few short resonances, not a
+ * beep. Each is a burst of noise through band-pass filters (the hollow "tok") plus quickly dying tones
+ * (the ring of the ball and the body of the bat or table), nudged a little each time so no two hits
+ * sound the same, with a touch of hall echo.
+ */
+interface Knock {
+  /** [frequency, how long it rings in s, loudness] */
+  modes: [number, number, number][]
+  /** the click: band-passed noise around these frequencies */
+  click: { freqs: number[]; q: number; len: number; vol: number }
+  /** how much of it comes back off the walls */
+  room: number
+}
+const KNOCKS: Partial<Record<Cue, Knock>> = {
+  // the ball off the rubber: a soft, woody "tok"
+  pong: { modes: [[1050, 0.035, 0.05], [2400, 0.02, 0.025], [420, 0.05, 0.03]], click: { freqs: [1400, 3200], q: 2.2, len: 0.018, vol: 0.5 }, room: 0.16 },
+  // the ball off the table: brighter and hollower, with the thump of the top under it
+  ping: { modes: [[3100, 0.03, 0.035], [5200, 0.015, 0.015], [190, 0.06, 0.04]], click: { freqs: [3600, 6500], q: 3, len: 0.012, vol: 0.45 }, room: 0.2 },
+  // a smash: a hard crack off the bat
+  smash: { modes: [[900, 0.04, 0.09], [2100, 0.025, 0.05], [300, 0.07, 0.06]], click: { freqs: [1800, 4200], q: 1.2, len: 0.025, vol: 0.9 }, room: 0.24 },
+}
+
+let noiseBuf: AudioBuffer | null = null
+const echoes = new WeakMap<BaseAudioContext, AudioNode>()
+/** a short hall: two quiet reflections off the walls, the second a little duller */
+function hallOf(ctx: BaseAudioContext) {
+  let into = echoes.get(ctx)
+  if (into) return into
+  const input = ctx.createGain()
+  for (const [delay, gain, cut] of [[0.045, 0.5, 5000], [0.11, 0.3, 2500]] as const) {
+    const d = ctx.createDelay(0.5)
+    d.delayTime.value = delay
+    const g = ctx.createGain()
+    g.gain.value = gain
+    const f = ctx.createBiquadFilter()
+    f.type = 'lowpass'
+    f.frequency.value = cut
+    input.connect(d).connect(f).connect(g).connect(ctx.destination)
+  }
+  into = input
+  echoes.set(ctx, into)
+  return into
+}
+function knock(ctx: BaseAudioContext, k: Knock) {
+  const t = ctx.currentTime
+  const vary = () => 0.93 + Math.random() * 0.14
+  const out = ctx.createGain()
+  // level with the app's other sounds
+  out.gain.value = 0.5 * vary()
+  out.connect(ctx.destination)
+  const send = ctx.createGain()
+  send.gain.value = k.room
+  out.connect(send).connect(hallOf(ctx))
+  if (!noiseBuf || noiseBuf.sampleRate !== ctx.sampleRate) {
+    noiseBuf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.05), ctx.sampleRate)
+    const ch = noiseBuf.getChannelData(0)
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1
+  }
+  const pitch = vary()
+  for (const f of k.click.freqs) {
+    const src = ctx.createBufferSource()
+    src.buffer = noiseBuf
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = f * pitch
+    bp.Q.value = k.click.q
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(k.click.vol, t)
+    g.gain.exponentialRampToValueAtTime(0.001, t + k.click.len)
+    src.connect(bp).connect(g).connect(out)
+    src.start(t)
+    src.stop(t + k.click.len + 0.01)
+  }
+  for (const [f, len, vol] of k.modes) {
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    // a hit's pitch drops a touch as it rings out
+    osc.frequency.setValueAtTime(f * pitch * 1.04, t)
+    osc.frequency.exponentialRampToValueAtTime(f * pitch, t + len)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.002)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len)
+    osc.connect(g).connect(out)
+    osc.start(t)
+    osc.stop(t + len + 0.02)
+  }
+}
+
 interface SoundApi {
   muted: boolean
   toggle: () => void
@@ -81,6 +171,8 @@ export function SoundProvider({ children }: { children: ReactNode }) {
       if (muted) return
       try {
         const ctx = wake()
+        const k = KNOCKS[cue]
+        if (k) return knock(ctx, k)
         const { type, notes, gap, len, vol } = CUES[cue]
         notes.forEach((freq, i) => {
           const osc = ctx.createOscillator()

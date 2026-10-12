@@ -52,9 +52,9 @@
   cursor: grab;
 }
 /* as tall as the window allows under the HUD, never wider than the column */
-.ppm-table { display: block; width: auto; height: clamp(240px, calc(100dvh - 256px), 720px); max-width: 100%; overflow: visible; }
-.ppm-top { fill: #1d7a4c; }
-.ppm-pad { filter: drop-shadow(2px 3px 0 var(--ink)); }
+.ppm-table { display: block; width: auto; height: clamp(240px, calc(100dvh - 256px), 720px); max-width: 100%; overflow: hidden; border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); background: #2a1a10; }
+
+.ppm-pad { filter: drop-shadow(0 5px 4px rgb(0 0 0 / .45)); }
 
 /* who took the point, stamped over the table */
 .ppm-banner {
