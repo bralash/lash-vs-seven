@@ -83,6 +83,10 @@ export function initialPPState(target = 2, match = 1): PPState {
 const VW = 340
 // room under your end of the table for your thumb, so the bat stays in sight above it
 const VH = 575
+/** more wall above the hall, under the scores and buttons that float over the top of the scene */
+const TOP_PAD = 110
+/** a phone held upright fills the screen edge to edge (a little off the sides); anything wider fits the scene by its height */
+const fillsScreen = () => typeof window !== 'undefined' && window.innerWidth / window.innerHeight < 0.8
 const NEAR_Y = 340
 const FAR_Y = 190
 const NEAR_HALF = 160
@@ -232,6 +236,14 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const worldEl = useRef<SVGGElement>(null)
   const hallEl = useRef<SVGGElement>(null)
   const cam = useRef(0)
+  /** a mouse points straight at the spot, so the camera stays put for it (sliding would pull the bat out from under the pointer) */
+  const pointing = useRef(false)
+  const [fill, setFill] = useState(fillsScreen)
+  useEffect(() => {
+    const onResize = () => setFill(fillsScreen())
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const puffEl = useRef<SVGCircleElement>(null)
   const trailEls = useRef<(SVGCircleElement | null)[]>([])
   const shadowEl = useRef<SVGEllipseElement>(null)
@@ -394,6 +406,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 
   const down = (e: ReactPointerEvent) => {
     if (!inMatch) return
+    pointing.current = e.pointerType === 'mouse'
     e.currentTarget.setPointerCapture?.(e.pointerId)
     touching.current = true
     path.current = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }]
@@ -401,11 +414,12 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   }
   /** a mouse just points: the bat goes to the spot under it */
   const aimMouse = (e: ReactPointerEvent) => {
-    const box = tableEl.current?.getBoundingClientRect()
-    if (!box?.width) return
-    // the spot on the table under the pointer, wherever the camera has slid to
-    const px = ((e.clientX - box.left) / box.width) * VW + cam.current
-    const py = ((e.clientY - box.top) / box.height) * VH
+    const m = tableEl.current?.getScreenCTM()
+    if (!m?.a) return
+    // the spot on the table under the pointer (the scene can be scaled and cropped to fill the screen),
+    // wherever the camera has slid to
+    const px = (e.clientX - m.e) / m.a + cam.current
+    const py = (e.clientY - m.f) / m.d
     const r = rally.current
     const at = unproj(px, py)
     r.myX = at.x
@@ -413,6 +427,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     keepBat()
   }
   const moveP = (e: ReactPointerEvent) => {
+    pointing.current = e.pointerType === 'mouse'
     if (e.pointerType === 'mouse') {
       track(e)
       aimMouse(e)
@@ -421,9 +436,9 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       // a thumb moves the bat by however far it moves (a little further), like a trackpad
       const last = path.current[path.current.length - 1]
       track(e)
-      const box = tableEl.current?.getBoundingClientRect()
-      if (!last || !box?.width) return
-      const k = (VW / box.width) * GAIN
+      if (!last) return
+      // by screen pixels, not the drawing's scale, so it feels the same however big the scene is
+      const k = GAIN
       const r = rally.current
       r.myX += ((e.clientX - last.x) * k) / NEAR_HALF
       r.myY -= ((e.clientY - last.y) * k) / TRACK_LEN
@@ -632,7 +647,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       }
       // the camera slides after your bat, so a ball into the corner is still on screen when you get there;
       // the hall behind moves less than the table, so it looks far away
-      const aim = (proj(r.myX, r.myY).px - VW / 2) * PAN
+      const aim = pointing.current ? 0 : (proj(r.myX, r.myY).px - VW / 2) * PAN
       cam.current += (aim - cam.current) * (1 - Math.exp(-dt / CAM_EASE))
       worldEl.current?.setAttribute('transform', `translate(${(-cam.current).toFixed(2)} 0)`)
       hallEl.current?.setAttribute('transform', `translate(${(-cam.current * 0.35).toFixed(2)} 0)`)
@@ -681,7 +696,8 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   if (showResults) return <Results room={room} me={me} st={st} seats={seats} exit={exit} />
 
   return (
-    <main className="ppm screen-in">
+    // no screen-in here: its transform would trap the full-page scene inside this box
+    <main className="ppm">
       <div className="mt-hud">
         {card(0)}
         <div className="ppm-game">
@@ -696,12 +712,11 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       </p>
 
       <div className="ppm-stage" onPointerDown={down} onPointerMove={moveP} onPointerUp={up} onPointerCancel={() => (touching.current = false)}>
-        <svg ref={tableEl} className="ppm-table" viewBox={`0 0 ${VW} ${VH}`} data-ult-board aria-label="The table">
+        <svg ref={tableEl} className="ppm-table" viewBox={`0 ${-TOP_PAD} ${VW} ${VH + TOP_PAD}`} preserveAspectRatio={fill ? 'xMidYMid slice' : 'xMidYMid meet'} data-ult-board aria-label="The table">
           <SceneDefs />
           <g ref={hallEl}>
             <Hall />
           </g>
-          <rect width={VW} height={VH} fill="url(#ppm-vignette)" />
           <g ref={worldEl}>
           <Table />
 
@@ -759,7 +774,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
 
 const BALL = 'url(#ppm-ball)'
 /** the hall runs this far past both sides, so it never runs out when the camera slides */
-const HALL_OVER = 140
+const HALL_OVER = 600
 
 /** gradients, textures and the soft blur the scene shares */
 function SceneDefs() {
@@ -780,10 +795,6 @@ function SceneDefs() {
         <stop offset=".35" stopColor="#d9a26a" />
         <stop offset="1" stopColor="#8a5a33" />
       </linearGradient>
-      <radialGradient id="ppm-vignette" cx=".5" cy=".45" r=".75">
-        <stop offset=".55" stopColor="#000" stopOpacity="0" />
-        <stop offset="1" stopColor="#000" stopOpacity=".55" />
-      </radialGradient>
       <radialGradient id="ppm-under" cx=".5" cy=".35" r=".6">
         <stop offset="0" stopColor="#0d0907" stopOpacity=".95" />
         <stop offset=".7" stopColor="#1c120b" stopOpacity=".8" />
@@ -866,8 +877,8 @@ function Hall() {
   })
   return (
     <g aria-hidden="true">
-      <rect x={-HALL_OVER} width={VW + 2 * HALL_OVER} height={SEAM} fill="url(#ppm-wall)" />
-      <rect x={-HALL_OVER} width={VW + 2 * HALL_OVER} height={SEAM} fill="url(#ppm-planks)" />
+      <rect x={-HALL_OVER} y={-TOP_PAD} width={VW + 2 * HALL_OVER} height={SEAM + TOP_PAD} fill="url(#ppm-wall)" />
+      <rect x={-HALL_OVER} y={-TOP_PAD} width={VW + 2 * HALL_OVER} height={SEAM + TOP_PAD} fill="url(#ppm-planks)" />
       <rect x={-HALL_OVER} y={SEAM - 52} width={VW + 2 * HALL_OVER} height="3" fill="rgb(40 22 10 / .35)" />
       <rect x={-HALL_OVER} y={SEAM} width={VW + 2 * HALL_OVER} height={VH - SEAM} fill="url(#ppm-floor)" />
       {boards.map((b, i) => (

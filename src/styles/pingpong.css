@@ -40,19 +40,28 @@
 /* mid-rally there's nothing to say: the box steps back */
 .ppm-status--quiet { border-color: transparent; background: none; }
 
-/* the table: swipes anywhere on it, so it doesn't scroll or select */
+/* the scene is the whole page: the hall fills the screen behind everything, and the scores, the
+   status and the buttons float over it. Swipes anywhere on it, so it doesn't scroll or select. */
 .ppm-stage {
-  position: relative;
-  display: grid;
-  justify-items: center;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: #2a1a10;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   cursor: grab;
 }
-/* as tall as the window allows under the HUD, never wider than the column */
-.ppm-table { display: block; width: auto; height: clamp(240px, calc(100dvh - 256px), 720px); max-width: 100%; overflow: hidden; border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); background: #2a1a10; }
+.ppm-table { display: block; width: 100%; height: 100%; }
+/* the hall's corners fall into shadow, whatever the screen's shape (the hint and banners stay above it) */
+.ppm-stage > :not(svg) { z-index: 1; }
+.ppm-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgb(0 0 0 / .5)); }
+.ppm > :not(.ppm-stage) { position: relative; z-index: 1; }
+html:has(.ppm-stage) .lobby > .topbar { position: relative; z-index: 2; }
+html:has(.ppm-stage) .topbar__title { color: #f6e7cf; text-shadow: 0 1px 3px rgb(0 0 0 / .6); }
+/* the hint sits in the open, over the floor */
+.ppm-stage .ppm-hint { bottom: 14%; }
 
 .ppm-pad { filter: drop-shadow(0 5px 4px rgb(0 0 0 / .45)); }
 
@@ -131,8 +140,7 @@
 
 /* phones during the match: everything on one screen, the table takes what's left */
 @media (width < 900px) {
-  html.scroll-locked .ppm { flex: 1; min-height: 0; padding-bottom: 0; gap: 10px; grid-template-rows: auto auto minmax(0, 1fr); }
-  html.scroll-locked .ppm-stage { min-height: 0; align-items: center; }
+  html.scroll-locked .ppm { flex: 1; min-height: 0; padding-bottom: 0; gap: 10px; align-content: start; }
   html.scroll-locked .ppm .mt-score { padding-block: 6px 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
