@@ -528,3 +528,6 @@
   45% { transform: translate(calc(var(--dx) * .45), calc(var(--dy) * .45 - 80px)) scale(1.25) rotate(200deg); }
   100% { transform: translate(var(--dx), var(--dy)) scale(.8) rotate(380deg); opacity: .3; }
 }
+.watch__plus { font-weight: 700; }
+.watch__invite { display: grid; gap: 6px; margin-top: 12px; }
+.watch__invite-note { margin: 0; font: 11px/1.4 var(--mono); color: var(--ink-soft); }

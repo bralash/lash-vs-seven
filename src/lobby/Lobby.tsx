@@ -1025,7 +1025,15 @@ function WaitingRoom({
           </WearsProvider>
         </LooksProvider>
         {room.status === 'playing' && <SelfOffline />}
-        {game.watch && <Spectators game={game.slug} code={code} pid={pid} watchers={room.watchers} />}
+        {game.watch && (
+          <Spectators
+            game={game.slug}
+            code={code}
+            pid={pid}
+            watchers={room.watchers}
+            invite={room.status === 'playing' && !room.noWatch ? { url: inviteUrl(game.slug, code), name: game.name } : undefined}
+          />
+        )}
       </>
     )
   }

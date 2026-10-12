@@ -10,7 +10,8 @@ import { reactionOf } from './Reactions'
 
 /*
  * People watching an online match. Everyone in a watched room (players and watchers) sees an eye
- * chip with how many are watching, and the watchers' reactions as small stickers along the bottom,
+ * chip with how many are watching; players always have it during a match, so they can open it and
+ * invite someone to watch (the room's link, shared or copied), and the watchers' reactions as small stickers along the bottom,
  * apart from the players' own. Watchers write their latest reaction to
  * matches/{game}/{code}/wreact/{uid}, the way players use react/.
  */
@@ -24,7 +25,20 @@ interface Cheer {
   said: string
 }
 
-export function Spectators({ game, code, pid, watchers }: { game: string; code: string; pid: string; watchers?: Record<string, Watcher> }) {
+export function Spectators({
+  game,
+  code,
+  pid,
+  watchers,
+  invite,
+}: {
+  game: string
+  code: string
+  pid: string
+  watchers?: Record<string, Watcher>
+  /** a player in the match: the room's link to send someone, and the game's name for the message */
+  invite?: { url: string; name: string }
+}) {
   const list = Object.entries(watchers ?? {}).sort(([, a], [, b]) => (a.at ?? 0) - (b.at ?? 0))
   const [open, setOpen] = useState(false)
   const [cheers, setCheers] = useState<Cheer[]>([])
@@ -33,6 +47,29 @@ export function Spectators({ game, code, pid, watchers }: { game: string; code: 
   const namesRef = useRef(watchers)
   namesRef.current = watchers
   const { play } = useSound()
+  const [copied, setCopied] = useState(false)
+
+  // the phone's share sheet where there is one, otherwise the link goes on the clipboard
+  const sendInvite = async () => {
+    if (!invite) return
+    play('tap')
+    const text = `Watch my ${invite.name} match on Lash vs Seven`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: text, text, url: invite.url })
+        return
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(invite.url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2400)
+    } catch {
+      /* no clipboard: the link is on screen to copy by hand */
+    }
+  }
 
   useEffect(
     () =>
@@ -63,7 +100,7 @@ export function Spectators({ game, code, pid, watchers }: { game: string; code: 
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  if (!list.length && !cheers.length) return null
+  if (!list.length && !cheers.length && !invite) return null
   return (
     <Portal>
       <div className="watch">
@@ -75,25 +112,41 @@ export function Spectators({ game, code, pid, watchers }: { game: string; code: 
             </div>
           ))}
         </div>
-        {list.length > 0 && (
-          <button type="button" className="watch__chip" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`${list.length} watching`}>
-            <span aria-hidden="true">👁</span> {list.length}
+        {(list.length > 0 || invite) && (
+          <button
+            type="button"
+            className="watch__chip"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-label={list.length ? `${list.length} watching` : 'Invite someone to watch'}
+          >
+            <span aria-hidden="true">👁</span> {list.length > 0 ? list.length : invite && <span className="watch__plus">+</span>}
           </button>
         )}
-        {open && list.length > 0 && (
+        {open && (list.length > 0 || invite) && (
           <>
             <button type="button" className="react__scrim" aria-label="Close" onClick={() => setOpen(false)} />
             <div className="watch__list" role="dialog" aria-label="Watching">
-              <p className="label">Watching</p>
-              <ul>
-                {list.map(([id, w]) => (
-                  <li key={id}>
-                    <OpsFace size={28} look={asLook(w.look) ?? 'screen'} wear={asWear(w.wear)} />
-                    <span>{w.name}</span>
-                    {id === pid && <span className="seat__you">You</span>}
-                  </li>
-                ))}
-              </ul>
+              <p className="label">{list.length ? 'Watching' : 'Nobody’s watching yet'}</p>
+              {list.length > 0 && (
+                <ul>
+                  {list.map(([id, w]) => (
+                    <li key={id}>
+                      <OpsFace size={28} look={asLook(w.look) ?? 'screen'} wear={asWear(w.wear)} />
+                      <span>{w.name}</span>
+                      {id === pid && <span className="seat__you">You</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {invite && (
+                <div className="watch__invite">
+                  <button type="button" className="btn btn--primary btn--block" onClick={sendInvite}>
+                    {copied ? 'Link copied' : 'Invite to watch'}
+                  </button>
+                  <p className="watch__invite-note">They can watch, hear your voice notes and cheer, but never see your cards or moves before you make them.</p>
+                </div>
+              )}
             </div>
           </>
         )}
