@@ -244,7 +244,12 @@ export function Shop() {
         {ITEMS.filter((it) => it.slot === slot.id && !it.prize).map((it) => {
           const on = wear.includes(it.id)
           const mine = ownsItem(wallet?.owned, it.id) || on
-          const toggle = (id: ItemId, v: boolean) => (play('tap'), setWorn(id, v))
+          // nothing picked yet: putting something on picks Bot (who it's shown on), so you see it
+          const wearIt = (id: ItemId) => {
+            if (!look) setCrewLook(model)
+            setWorn(id, true)
+          }
+          const toggle = (id: ItemId, v: boolean) => (play('tap'), v ? wearIt(id) : setWorn(id, false))
           return card(it.id, {
             price: it.price,
             mine,
@@ -262,7 +267,7 @@ export function Shop() {
                 Put on
               </button>
             ) : (
-              buyArea(it.id, it.price, () => buy(it.id, it.price, () => buyItem(it.id), () => setWorn(it.id, true)))
+              buyArea(it.id, it.price, () => buy(it.id, it.price, () => buyItem(it.id), () => wearIt(it.id)))
             ),
           })
         })}
@@ -428,7 +433,7 @@ export function Shop() {
 
           {!current.soon ? (
             <p className="hint shop__foot">
-              {current.id === 'wardrobe' && !look ? 'Pick a character in the Locker to wear these in games · ' : ''}
+              {current.id === 'wardrobe' && !look ? 'Putting something on picks Bot for you (change it in the Locker) · ' : ''}
               Everything you own is in your <Link to="/locker">Locker</Link> · win matches for chips
             </p>
           ) : (

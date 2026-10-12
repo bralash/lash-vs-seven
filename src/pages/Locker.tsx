@@ -115,7 +115,7 @@ export function Locker() {
 
         <section className="opsroom__section" aria-labelledby="wardrobe-title">
           <h2 id="wardrobe-title" className="opsroom__h">Wardrobe</h2>
-          {!look && <p className="hint opsroom__note">Pick a character above to wear these in games.</p>}
+          {!look && <p className="hint opsroom__note">Putting something on picks {current.name} for you.</p>}
           {SLOTS.map((slot) => {
             const mine = items.filter((it) => it.slot === slot.id)
             if (!mine.length) return null
@@ -133,6 +133,8 @@ export function Locker() {
                         className="opsroom__look opsroom__item"
                         onClick={() => {
                           play('tap')
+                          // nothing picked yet: putting something on picks the character it's shown on, so you see it
+                          if (!on && !look) setCrewLook(shown)
                           setWorn(it.id, !on)
                         }}
                       >
