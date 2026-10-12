@@ -187,7 +187,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     /** the shot Ops couldn't get to: she lunges for `lunge` and it goes past her */
     late: null as Flight | null,
     lunge: 0,
-    /** the ball squashing on the table, and the puff of chalk where it landed */
+    /** when the ball last met the table, and the puff of chalk where it landed */
     bounceAt: -1e9,
     puff: { x: 0, y: 0 },
     /** the spin showing on the ball: its seam's turn (sidespin) and tumble (top/backspin) */
@@ -525,7 +525,7 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           if (((was > 0 && d <= 0) || Math.abs(d) < 0.025) && Math.abs(b.x - r.myX) <= BAT_REACH) meet(f, b, now)
           else if (b.y < GONE_Y) point(1, 'miss') // gone past you: let it fly by first
         }
-        // the bounce, once per shot: a squash, a puff of chalk, the sound
+        // the bounce, once per shot: a puff of chalk, the sound
         if (r.flight === f && f.fault !== 'net' && t >= f.tb && r.pinged !== f) {
           r.pinged = f
           r.bounceAt = t
@@ -557,7 +557,10 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const sit = !!(fl && fl.by === 1 && r.phase === 'flight' && !fl.fault && t > fl.tb && ballAt(fl, t).z >= SMASH_Z)
       if (sit !== r.sitter) {
         r.sitter = sit
-        faceEl.current?.setAttribute('fill', sit ? 'var(--hit)' : BALL)
+        // a hard plastic ball never changes shape: a sitter just burns white-hot and glows
+        faceEl.current?.setAttribute('fill', sit ? 'url(#ppm-ball-hot)' : BALL)
+        if (sit) ballEl.current?.setAttribute('filter', 'url(#ppm-glow)')
+        else ballEl.current?.removeAttribute('filter')
         if (sit || r.phase === 'flight') setPrompt(sit ? 'Smash it!' : '')
       }
       if (seamEl.current) seamEl.current.setAttribute('transform', `rotate(${r.turn}) scale(1 ${Math.cos(r.tumble).toFixed(3)})`)
@@ -565,10 +568,9 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       if (ball && ballEl.current && shadowEl.current) {
         const p = proj(ball.x, ball.y, ball.z)
         const g = proj(ball.x, ball.y, 0)
-        // it squashes for a moment where it meets the table
-        const sq = Math.max(0, 1 - (t - r.bounceAt) / 110)
+        // always round: only its distance (and a little its height) changes how big it looks
         const size = seen(p.s) * (1 + ball.z * 0.45)
-        ballEl.current.setAttribute('transform', `translate(${p.px} ${p.py}) scale(${size * (1 + 0.35 * sq)} ${size * (1 - 0.3 * sq)})`)
+        ballEl.current.setAttribute('transform', `translate(${p.px} ${p.py}) scale(${size})`)
         ballEl.current.style.opacity = '1'
         // the streak behind it: tinted for topspin (orange) or backspin (blue) on a quick ball
         r.trail.push({ px: p.px, py: p.py, s: size })
@@ -698,10 +700,10 @@ export function PingPongMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
             <circle key={i} ref={(el) => void (trailEls.current[i] = el)} r="5" style={{ opacity: 0 }} />
           ))}
           <g ref={ballEl} style={{ opacity: 0 }}>
-            <circle ref={faceEl} r="7" fill={BALL} stroke="rgb(0 0 0 / .28)" strokeWidth="1" />
-            {/* the seam: turns with sidespin, tumbles with top or backspin */}
+            <circle ref={faceEl} r="7" fill={BALL} stroke="rgb(120 80 0 / .35)" strokeWidth=".8" />
+            {/* the maker's print: turns with sidespin, tumbles with top or backspin */}
             <g ref={seamEl}>
-              <path d="M-4.5 -4.6Q-1 0 -4.5 4.6M4.5 -4.6Q1 0 4.5 4.6" fill="none" stroke="var(--lash)" strokeWidth="1.3" strokeLinecap="round" opacity=".8" />
+              <path d="M-2.6 -1.2Q0 -2.8 2.6 -1.2M-1.6 0.6H1.6" fill="none" stroke="#7a5200" strokeWidth=".8" strokeLinecap="round" opacity=".45" />
             </g>
             <circle r="7" fill="url(#ppm-ball-shade)" />
           </g>
@@ -787,10 +789,23 @@ function SceneDefs() {
         <path d="M0 0L3 3M3 0L0 3" stroke="rgb(255 255 255 / .35)" strokeWidth=".45" />
       </pattern>
       <radialGradient id="ppm-ball" cx=".38" cy=".32" r=".75">
-        <stop offset="0" stopColor="#ffffff" />
-        <stop offset=".55" stopColor="#f4ede0" />
-        <stop offset="1" stopColor="#cdbfa8" />
+        <stop offset="0" stopColor="#fff7c4" />
+        <stop offset=".45" stopColor="#ffd62e" />
+        <stop offset="1" stopColor="#d99a00" />
       </radialGradient>
+      <radialGradient id="ppm-ball-hot" cx=".38" cy=".32" r=".75">
+        <stop offset="0" stopColor="#ffffff" />
+        <stop offset=".5" stopColor="#fff3a0" />
+        <stop offset="1" stopColor="#ffb800" />
+      </radialGradient>
+      <filter id="ppm-glow" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="2.4" result="b" />
+        <feMerge>
+          <feMergeNode in="b" />
+          <feMergeNode in="b" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
       <radialGradient id="ppm-ball-shade" cx=".35" cy=".3" r=".7">
         <stop offset="0" stopColor="#fff" stopOpacity=".7" />
         <stop offset=".25" stopColor="#fff" stopOpacity="0" />
