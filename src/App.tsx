@@ -3,6 +3,7 @@ import { createBrowserRouter, Link, Navigate, RouterProvider, type RouteObject }
 import { Anagram } from './games/anagram/Anagram'
 import { ConnectFour } from './games/connect4/ConnectFour'
 import { PingPong } from './games/pingpong/PingPong'
+import { Pong } from './games/pong/Pong'
 import { Pool } from './games/pool/Pool'
 import { Crossword } from './games/crossword/Crossword'
 import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
@@ -60,6 +61,7 @@ const routes: RouteObject[] = [
   { path: '/tictactoe', element: <TicTacToe /> },
   { path: '/connect4', element: <ConnectFour /> },
   { path: '/pingpong', element: <PingPong /> },
+  { path: '/pong', element: <Pong /> },
   { path: '/pool', element: <Pool /> },
   { path: '/dots', element: <DotsAndBoxes /> },
   { path: '/othello', element: <Othello /> },
