@@ -149,3 +149,26 @@
 @media (prefers-reduced-motion: reduce) {
   .tm-water__glint, .tm-ripple, .tm-bob, .tm-rock, .tm-beam, .tm-blink2, .tm-look, .tm-dangle, .tm-float, .tm-wave, .tm-cloud { animation: none; }
 }
+
+/* ── The Tower page: the map runs edge to edge under a slim bar ── */
+body:has(.tower-page) { overflow-x: clip; }
+.tower-map { position: relative; width: 100vw; margin: 8px 0 0 calc(50% - 50vw); border-block: var(--edge) solid var(--ink); background: var(--paper); }
+.tower-bar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px max(var(--gutter), calc(50vw - var(--max) / 2 + var(--gutter)));
+  border-bottom: var(--edge) solid var(--ink);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  backdrop-filter: blur(4px);
+}
+.tower-bar__name { min-width: 0; }
+.tower-bar__name .tower__kicker { font-size: 10px; }
+.tower-bar__title { display: flex; align-items: center; gap: 8px; margin: 2px 0 0; font-family: var(--display); font-weight: 400; font-size: clamp(22px, 6vw, 34px); line-height: 1; text-transform: uppercase; text-shadow: 2px 2px 0 var(--seven); white-space: nowrap; }
+.tower-bar__status { display: grid; justify-items: end; gap: 4px; flex: none; }
+.tower-map__loading { padding: 60px var(--gutter); text-align: center; }
+.tower-page .tower { margin-top: 24px; }

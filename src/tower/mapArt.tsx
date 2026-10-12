@@ -1,7 +1,7 @@
 import type { OpsStyle } from '../components/OpsFace'
 
 /*
- * Art for the Tower road map (dev lab /dev/towermap): a house for each game, a touch of each owner
+ * Art for the Tower road map (the Tower page, /tower): a house for each game, a touch of each owner
  * beside it, and the bits of land in between. Everything is drawn at a slant from above (a
  * flattened isometric view) in the app's flat colours with ink outlines.
  */
