@@ -1,7 +1,7 @@
 import { Lobby } from '../../lobby/Lobby'
 import { ppBrain, ppSense } from '../pingpong/bot'
 import { gameBySlug } from '../registry'
-import { PongMatch, initialPongState } from './PongMatch'
+import { PongDemo, PongMatch, initialPongState } from './PongMatch'
 
 const game = gameBySlug('pong')!
 
@@ -21,6 +21,8 @@ export function Pong() {
         ],
       }}
       initialState={(choice) => ({ ...initialPongState(Number(choice ?? 1)) })}
+      // the ball coming over, the side lighting up, the ring closing in and the tap (the ring and the light are easy-only help)
+      rulesDemo={() => <PongDemo />}
       bot={ppBrain}
       sense={ppSense}
       renderGame={(room, me, exit) => <PongMatch room={room} me={me} exit={exit} />}

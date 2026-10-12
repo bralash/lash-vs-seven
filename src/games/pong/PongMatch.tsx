@@ -295,7 +295,8 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     setPrompt('')
     setTimeout(() => {
       setBanner((b) => (b?.n === n ? null : b))
-      if (rally.current.phase === 'point' && !liveRef.current.result) nextServe()
+      // (after the last point nextServe just stands the rally down, ready for a rematch)
+      if (rally.current.phase === 'point') nextServe()
     }, 1100)
   }, [live, oppName, sound, nextServe, seatOf, assists])
 
@@ -666,24 +667,31 @@ function Table() {
  * How to play, acted out: a ball comes over to the right, that side lights up, the ring closes in
  * on the bat and a thumb taps the right half just as the ball meets it. Three steps underneath.
  */
+/** the scene the how-to acts out on a loop (also at the top of How to play in the lobby) */
+export function PongDemo() {
+  return (
+    <div className="pong-howto__demo" aria-hidden="true">
+      <svg viewBox="0 0 100 56">
+        <rect x="36" y="6" width="28" height="30" className="pong-howto__table" />
+        <line x1="33" y1="21" x2="67" y2="21" className="pong-howto__net" />
+        <line x1="50" y1="6" x2="50" y2="36" className="pong-howto__line" />
+        <circle cx="72" cy="44" r="2.6" className="pong-howto__ring" />
+        <circle cx="42" cy="2" r="2" className="pong-howto__ball" />
+      </svg>
+      <span className="pong-howto__l">L</span>
+      <span className="pong-howto__r">R</span>
+      <span className="pong-howto__half" />
+      <span className="pong-howto__thumb" />
+    </div>
+  )
+}
+
 function HowTo({ onDone }: { onDone: () => void }) {
   return (
     <div className="pong-howto" role="dialog" aria-label="How to play" onPointerDown={(e) => e.stopPropagation()}>
       <div className="pong-howto__card">
         <p className="label">How to play</p>
-        <div className="pong-howto__demo" aria-hidden="true">
-          <svg viewBox="0 0 100 56">
-            <rect x="36" y="6" width="28" height="30" className="pong-howto__table" />
-            <line x1="33" y1="21" x2="67" y2="21" className="pong-howto__net" />
-            <line x1="50" y1="6" x2="50" y2="36" className="pong-howto__line" />
-            <circle cx="72" cy="44" r="2.6" className="pong-howto__ring" />
-            <circle cx="42" cy="2" r="2" className="pong-howto__ball" />
-          </svg>
-          <span className="pong-howto__l">L</span>
-          <span className="pong-howto__r">R</span>
-          <span className="pong-howto__half" />
-          <span className="pong-howto__thumb" />
-        </div>
+        <PongDemo />
         <ol className="pong-howto__steps">
           <li>
             <b>Watch the letters.</b> The side the ball is coming to lights up.

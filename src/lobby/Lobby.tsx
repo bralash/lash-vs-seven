@@ -159,6 +159,8 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
   const [params, setParams] = useSearchParams()
   const urlCode = normalizeCode(params.get('room') ?? '')
   const [inRoom, setInRoom] = useState<string | null>(null)
+  /** what the back arrow does in a room before the match: the room's own Close / Leave */
+  const roomBack = useRef<(() => void) | null>(null)
   // watching someone else's match: the room, and the name we watch under
   const [watching, setWatching] = useState<{ code: string; name: string } | null>(null)
   // the players' names, for a watcher's reactions and voice notes
@@ -290,7 +292,8 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
     markLeft(game.slug, null)
     setInRoom(code)
     setInvite(null)
-    setParams({ room: code }, { replace: true })
+    // a step of its own in the history, so the phone's back button comes back here to the lobby
+    setParams({ room: code }, { replace: !!urlCode })
   }
   const enterWatch = (code: string, name: string) => {
     setWatching({ code, name })
@@ -298,6 +301,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
     setParams({ room: code }, { replace: true })
   }
   const exitRoom = () => {
+    roomBack.current = null
     setWatching(null)
     setWatchNames(undefined)
     setInRoom(null)
@@ -305,6 +309,15 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
     setChallengeFor(null)
     setParams({}, { replace: true })
   }
+
+  // the phone's back button from a room before its match: leave it (Close / Leave room), back in the lobby
+  const lastUrlCode = useRef(urlCode)
+  useEffect(() => {
+    const was = lastUrlCode.current
+    lastUrlCode.current = urlCode
+    if (was && !urlCode && inRoom === was && guard?.kind !== 'match') (roomBack.current ?? exitRoom)()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlCode])
 
   // "Challenge" from the homepage's rivals: open a room right away (with the saved name) and say who
   // it's for. Without a saved name, the start screen asks as usual.
@@ -458,6 +471,7 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         onExit={exitRoom}
         onGuard={setGuard}
         onRequestLeave={() => setAsking(true)}
+        backRef={roomBack}
         renderGame={renderGame}
         sense={sense}
         initialState={initialState}
@@ -493,9 +507,25 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
             </span>
           ) : (
             <>
-              <Link to="/" className="icon-btn" aria-label="All games">
-                <ArrowLeft />
-              </Link>
+              {/* in a room, watching or setting up a game, back is this game's lobby; from the lobby, all games */}
+              {inRoom || watching || setup ? (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label={`Back to ${game.name}`}
+                  onClick={() => {
+                    if (setup && !inRoom && !watching) setSetup(false)
+                    else if (inRoom && roomBack.current) roomBack.current()
+                    else exitRoom()
+                  }}
+                >
+                  <ArrowLeft />
+                </button>
+              ) : (
+                <Link to="/" className="icon-btn" aria-label="All games">
+                  <ArrowLeft />
+                </Link>
+              )}
               <span className="topbar__title">
                 {game.name}
                 {watching && <span className="hide-sm"> · Watching</span>}
@@ -886,6 +916,7 @@ function WaitingRoom({
   onExit,
   onGuard,
   onRequestLeave,
+  backRef,
   renderGame,
   sense,
   initialState,
@@ -897,6 +928,8 @@ function WaitingRoom({
   onExit: () => void
   onGuard: (g: LeaveGuard | null) => void
   onRequestLeave: () => void
+  /** set to what the top bar's back arrow should do here */
+  backRef: { current: (() => void) | null }
   renderGame: Props['renderGame']
   /** how a game's end reads, so its winner charges an ultimate */
   sense?: OpsSense
@@ -1040,6 +1073,8 @@ function WaitingRoom({
 
   const seats = seatedPlayers(room)
   const seated = seats.filter(Boolean).length
+  // the top bar's back arrow does what Close room / Leave room does
+  backRef.current = isHost && seated > 1 ? onRequestLeave : leave
   const fewest = game.players?.[0] ?? 2
   const many = seats.length > 2
   const ready = seated >= fewest

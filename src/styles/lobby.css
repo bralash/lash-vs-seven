@@ -257,3 +257,16 @@
 .stake .seg__btn { flex: 1; justify-content: center; font-size: 13px; }
 .stake .hint { margin: 0; letter-spacing: .08em; }
 .stake__text { margin: 0; font-family: var(--display); font-size: clamp(26px, 6vw, 38px); line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+
+/* phones: everything closer together, so the way to play Ops is on the first screen without scrolling */
+@media (max-width: 600px) {
+  .lobby > .topbar { padding: 12px 0; }
+  .lobby__main { gap: 16px; padding: 4px 0 24px; }
+  .lobby__hero { gap: 6px; }
+  .lobby__title { font-size: clamp(36px, 11vw, 48px); }
+  .lobby__stack { gap: 14px; }
+  .lobby .field-card { padding: 10px 16px 12px; box-shadow: var(--shadow); }
+  .lobby .field-card input { margin-top: 2px; padding-bottom: 4px; font-size: 28px; }
+  .lobby .btn--lg { padding: 12px 20px; font-size: 24px; box-shadow: var(--shadow); }
+  .lobby .join-row { gap: 10px; }
+}
