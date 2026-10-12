@@ -5,6 +5,7 @@ import { ConnectFour } from './games/connect4/ConnectFour'
 import { PingPong } from './games/pingpong/PingPong'
 import { Pong } from './games/pong/Pong'
 import { Ampe } from './games/ampe/Ampe'
+import { Shootout } from './games/shootout/Shootout'
 import { Pool } from './games/pool/Pool'
 import { Crossword } from './games/crossword/Crossword'
 import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
@@ -64,6 +65,7 @@ const routes: RouteObject[] = [
   { path: '/pingpong', element: <PingPong /> },
   { path: '/pong', element: <Pong /> },
   { path: '/ampe', element: <Ampe /> },
+  { path: '/shootout', element: <Shootout /> },
   { path: '/pool', element: <Pool /> },
   { path: '/dots', element: <DotsAndBoxes /> },
   { path: '/othello', element: <Othello /> },

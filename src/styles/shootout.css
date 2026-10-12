@@ -1,0 +1,149 @@
+/* ── Shootout: the goal from behind the keeper (or the ball), drawn in metres and projected ── */
+.so {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+.so > * { width: 100%; }
+.so > :not(.so-stage) { position: relative; z-index: 1; }
+/* the top bar (leave, reactions, sound) stays above the pitch */
+html:has(.so-stage) .lobby > .topbar { position: relative; z-index: 2; }
+
+.so-round {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 76px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+}
+.so-round .label { color: var(--paper-2); font-size: 10px; }
+.so-round__n { font-family: var(--display); font-size: 20px; color: var(--paper); text-transform: uppercase; }
+
+.so-status {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 6px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(15px, 4.2vw, 21px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.so-status--you { background: var(--lash); color: var(--slot); }
+.so-status--quiet { border-color: transparent; background: none; }
+
+/* the whole page is the pitch: drag to aim, or tap where you'll dive */
+.so-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: end center;
+  background: var(--hit);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+/* the scene keeps its shape: as wide as the screen on a phone, as tall as it allows on anything wider */
+.so-world {
+  position: relative;
+  width: min(100%, calc((100svh - 190px) * 100 / 150));
+  max-height: 100svh;
+  overflow: hidden;
+}
+.so-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.so-crowd { fill: var(--board); }
+.so-board { fill: var(--seven); }
+.so-pitch { fill: #3f9a4b; }
+.so-pitch__stripe { fill: #48a955; }
+.so-pitch__line { stroke: #fff; stroke-width: .45; opacity: .9; }
+.so-pitch__spot { fill: #fff; }
+
+.so-frame { stroke: #fff; stroke-width: 1.7; stroke-linecap: square; filter: drop-shadow(.5px .5px 0 var(--ink)); }
+.so-frame__back { stroke: #fff; stroke-width: .5; opacity: .55; }
+.so-net { opacity: .55; }
+.so-net__mesh { stroke: #fff; stroke-width: .18; }
+
+.so-ball { fill: #fff; stroke: var(--ink); stroke-width: .35; }
+.so-ball__patch { fill: var(--ink); }
+.so-ball__shadow { fill: rgb(0 0 0 / .25); }
+
+.so-stick__limb { stroke: var(--ink); stroke-width: .1; stroke-linecap: round; }
+.so-stick__body { stroke-width: .3; stroke-linecap: round; }
+.so-stick__shorts { fill: var(--ink); }
+.so-stick__head { fill: var(--paper); stroke: var(--ink); stroke-width: .05; }
+.so-stick__head--back { fill: var(--ink); }
+.so-stick__glove { fill: var(--hit); stroke: var(--ink); stroke-width: .04; }
+
+/* in goal: the six spots on the goal mouth, yours filled */
+.so-zone { fill: transparent; stroke: #fff; stroke-width: .25; stroke-dasharray: 1 1; opacity: 0; transition: opacity .2s; }
+.so-zones--open .so-zone { opacity: .5; }
+.so-zone--on { fill: rgb(255 210 63 / .32); stroke: var(--hit); stroke-dasharray: none; stroke-width: .5; opacity: 1 !important; }
+
+/* shooting: the aim on the goal, red once it's off target */
+.so-aim circle { fill: rgb(255 255 255 / .25); stroke: var(--ink); stroke-width: .5; }
+.so-aim line { stroke: var(--ink); stroke-width: .4; }
+.so-aim--off circle { fill: rgb(255 90 31 / .45); }
+
+.so-banner {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  translate: -50% -50%;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 6px 14px 4px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow);
+  font: 400 clamp(20px, 6vw, 30px)/1.1 var(--display);
+  text-align: center;
+  text-transform: uppercase;
+  pointer-events: none;
+  animation: so-pop .25s ease-out;
+}
+.so-banner--mine { background: var(--lash); color: var(--slot); }
+@keyframes so-pop { from { scale: .6; opacity: 0; } }
+
+.so-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  translate: -50% 0;
+  width: min(92%, 440px);
+  margin: 0;
+  padding: 6px 10px;
+  background: rgb(18 16 22 / .72);
+  color: var(--paper);
+  font: 500 12px/1.35 var(--mono);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ── results ── */
+.so-results__head { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.so-results__title { margin: 0; font: 400 clamp(34px, 9vw, 52px)/1 var(--display); text-transform: uppercase; }
+.so-results__title--win { text-shadow: 3px 3px 0 var(--hit); }
+.so-results__line { margin: 0; font: 400 28px var(--display); }
+.so-results__line span { opacity: .4; }
+.so-results__note { margin: 0; font: 500 13px var(--mono); }
+.so-strip { display: grid; gap: 8px; padding: 12px 14px; background: var(--board); box-shadow: var(--shadow-sm); }
+.so-strip__row { display: grid; grid-template-columns: minmax(0, 7em) 1fr; align-items: center; gap: 10px; }
+.so-strip__name { overflow: hidden; color: var(--paper); font: 500 13px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.so-strip__kicks { display: flex; flex-wrap: wrap; gap: 6px; }
+.so-kick { width: 18px; height: 18px; border: 2px solid var(--paper); border-radius: 50%; }
+.so-kick--out { position: relative; border-color: var(--paper-2); opacity: .7; }
+.so-kick--out::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--paper-2); font: 700 11px/1 var(--mono); }
