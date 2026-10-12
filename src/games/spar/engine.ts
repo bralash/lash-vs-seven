@@ -350,11 +350,14 @@ export function leaderOf(scores: number[], seats: number[]): number {
   return at.length === 1 ? at[0] : -1
 }
 
-/** Next round: whoever took the last one leads (or, if they've left, the next player round). */
+/**
+ * Next round: the loser leads (house rule). One-on-one that's the other player; with three or four,
+ * the player after the winner, round the table.
+ */
 export function nextRound(live: Live): Live | undefined {
   if (live.phase !== 'done' || matchOver(live) || live.cur.winner === undefined) return undefined
   const seats = seatsOf(live)
-  const leader = seats.includes(live.cur.winner) ? live.cur.winner : nextSeat(seats, live.cur.winner)
+  const leader = nextSeat(seats, live.cur.winner)
   return newRound({ ...live, round: live.round + 1 }, seats, leader)
 }
 
