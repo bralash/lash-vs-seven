@@ -41,6 +41,7 @@ const CheckersLab = import.meta.env.DEV ? lazy(() => import('./dev/CheckersLab')
 const VsLab = import.meta.env.DEV ? lazy(() => import('./dev/VsLab')) : null
 const OpsLab = import.meta.env.DEV ? lazy(() => import('./dev/OpsLab')) : null
 const WardrobeLab = import.meta.env.DEV ? lazy(() => import('./dev/WardrobeLab')) : null
+const TowerMapLab = import.meta.env.DEV ? lazy(() => import('./dev/TowerMapLab')) : null
 
 // A data router (rather than <BrowserRouter>) so games can block navigation mid-match with useBlocker.
 const routes: RouteObject[] = [
@@ -84,6 +85,7 @@ const routes: RouteObject[] = [
   ...(VsLab ? [{ path: '/dev/vs', element: <Suspense><VsLab /></Suspense> }] : []),
   ...(OpsLab ? [{ path: '/dev/ops', element: <Suspense><OpsLab /></Suspense> }] : []),
   ...(WardrobeLab ? [{ path: '/dev/wardrobe', element: <Suspense><WardrobeLab /></Suspense> }] : []),
+  ...(TowerMapLab ? [{ path: '/dev/towermap', element: <Suspense><TowerMapLab /></Suspense> }] : []),
   { path: '*', element: <NotFound /> },
 ]
 const router = createBrowserRouter(routes)

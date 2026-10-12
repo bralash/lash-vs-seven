@@ -1,0 +1,107 @@
+/* ── Dev: Ops' Tower as a road map (/dev/towermap) ── */
+.tm-lab { display: grid; justify-items: center; gap: 14px; padding-bottom: 60px; }
+.tm-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 14px; border: var(--edge) solid var(--ink); background: var(--slot); font: 13px var(--mono); }
+.tm-controls label, .tm-controls__group { display: inline-flex; align-items: center; gap: 6px; }
+.tm-chipbtn { min-width: 28px; padding: 2px 6px; border: 2px solid var(--ink); background: var(--paper); font: 500 12px var(--mono); cursor: pointer; }
+.tm-chipbtn.is-on { background: var(--hit); }
+
+.tm-frame { display: grid; gap: 10px; border: var(--edge) solid var(--ink); background: var(--paper); box-shadow: var(--shadow); overflow: hidden; }
+.tm-head { position: sticky; top: 0; z-index: 4; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 12px 14px 10px; border-bottom: var(--edge) solid var(--ink); background: var(--paper); }
+.tm-title { margin: 0; font-family: var(--display); font-size: clamp(30px, 8vw, 44px); line-height: .95; text-transform: uppercase; text-shadow: 3px 3px 0 var(--seven); }
+.tm-status { display: grid; justify-items: end; gap: 4px; font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.tm-status b { font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: 0; }
+
+/* the map: an SVG drawing with the stops laid over it as buttons */
+.tm-map {
+  position: relative;
+  /* a faint dotted paper, like the rest of the app */
+  background: var(--paper) var(--grain);
+  background-size: 14px 14px;
+}
+.tm-svg { display: block; width: 100%; height: auto; }
+.tm-road__edge { fill: none; stroke: #f8f3e8; stroke-width: 34; stroke-linecap: round; }
+.tm-road { fill: none; stroke: #2f2b38; stroke-width: 28; stroke-linecap: round; }
+.tm-road__line { fill: none; stroke: #f8f3e8; stroke-width: 2.2; stroke-dasharray: 9 9; }
+.tm-blink { animation: tm-blink 2.4s steps(1) infinite; }
+@keyframes tm-blink { 50% { fill: #5e5770; } }
+.tm-beacon { animation: tm-beacon 1.2s ease-in-out infinite alternate; }
+@keyframes tm-beacon { to { opacity: .3; } }
+.tm-trotro { offset-rotate: auto 90deg; animation: tm-drive 38s linear infinite; }
+@keyframes tm-drive { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+
+/* a stop's sign: the guardian's face on a board over their house */
+.tm-stop {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  transform: translate(-50%, -100%);
+  cursor: pointer;
+}
+.tm-stop__face {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+/* the post the board stands on */
+.tm-stop::after { content: ''; width: 4px; height: 16px; background: var(--ink); }
+.tm-stop__n {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font: 400 14px var(--display);
+}
+.tm-stop__q { font: 400 26px var(--display); color: var(--dim); }
+.tm-stop__tick, .tm-stop__lock {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ink);
+  font-size: 12px;
+}
+.tm-stop__tick { background: var(--good); color: var(--paper); font-weight: 700; }
+.tm-stop__lock { background: var(--paper-2); }
+.tm-stop__cp { position: absolute; bottom: 4px; padding: 1px 5px; border: 2px solid var(--ink); background: var(--good); color: var(--paper); font: 500 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; transform: translateY(100%); }
+.tm-stop--cleared .tm-stop__face { background: color-mix(in srgb, var(--good) 18%, var(--slot)); }
+.tm-stop--locked .tm-stop__face { background: var(--paper-2); }
+.tm-stop--locked .tm-stop__face svg { filter: grayscale(.9); opacity: .55; }
+.tm-stop--current { z-index: 3; animation: tm-bob 1.6s ease-in-out infinite; }
+.tm-stop--current .tm-stop__face { width: 62px; height: 62px; background: var(--hit); box-shadow: var(--shadow); }
+@keyframes tm-bob { 50% { transform: translate(-50%, calc(-100% - 6px)); } }
+.tm-stop--boss .tm-stop__face { width: 72px; height: 72px; background: var(--board); }
+.tm-stop--boss.tm-stop--locked .tm-stop__face svg { filter: none; opacity: 1; }
+
+/* you, standing on the road */
+.tm-me { position: absolute; z-index: 3; display: grid; place-items: center; width: 46px; height: 46px; border: var(--edge) solid var(--ink); border-radius: 50%; background: var(--paper); box-shadow: var(--shadow-sm); transform: translate(-50%, -50%); }
+.tm-me__crown { position: absolute; top: -18px; }
+.tm-go { position: absolute; z-index: 3; transform: translate(-50%, 0); padding: 6px 16px; }
+
+/* a floor's details */
+.tm-sheet-wrap { position: fixed; inset: 0; z-index: 60; display: grid; align-items: end; justify-items: center; background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.tm-sheet { position: relative; display: grid; gap: 6px; width: min(420px, 100%); padding: 44px 18px 20px; border: var(--edge) solid var(--ink); border-bottom: 0; background: var(--paper); box-shadow: var(--shadow-lg); animation: tm-up .25s var(--ease-out) both; }
+@keyframes tm-up { from { transform: translateY(40px); opacity: 0; } }
+.tm-sheet__face { position: absolute; top: -40px; left: 18px; display: grid; place-items: center; width: 80px; height: 80px; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: var(--shadow-sm); }
+.tm-sheet__title { margin: 0; font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.05; text-transform: uppercase; }
+.tm-sheet__line { display: flex; align-items: center; gap: 6px; margin: 0; font: 13px var(--mono); color: var(--ink-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-trotro, .tm-blink, .tm-beacon, .tm-stop--current { animation: none; }
+}
