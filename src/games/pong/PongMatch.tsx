@@ -18,7 +18,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useRivalry } from '../../match/useRivalry'
 import { POINTS, RESULT_MS, awardPoint, callOf, freshLive, nextGame, pointKey, serverOf, type Live, type Side, type Why } from '../pingpong/engine'
-import { LATE, opsPlan, opsServeLane, plan, returnOf, timing, windowOf, type Flight, type Lane } from './engine'
+import { LATE, ON_TIME, opsPlan, opsServeLane, plan, returnOf, timing, windowOf, type Flight, type Lane } from './engine'
 import orangeSheet from './sprites/player.png'
 import blueSheet from './sprites/player-blue.png'
 import '../../styles/pong.css'
@@ -187,6 +187,9 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     act: [{ kind: 'idle' }, { kind: 'idle' }] as [Act, Act],
     /** a tap that hit nothing: no swinging again until this */
     cool: 0,
+    /** a ball you let past: you never tapped, or tapped the wrong side (for the banner) */
+    missed: null as 'late' | 'wrong' | null,
+    wrongAt: null as Flight | null,
     /** Ops' answer to the ball heading her way */
     ops: null as ReturnType<typeof opsPlan> | null,
     bounced: null as Flight | null,
@@ -196,6 +199,8 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const ballEl = useRef<HTMLDivElement>(null)
   const shadowEl = useRef<HTMLDivElement>(null)
   const trailEl = useRef<SVGPolylineElement>(null)
+  const ringEl = useRef<SVGCircleElement>(null)
+  const sideEls = useRef<(HTMLSpanElement | null)[]>([null, null])
   const figEls = useRef<(HTMLDivElement | null)[]>([null, null])
   const [prompt, setPrompt] = useState('')
   const [banner, setBanner] = useState<{ text: string; mine: boolean; n: number } | null>(null)
@@ -255,7 +260,9 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     ]
     sound(mine ? 'find' : 'error')
     const n = Date.now()
-    const text = mine ? `Your point · ${why === 'miss' || why === 'winner' ? `${oppName} missed it` : `${oppName}: ${WHY_SAID[why].toLowerCase()}`}` : `${poss(oppName)} point · ${WHY_SAID[why]}`
+    const yours = why === 'miss' && r.missed ? (r.missed === 'wrong' ? 'Wrong side' : 'Too late · tap as it reaches the ring') : WHY_SAID[why]
+    r.missed = null
+    const text = mine ? `Your point · ${why === 'miss' || why === 'winner' ? `${oppName} missed it` : `${oppName}: ${WHY_SAID[why].toLowerCase()}`}` : `${poss(oppName)} point · ${yours}`
     setBanner({ text, mine, n })
     setPrompt('')
     setTimeout(() => {
@@ -307,7 +314,6 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
     (side: Lane) => {
       const r = rally.current
       const t = r.clock
-      if (hint) setHint(false)
       if (r.phase === 'serve-me') {
         r.act[0] = { kind: 'swing', side: r.lane[0], at: t, smash: false }
         setPrompt('')
@@ -317,18 +323,23 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       if (r.phase !== 'rally' || t < r.cool) return
       const f = r.flight
       r.lane[0] = side
-      const d = f && f.by === 1 && !f.fault ? timing(f, t) : null
-      if (f && d !== null && side === f.to) {
+      const coming = f && f.by === 1 && !f.fault ? f : null
+      const d = coming ? timing(coming, t) : null
+      if (coming && d !== null && side === coming.to) {
         const ret = returnOf(d, side)
         r.act[0] = { kind: 'swing', side, at: t, smash: ret.smash }
-        launch(plan(0, side, ret.to, t, f.hits + 1, { smash: ret.smash, fault: ret.fault }))
+        setHint(false)
+        launch(plan(0, side, ret.to, t, coming.hits + 1, { smash: ret.smash, fault: ret.fault }))
         return
       }
-      // a swing at nothing: wrong side, too soon or the ball isn't coming. It costs a moment.
+      // before the bounce (or with nothing coming) a tap just steps you over to that side, free
+      if (!coming || t < coming.tb) return
+      // the wrong side while it's there to hit: a swing at nothing, and it costs a moment
       r.act[0] = { kind: 'swing', side, at: t, smash: false }
-      r.cool = t + 320
+      r.wrongAt = coming
+      r.cool = t + 150
     },
-    [hint, launch],
+    [launch],
   )
 
   // keys on a computer: left and right arrows (or A and D)
@@ -358,6 +369,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       if (r.phase === 'serve-them' && t >= r.serveAt) {
         r.act[1] = { kind: 'swing', side: r.lane[1], at: t, smash: false }
         launch(plan(1, r.lane[1], opsServeLane(), t, 1, { serve: true }))
+        setPrompt('')
       }
 
       const f = r.flight
@@ -385,6 +397,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           } else if (ops === 'miss' && t >= f.t1 + w * LATE) point(0, 'miss', f.hits)
         } else if (!f.fault && recv === 0 && t >= f.t1 + windowOf(f) * LATE) {
           r.act[0] = { kind: 'stretch', side: f.to, at: t }
+          r.missed = r.wrongAt === f ? 'wrong' : 'late'
           point(1, 'miss', f.hits)
         }
       }
@@ -407,6 +420,26 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         el.style.backgroundPosition = `${(pose[1] / (COLS - 1)) * 100}% ${(pose[0] / (ROWS - 1)) * 100}%`
         el.style.left = `${r.x[s] - CELL_W * FOOT.x}%`
       }
+
+      // the ring where a ball coming at you will reach your bat: it closes in as the ball comes,
+      // opens (solid) once you can hit it and lights up when it's right on time; that side's letter lights too
+      const coming = r.phase === 'rally' && f && f.by === 1 && !f.fault && t <= f.t1 + windowOf(f) * LATE ? f : null
+      const ring = ringEl.current
+      if (ring) {
+        if (!coming) ring.style.opacity = '0'
+        else {
+          const c = contactAt(0, coming.to)
+          const u = Math.max(0, Math.min(1, (coming.t1 - t) / (coming.t1 - coming.t0)))
+          ring.setAttribute('cx', String(c.x))
+          ring.setAttribute('cy', String(c.y))
+          ring.setAttribute('r', (2.6 + 11 * u).toFixed(2))
+          ring.style.opacity = '1'
+          const d = timing(coming, t)
+          ring.classList.toggle('pong-ring--open', d !== null)
+          ring.classList.toggle('pong-ring--now', d !== null && Math.abs(d) <= ON_TIME)
+        }
+      }
+      sideEls.current.forEach((el, i) => el?.classList.toggle('pong-side--on', !!coming && coming.to === (i === 0 ? -1 : 1)))
 
       // the ball, its shadow and the line it leaves
       const ball = ballEl.current
@@ -495,12 +528,13 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         }}
       >
         <div className="pong-world" style={{ aspectRatio: `100 / ${H}` }}>
-          <span className="pong-side pong-side--l" aria-hidden="true">L</span>
-          <span className="pong-side pong-side--r" aria-hidden="true">R</span>
+          <span ref={(el) => void (sideEls.current[0] = el)} className="pong-side pong-side--l" aria-hidden="true">L</span>
+          <span ref={(el) => void (sideEls.current[1] = el)} className="pong-side pong-side--r" aria-hidden="true">R</span>
           {figure(1)}
           <svg className="pong-scene" viewBox={`0 0 100 ${H}`} aria-label="The table">
             <Table />
             <polyline ref={trailEl} className="pong-trail" points="" />
+            <circle ref={ringEl} className="pong-ring" r="3" style={{ opacity: 0 }} />
           </svg>
           <div ref={shadowEl} className="pong-shadow" style={{ opacity: 0 }} />
           {figure(0)}
@@ -519,7 +553,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         )}
         {hint && (
           <p className="pong-hint" aria-hidden="true">
-            Tap the side the ball is coming to · early goes across, late goes down the line, right on time smashes
+            Tap the side the ball is coming to (it lights up) as the ball reaches the ring · on time smashes
           </p>
         )}
       </div>

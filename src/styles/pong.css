@@ -65,6 +65,10 @@
 .pong-table__top { fill: #fff; stroke: var(--ink); stroke-width: .7; }
 .pong-table__under { fill: rgb(0 0 0 / .12); }
 .pong-table__net { fill: #fff; stroke: var(--ink); stroke-width: .7; }
+/* where the ball will reach your bat: dashed while it's on its way, solid once you can hit it, white when it's right on time */
+.pong-ring { fill: none; stroke: var(--ink); stroke-width: .5; stroke-dasharray: 1.2 1; }
+.pong-ring--open { stroke-width: .8; stroke-dasharray: none; }
+.pong-ring--now { fill: #fff; stroke-width: 1; }
 .pong-trail { fill: none; stroke: var(--ink); stroke-width: .45; stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
 
 .pong-fig {
@@ -98,6 +102,7 @@
   color: rgb(255 255 255 / .4);
   pointer-events: none;
 }
+.pong-side--on { color: #fff; -webkit-text-stroke: 2px var(--ink); scale: 1.12; transition: scale .12s; }
 .pong-side--l { left: 9%; }
 .pong-side--r { right: 9%; }
 

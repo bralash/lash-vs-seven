@@ -28,9 +28,9 @@ export interface Flight {
 }
 
 /** a fresh rally's ball crosses in this long; every shot after is a little quicker, down to MIN_MS */
-const FLIGHT_MS = 1150
-const MIN_MS = 560
-const SPEEDUP = 0.955
+const FLIGHT_MS = 1400
+const MIN_MS = 650
+const SPEEDUP = 0.965
 /** a smash crosses this much quicker */
 const SMASH_K = 0.62
 
@@ -46,16 +46,17 @@ export function plan(by: Side, from: Lane, to: Lane, t0: number, hits: number, o
   return { by, from, to, t0, tb, t1: t0 + ms, smash: !!opts.smash, serve: !!opts.serve, hits, ...(opts.fault ? { fault: opts.fault } : {}) }
 }
 
-/** half the window around the ball's arrival you can hit it in (ms): a fifth of its flight, never under 95 */
-export const windowOf = (f: Flight) => Math.max(95, (f.t1 - f.t0) * 0.2)
+/** the ball can be hit from its bounce on your side until a little after it reaches your bat: the bounce-to-bat time is the unit (ms) */
+export const windowOf = (f: Flight) => f.t1 - f.tb
 /** how late after its arrival it can still be hit, in windows */
-export const LATE = 0.7
+export const LATE = 0.6
 /** inside this much of the window either way, it's on time: a smash */
-const ON_TIME = 0.2
-/** past this much of the window, the shot is a gamble */
-const EDGE = 0.8
+export const ON_TIME = 0.15
+/** this near either end of the window, the shot is a gamble */
+const EDGE_EARLY = 0.85
+const EDGE_LATE = 0.45
 
-/** timing: -1 (as early as it can be hit) … 0 (on time) … LATE; null when it can't be hit now */
+/** timing: -1 (just off the bounce) … 0 (on time, as it reaches the bat) … LATE; null when it can't be hit now */
 export function timing(f: Flight, t: number): number | null {
   const d = (t - f.t1) / windowOf(f)
   return d >= -1 && d <= LATE ? d : null
@@ -66,7 +67,7 @@ export function returnOf(d: number, lane: Lane, rand: () => number = Math.random
   if (Math.abs(d) <= ON_TIME) return { to: (-lane) as Lane, smash: true }
   const to = (d < 0 ? -lane : lane) as Lane
   // snatched right at the start of the window, or scraped right at its end: it may not go over
-  if (Math.abs(d) >= EDGE && rand() < 0.35) return { to, smash: false, fault: d < 0 ? 'net' : 'long' }
+  if ((d <= -EDGE_EARLY || d >= EDGE_LATE) && rand() < 0.25) return { to, smash: false, fault: d < 0 ? 'net' : 'long' }
   return { to, smash: false }
 }
 
@@ -89,7 +90,7 @@ export function opsPlan(level: Level, f: Flight, rand: () => number = Math.rando
     if (rand() < k.smash) return { d: 0 }
     // early or late, never quite at the edges
     const sign = rand() < 0.5 ? -1 : 1
-    return { d: sign * (0.3 + rand() * 0.4) }
+    return { d: sign * (0.2 + rand() * 0.2) }
   }
   return rand() < 0.3 ? { swingFault: rand() < 0.5 ? 'net' : 'long' } : 'miss'
 }
