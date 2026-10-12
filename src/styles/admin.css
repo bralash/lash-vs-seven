@@ -57,3 +57,10 @@
 .admin-send__field input, .admin-send__field textarea { padding: 9px 10px; border: var(--edge) solid var(--ink); background: var(--slot); color: var(--ink); font: 15px var(--mono); letter-spacing: 0; text-transform: none; resize: vertical; }
 .admin-send__field small { justify-self: end; font-size: 11px; letter-spacing: 0; }
 .admin-send__actions { display: flex; align-items: center; gap: 14px; }
+
+/* the Everyone list: search, show, sort, and a page at a time */
+.admin-find { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.admin-find .admin-search { flex: 1 1 220px; }
+.admin-find__pick { display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.admin-find__pick select { padding: 8px 10px; border: var(--edge) solid var(--ink); background: var(--slot); color: var(--ink); font: 13px var(--mono); letter-spacing: 0; text-transform: none; }
+.admin-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; font: 13px var(--mono); }

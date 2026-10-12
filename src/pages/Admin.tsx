@@ -54,6 +54,26 @@ interface Data {
 
 const DAY = 864e5
 
+/* the Everyone list: rows per page, what to show and in what order */
+const PAGE = 25
+type Climb = NonNullable<Wallet['tower']>
+type Row = { w: Wallet; climb: Climb | null; name: string }
+const FILTERS: Record<string, { label: string; keep: (w: Wallet, climb: Climb | null, now: number) => boolean }> = {
+  all: { label: 'Everyone', keep: () => true },
+  today: { label: 'Active today', keep: (w, _, now) => !!w.seen && now - w.seen < DAY },
+  week: { label: 'Active this week', keep: (w, _, now) => !!w.seen && now - w.seen < 7 * DAY },
+  new: { label: 'New this week', keep: (w, _, now) => !!w.first && now - w.first < 7 * DAY },
+  tower: { label: 'In the Tower', keep: (_, climb) => !!climb },
+  idle: { label: 'Not seen in 30 days', keep: (w, _, now) => !w.seen || now - w.seen >= 30 * DAY },
+}
+const SORTS: Record<string, { label: string; by: (a: Row, b: Row) => number }> = {
+  seen: { label: 'Last seen', by: (a, b) => (b.w.seen ?? 0) - (a.w.seen ?? 0) },
+  chips: { label: 'Most chips', by: (a, b) => (b.w.chips ?? 0) - (a.w.chips ?? 0) },
+  tower: { label: 'Highest in the Tower', by: (a, b) => Number(!!b.climb?.champ) - Number(!!a.climb?.champ) || (b.climb?.at ?? 0) - (a.climb?.at ?? 0) },
+  newest: { label: 'Newest', by: (a, b) => (b.w.first ?? 0) - (a.w.first ?? 0) },
+  name: { label: 'Name', by: (a, b) => (a.name || '~').localeCompare(b.name || '~') },
+}
+
 function ago(t?: number, now = Date.now()) {
   if (!t) return '—'
   const s = Math.max(0, (now - t) / 1000)
@@ -280,6 +300,11 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
   const floors = floorsFor(season)
   const week = weekOf(now)
   const [q, setQ] = useState('')
+  const [filter, setFilter] = useState<keyof typeof FILTERS>('all')
+  const [sort, setSort] = useState<keyof typeof SORTS>('seen')
+  const [page, setPage] = useState(0)
+  // a new search, filter or order starts from the first page
+  useEffect(() => setPage(0), [q, filter, sort])
 
   // names from rooms, for players who haven't opened the app since names were saved
   const roomNames = useMemo(() => {
@@ -338,11 +363,15 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
     .sort((a, b) => b.at - a.at)
     .slice(0, 50)
 
-  /* everyone: search by name or by the code the player reads off their Shop page */
+  /* everyone: search by name or by the code the player reads off their Shop page, narrowed and sorted, a page at a time */
   const needle = q.trim().toLowerCase()
+  const shown = FILTERS[filter].keep
   const everyone = [...players]
-    .filter((p) => !needle || label(p).toLowerCase().includes(needle) || codeOf(p.uid).toLowerCase() === needle)
-    .sort((a, b) => (b.w.seen ?? 0) - (a.w.seen ?? 0))
+    .filter((p) => (!needle || label(p).toLowerCase().includes(needle) || codeOf(p.uid).toLowerCase() === needle) && shown(p.w, p.climb, now))
+    .sort(SORTS[sort].by)
+  const pages = Math.max(1, Math.ceil(everyone.length / PAGE))
+  const onPage = Math.min(page, pages - 1)
+  const rows = everyone.slice(onPage * PAGE, onPage * PAGE + PAGE)
 
   return (
     <>
@@ -489,7 +518,29 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
       <section className="admin-sec">
         <h2>Everyone</h2>
         <p className="admin__fine">To send chips, ask the player for the code under their chips on the Shop page and search for it here.</p>
-        <input className="admin-search" type="search" placeholder="Search by name or code" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="admin-find">
+          <input className="admin-search" type="search" placeholder="Search by name or code" value={q} onChange={(e) => setQ(e.target.value)} />
+          <label className="admin-find__pick">
+            Show
+            <select value={filter} onChange={(e) => setFilter(e.target.value as keyof typeof FILTERS)}>
+              {Object.entries(FILTERS).map(([k, f]) => (
+                <option key={k} value={k}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-find__pick">
+            Sort
+            <select value={sort} onChange={(e) => setSort(e.target.value as keyof typeof SORTS)}>
+              {Object.entries(SORTS).map(([k, s]) => (
+                <option key={k} value={k}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {sent && <p className="admin__ok">{sent}</p>}
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -505,7 +556,14 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
               </tr>
             </thead>
             <tbody>
-              {everyone.map((p) => (
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="admin-dim">
+                    Nobody matches.
+                  </td>
+                </tr>
+              )}
+              {rows.map((p) => (
                 <tr key={p.uid}>
                   <td>
                     {label(p)}
@@ -525,6 +583,18 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="admin-pager">
+          <button type="button" className="btn" disabled={onPage === 0} onClick={() => setPage(onPage - 1)}>
+            ← Previous
+          </button>
+          <span>
+            {everyone.length ? `${onPage * PAGE + 1}–${onPage * PAGE + rows.length} of ${everyone.length}` : '0 players'}
+            {pages > 1 && ` · page ${onPage + 1} of ${pages}`}
+          </span>
+          <button type="button" className="btn" disabled={onPage >= pages - 1} onClick={() => setPage(onPage + 1)}>
+            Next →
+          </button>
         </div>
       </section>
       {sendTo && (
