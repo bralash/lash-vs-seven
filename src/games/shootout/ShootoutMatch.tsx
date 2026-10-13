@@ -24,6 +24,7 @@ import {
   FLIGHT_MS,
   KICKS,
   RUN_MS,
+  closeCall,
   colOf,
   freshLive,
   isHigh,
@@ -33,6 +34,7 @@ import {
   opsDive,
   opsShot,
   opsWait,
+  replayMs,
   revealIn,
   scored,
   shoot,
@@ -183,6 +185,8 @@ interface Fig {
   cell: Cell
   /** mirrored: a dive or lean to the right */
   flip?: boolean
+  /** leaning over, in degrees (about the feet) */
+  rot?: number
 }
 
 function Sprite({ cam, fig, sheet, seat, boost = 1, dolly = 0 }: { cam: Cam; fig: Fig; sheet: keyof typeof SHEET; seat: Seat; boost?: number; dolly?: number }) {
@@ -191,7 +195,7 @@ function Sprite({ cam, fig, sheet, seat, boost = 1, dolly = 0 }: { cam: Cam; fig
   const s = (k * boost) / PX_PER_M
   const [r, c] = fig.cell
   return (
-    <g transform={`translate(${sx} ${sy}) scale(${fig.flip ? -s : s} ${s}) translate(${-sh.foot[0]} ${-sh.foot[1]})`}>
+    <g transform={`translate(${sx} ${sy}) rotate(${fig.rot ?? 0}) scale(${fig.flip ? -s : s} ${s}) translate(${-sh.foot[0]} ${-sh.foot[1]})`}>
       <svg width={sh.w} height={sh.h} viewBox={`${c * sh.w} ${r * sh.h} ${sh.w} ${sh.h}`} overflow="hidden">
         <image href={sh.img[seat]} width={6 * sh.w} height={sh.rows * sh.h} />
       </svg>
@@ -255,6 +259,9 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   /** the aim while your finger is down: where it started, and the aim before the sway */
   const aim = useRef<{ px: number; py: number; x: number; y: number } | null>(null)
   const [aiming, setAiming] = useState(false)
+  /** on easy, Ops in goal picks her dive at the whistle, and her keeper shifts that way (a tell) */
+  const opsKeep = useRef<{ n: number; spot: Spot } | null>(null)
+  const easyTells = vsOps && level === 'easy'
   /** what you've done so far (Ops reads it) */
   const yourShots = useRef<Spot[]>([])
   const yourDives = useRef<Spot[]>([])
@@ -407,11 +414,18 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const mineR: Reveal = shooter === mine ? (myShot ? { x: myShot.x, y: myShot.y, salt: myShot.salt } : {}) : myDive ? { spot: myDive.spot, salt: myDive.salt } : {}
       if (!vsOps) return
       const o = opsShotRef.current?.n === n ? opsShotRef.current : null
-      const opsR: Reveal = shooter === theirs ? (o ? { x: o.x, y: o.y, salt: o.salt } : {}) : { spot: opsDive(level, yourShots.current), salt: newSalt() }
+      const early = opsKeep.current?.n === n ? opsKeep.current.spot : null
+      const opsR: Reveal = shooter === theirs ? (o ? { x: o.x, y: o.y, salt: o.salt } : {}) : { spot: early ?? opsDive(level, yourShots.current), salt: newSalt() }
       session.move<ShootoutLive>((cur) => revealIn(cur, n, { [key(mine)]: mineR, [key(theirs)]: opsR })).catch(() => {})
     }, Math.max(0, live.strike - now()))
     return () => clearTimeout(timer)
   }, [live.n, live.strike, over, vsOps, shooter, mine, theirs, level, session, now])
+
+  // on easy, Ops in goal makes up her mind at the whistle (so her keeper can give it away)
+  useEffect(() => {
+    if (!easyTells || !live.start || over || shooter !== mine || opsKeep.current?.n === live.n) return
+    opsKeep.current = { n: live.n, spot: opsDive(level, yourShots.current) }
+  }, [easyTells, live.start, live.n, over, shooter, mine, level])
 
   // a kick settled: remember what you did (for Ops)
   const seen = useRef(live.last?.n ?? -1)
@@ -438,7 +452,9 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       h.strike = strike
       sound('kick')
     }
-    if (k && t >= k.strike + FLIGHT_MS && h.land !== k.n) {
+    // the replay's own clock: slowed through a close call
+    const kt = k ? k.strike + replayMs(k, t - k.strike) : t
+    if (k && kt >= k.strike + FLIGHT_MS && h.land !== k.n) {
       h.land = k.n
       const o = k.outcome
       if (scored(o)) {
@@ -449,7 +465,7 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         sound('ooh')
       }
     }
-    if (over && !h.over && k && t >= k.strike + FLIGHT_MS + 900) {
+    if (over && !h.over && k && kt >= k.strike + FLIGHT_MS + 900) {
       h.over = true
       sound('fullTime')
     }
@@ -496,6 +512,9 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const picking = !last && !over && !iShoot && !!live.start && t >= live.start && !struck
 
   const lostMatch = (s: Seat) => over && live.result?.winner !== s
+  /** the replay's clock: the same as t, but slowed through the end of a close call's flight */
+  const kt = last ? last.strike + replayMs(last, t - last.strike) : t
+  const slowMo = !!last && closeCall(last) && kt - last.strike > FLIGHT_MS * 0.5 && kt - last.strike < FLIGHT_MS + 350
 
   /* the keeper: shuffling on his line (leaning toward your pick, on your phone), the dive, then how it went */
   const KEEP_Z = 0.6
@@ -504,7 +523,7 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     const c = colOf(myDive)
     keeper = { x: c * 0.3, z: KEEP_Z, cell: isHigh(myDive) ? K.armsUp : c ? K.shuffle : K.ready, flip: c > 0 }
   } else if (last) {
-    const dt = t - last.strike
+    const dt = kt - last.strike
     const after = dt - FLIGHT_MS
     const c = colOf(last.dive)
     const high = isHigh(last.dive)
@@ -536,7 +555,7 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const runTo = { x: -0.32, z: 11.35 }
   let shooterFig: Fig = { x: runFrom.x, z: runFrom.z, cell: cycle([S.stand, S.hips, S.breath, S.stand], t, 1400) }
   if (last) {
-    const dt = t - last.strike
+    const dt = kt - last.strike
     const after = dt - FLIGHT_MS
     let cell: Cell = dt < 260 ? S.strike : S.follow
     if (after > 150) {
@@ -548,20 +567,30 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     shooterFig = { x: runTo.x, z: runTo.z, cell }
   } else if (live.strike) {
     const u = clamp((t - (live.strike - RUN_MS)) / RUN_MS)
+    // the easy tell: Ops leans toward the side she's going to as she runs up
+    const o = opsShotRef.current
+    const tell = easyTells && shooter === theirs && o?.n === live.n && Math.abs(o.x) > 1 / 3 && u > 0 && u < 0.86 ? Math.sign(o.x) * 13 : 0
     shooterFig = {
       x: lerp(runFrom.x, runTo.x, u),
       z: lerp(runFrom.z, runTo.z, u),
       cell: u >= 1 ? S.strike : u > 0.86 ? S.plant : u > 0 ? S.run[Math.floor(u * 9) % S.run.length] : S.stand,
+      rot: tell,
     }
   }
 
-  /* their keeper, seen from the spot: shuffling, waving his arms at you */
-  const facing: Fig = { x: 0, z: KEEP_Z, cell: cycle([K.ready, K.wave, K.ready, K.shuffle, K.bounce, K.ready], t, 450) }
+  /* their keeper, seen from the spot: shuffling, waving his arms at you; on easy, shifting toward his dive */
+  let facing: Fig = { x: 0, z: KEEP_Z, cell: cycle([K.ready, K.wave, K.ready, K.shuffle, K.bounce, K.ready], t, 450) }
+  const giveaway = easyTells && opsKeep.current?.n === live.n && !last && live.start && t >= live.start + 900 ? opsKeep.current.spot : null
+  if (giveaway !== null) {
+    const c = colOf(giveaway)
+    // from the spot his left is on your right: the sheet's lean goes to the left of the picture, so flip it for his left
+    facing = { x: c * 0.35, z: KEEP_Z, cell: isHigh(giveaway) ? K.armsUp : c ? K.shuffle : K.ready, flip: c < 0 }
+  }
 
-  const ball = last ? ballOf(last, t) : { x: 0, y: BALL_R, z: SPOT_Z }
+  const ball = last ? ballOf(last, kt) : { x: 0, y: BALL_R, z: SPOT_Z }
   const dolly = cam === 'shooter' && live.strike ? 2.2 * ease(clamp((t - (live.strike - RUN_MS)) / RUN_MS)) : 0
   const aimNow = aiming && aim.current ? sway(aim.current.x, aim.current.y, t) : null
-  const banner = last && t >= last.strike + FLIGHT_MS + 60 ? last : null
+  const banner = last && kt >= last.strike + FLIGHT_MS + 60 ? last : null
   const bannerMine = banner ? scored(banner.outcome) === (banner.shooter === mine) : false
 
   let status: string
@@ -584,7 +613,7 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         {status || ' '}
       </p>
 
-      <div className="so-stage" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+      <div className={`so-stage${slowMo ? ' so-stage--slow' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         <div ref={worldEl} className="so-world" style={{ aspectRatio: `100 / ${H}` }}>
           <svg className="so-scene" viewBox={`0 0 100 ${H}`} aria-label={cam === 'keeper' ? 'The goal, from behind the keeper' : 'The goal, from behind the ball'}>
             {cam === 'keeper' ? (
@@ -609,11 +638,15 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
             {SAID[banner.outcome]}
           </div>
         )}
-        {!last && !over && live.n < 2 && live.start > 0 && t >= live.start && !struck && (
+        {!last && !over && live.n < (easyTells ? 4 : 2) && live.start > 0 && t >= live.start && !struck && (
           <p className="so-hint" aria-hidden="true">
             {iShoot
-              ? 'Drag to aim, let go to shoot · the aim sways more near the posts and the bar'
-              : 'Tap where you’ll dive (high or low, left, middle or right) · you can change it until the kick'}
+              ? easyTells
+                ? 'Drag to aim, let go to shoot · on easy, Ops shifts toward the side she’ll dive: aim the other way'
+                : 'Drag to aim, let go to shoot · the aim sways more near the posts and the bar'
+              : easyTells
+                ? 'Tap where you’ll dive · on easy, Ops leans toward her side as she runs up'
+                : 'Tap where you’ll dive (high or low, left, middle or right) · you can change it until the kick'}
           </p>
         )}
       </div>

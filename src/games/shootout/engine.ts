@@ -36,6 +36,25 @@ export const RUN_MS = 1100
 export const FLIGHT_MS = 650
 /** after the flight: the result shows before the next whistle */
 export const SHOW_MS = 2100
+/** close calls play the end of the flight slowed: from this far along it, at this speed */
+export const SLOWMO = { from: 0.55, speed: 0.35 }
+/** how much longer a slowed flight takes */
+export const SLOW_EXTRA_MS = Math.round(FLIGHT_MS * (1 - SLOWMO.from) * (1 / SLOWMO.speed - 1))
+
+/** a close call, played in slow motion: fingertips, the woodwork, or a save at full stretch */
+export function closeCall(k: { outcome: Outcome; dive: Spot }): boolean {
+  return k.outcome === 'tips' || k.outcome === 'tipsIn' || k.outcome === 'post' || k.outcome === 'bar' || (k.outcome === 'saved' && colOf(k.dive) !== 0)
+}
+
+/** time since a kick's strike as the replay shows it: the same, but slowed through a close call's last stretch */
+export function replayMs(k: { outcome: Outcome; dive: Spot }, dt: number): number {
+  if (!closeCall(k)) return dt
+  const a = FLIGHT_MS * SLOWMO.from
+  const slowLen = (FLIGHT_MS - a) / SLOWMO.speed
+  if (dt <= a) return dt
+  if (dt <= a + slowLen) return a + (dt - a) * SLOWMO.speed
+  return dt - SLOW_EXTRA_MS
+}
 /** a shooter out of time: a soft one down the middle, gathered by the keeper */
 export const SCUFF = { x: 0, y: 0.12 }
 
@@ -188,7 +207,7 @@ export function revealIn(l: ShootoutLive, n: number, given: BySeat<Reveal>): Sho
     n: n + 1,
     first: l.first,
     log,
-    start: l.strike + FLIGHT_MS + SHOW_MS,
+    start: l.strike + FLIGHT_MS + SHOW_MS + (closeCall({ outcome, dive }) ? SLOW_EXTRA_MS : 0),
     strike: 0,
     commit: {},
     reveal: {},

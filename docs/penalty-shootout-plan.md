@@ -156,7 +156,7 @@ The same shape as Ampe (`src/games/ampe/engine.ts`), at `matches/shootout/{code}
    camera and aim sway; vs Ops on all three levels. Feel check on a phone. *Status: built 2026-10-12, committed, not deployed (user: keep it minimal; sprites next). Registry `vs Ops` until step 3; lock-in hashing still to add*
 2. **Art and feel.** The 4 sprite sheets, dive and run-up animations, banners, sounds, slow motion
    on close calls, easy-only tells and a first-time How to play (like Ping Pong's).
-   *Status: look done 2026-10-13 (2 sheets, not 4: no faces, so one keeper sheet serves both cameras; Ping Pong's flat yellow look; reactions after every kick). Sounds and How to play done 2026-10-13. Still to do: slow motion, easy-only tells.*
+   *Status: look done 2026-10-13 (2 sheets, not 4: no faces, so one keeper sheet serves both cameras; Ping Pong's flat yellow look; reactions after every kick). Sounds, How to play, slow motion and easy tells done 2026-10-13 (step 2 complete).*
 3. **Online and the rest.** Shared `lockin.ts`, rooms, reveal checks, disconnects, rivalry,
    feats, Results strip and share card, Ops reactions `sense`; registry `live`. Two-tab test
    (full shootout incl. sudden death, rematch). Deploy. *Status: not started*

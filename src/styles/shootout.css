@@ -209,3 +209,19 @@ html:has(.so-stage) .lobby > .topbar { position: relative; z-index: 2; }
 @keyframes so-demo-aim { 0% { transform: translate(50px, 32px); opacity: 1; } 40% { transform: translate(28px, 17px); } 47% { transform: translate(25px, 15px); } 54% { transform: translate(29px, 18px); } 60% { transform: translate(26px, 15px); opacity: 1; } 63%, 100% { transform: translate(26px, 15px); opacity: 0; } }
 @keyframes so-demo-shot { 0%, 62% { transform: translate(50px, 51px) scale(1); opacity: 1; } 80% { transform: translate(26px, 15px) scale(.6); opacity: 1; } 94% { opacity: 1; } 100% { transform: translate(26px, 15px) scale(.6); opacity: 0; } }
 @keyframes so-demo-drag { 0% { left: 58%; top: 92%; opacity: 0; } 6% { opacity: 1; left: 58%; top: 92%; } 40% { left: 42%; top: 70%; } 47% { left: 40%; top: 68%; } 60% { left: 41%; top: 69%; opacity: 1; } 64%, 100% { left: 41%; top: 69%; opacity: 0; } }
+
+/* slow motion on a close call: film bars slide in over the top and bottom of the scene */
+.so-world::before, .so-world::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  height: 8%;
+  background: var(--ink);
+  pointer-events: none;
+  transition: transform .25s ease-out;
+}
+.so-world::before { top: 0; transform: translateY(-100%); }
+.so-world::after { bottom: 0; transform: translateY(100%); }
+.so-stage--slow .so-world::before, .so-stage--slow .so-world::after { transform: none; }
