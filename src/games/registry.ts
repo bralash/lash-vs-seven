@@ -29,6 +29,8 @@ export interface GameMeta {
   fullscreen?: boolean
   /** short tagline shown under the title in the game's lobby */
   tagline?: string
+  /** no reactions (stickers, or Ops' faces) during a match: eyes never leave the game */
+  quiet?: boolean
   /** others can watch an online match with the room code (its match screen knows about watchers) */
   watch?: boolean
   rules?: RuleStep[]
@@ -432,6 +434,7 @@ export const GAMES: GameMeta[] = [
   {
     slug: 'ring',
     fullscreen: true,
+    quiet: true,
     tiles: 'RING',
     name: 'Ring Dash',
     blurb: 'A dot runs round a ring and every tap dashes it across, in or out. Dodge the walls, grab the white squares. You and a friend (or Ops) run the same ring at the same time: last one standing with more wins.',

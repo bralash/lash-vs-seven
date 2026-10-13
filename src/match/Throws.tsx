@@ -75,8 +75,8 @@ export function setThrowPick(id: ShopThrow | null) {
 }
 
 /** games played as a race against the clock: nothing to throw */
-// Anagram is in: the user wants rivals pelted mid-round (2026-10-10)
-const RACES = new Set(['wordhunt', 'sudoku'])
+// Anagram is in: the user wants rivals pelted mid-round (2026-10-10); Ring Dash is out: nobody looks away from the ring (2026-10-13)
+const RACES = new Set(['wordhunt', 'sudoku', 'ring'])
 export const throwsIn = (game: string) => !RACES.has(game)
 
 /** one throw per this long */

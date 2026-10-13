@@ -536,14 +536,14 @@ export function Lobby({ game, renderGame, initialState, option, bot, sense, rule
         right={
           <>
             {guard?.kind === 'match' && inRoom && <VoiceNotes game={game.slug} code={inRoom} pid={playerId()} names={guard.names} />}
-            {guard?.kind === 'match' && inRoom && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
+            {guard?.kind === 'match' && inRoom && !game.quiet && <Reactions game={game.slug} code={inRoom} pid={playerId()} other={guard.other} names={guard.names} />}
             {watching && watchNames && (
               <>
                 <VoiceNotes game={game.slug} code={watching.code} pid={playerId()} names={watchNames} listen />
                 <Reactions game={game.slug} code={watching.code} pid={playerId()} other={null} names={watchNames} watching />
               </>
             )}
-            {local?.bot && sense && opsState && (
+            {local?.bot && sense && opsState && !game.quiet && (
               <OpsReactions key={local.startedAt} sense={sense} state={opsState} level={local.bot} as={local.tower ? { look: floorOf(local.tower.floor)!.guardian, name: floorOf(local.tower.floor)!.guardianName } : undefined} />
             )}
             {local && !local.bot && throwsIn(game.slug) && (

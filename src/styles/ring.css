@@ -13,18 +13,21 @@
 /* the top bar (leave, reactions, voice, sound) stays above the stage */
 html:has(.ring-stage) .lobby > .topbar { position: relative; z-index: 2; }
 
+
+/* the score bar's middle: their run, small, over the game number */
 .ring-to {
   display: grid;
-  place-items: center;
+  justify-items: center;
   align-content: center;
   gap: 2px;
   min-width: 76px;
-  padding: 6px 10px;
-  background: var(--board);
+  padding: 4px 6px 5px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
   box-shadow: var(--shadow-sm);
 }
-.ring-to .label { color: var(--paper-2); font-size: 10px; }
-.ring-to__n { font-family: var(--display); font-size: 22px; color: var(--paper); }
+.ring-to .label { font-size: 10px; white-space: nowrap; }
+.ring-opp { width: 64px; aspect-ratio: 1; }
 
 .ring-status {
   min-height: 44px;
@@ -46,7 +49,9 @@ html:has(.ring-stage) .lobby > .topbar { position: relative; z-index: 2; }
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: var(--paper);
+  --pad: max(110px, 20svh);
+  background: var(--ring-bg, var(--paper));
+  transition: background-color 1.2s ease;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -57,7 +62,7 @@ html:has(.ring-stage) .lobby > .topbar { position: relative; z-index: 2; }
 .ring .ring-board {
   position: relative;
   justify-self: center;
-  width: min(100%, 480px, calc(100svh - 330px));
+  width: min(100%, 460px, calc(100svh - 300px - max(110px, 20svh)));
   min-width: 220px;
   aspect-ratio: 1;
   margin-top: 8px;
@@ -77,26 +82,10 @@ html:has(.ring-stage) .lobby > .topbar { position: relative; z-index: 2; }
 .ring-score { font: 400 64px/1 var(--display); fill: var(--ink); }
 .ring-chain { font: 500 12px/1 var(--mono); fill: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
 
-/* the other player's run, small, in the corner */
-.ring .ring-opp {
-  position: fixed;
-  right: 12px;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  width: min(26vw, 15svh, 130px);
-  padding: 8px 6px 4px;
-  border: var(--edge) solid var(--ink);
-  background: var(--slot);
-  box-shadow: var(--shadow-sm);
-  pointer-events: none;
-}
 .ring-svg--mini .ring-line, .ring-svg--mini .ring-wall { stroke-width: 9; }
 .ring-svg--mini .ring-score { font-size: 72px; }
 .ring-svg--mini .ring-dot { r: 13; }
 .ring-svg--mini .ring-square { stroke-width: 4; }
-.ring-opp__name { font: 500 11px/1.2 var(--mono); text-transform: uppercase; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .ring-banner {
   position: absolute;
@@ -118,17 +107,32 @@ html:has(.ring-stage) .lobby > .topbar { position: relative; z-index: 2; }
   animation: stamp-in .3s var(--ease-snap) both;
 }
 .ring-banner--mine { background: var(--lash); color: var(--slot); }
-.ring-hint {
+
+/* where the thumb goes: the bottom of the screen, under the ring (taps anywhere still count) */
+.ring-pad {
   position: absolute;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  left: 12px;
-  width: min(calc(100% - 170px), 340px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--pad);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: var(--edge) dashed rgb(18 16 22 / .3);
+  background: rgb(18 16 22 / .06);
+  pointer-events: none;
+}
+.ring-pad__word { font: 400 clamp(28px, 9vw, 44px)/1 var(--display); text-transform: uppercase; color: rgb(18 16 22 / .22); }
+.ring-hint {
+  max-width: min(92vw, 420px);
   margin: 0;
-  padding: 6px 10px;
+  padding: 5px 10px;
   border: var(--edge) solid var(--ink);
   background: var(--slot);
   font: 500 12px/1.35 var(--mono);
-  pointer-events: none;
+  text-align: center;
 }
 
 /* results */

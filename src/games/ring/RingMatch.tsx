@@ -134,18 +134,8 @@ function RingView({ seed, taps, run, t, seat, mini, label }: { seed: number; tap
   )
 }
 
-/** both rings, drawn every frame (on their own, so the rest of the screen isn't) */
-function Rings(p: {
-  live: RingLive
-  now: () => number
-  runsAt: (t: number) => { me_: Run; shown: Run; theirTaps: number[] }
-  myTaps: { current: { taps: number[] } }
-  mine: Seat
-  theirs: Seat
-  oppName: string
-  lag: number
-  children?: ReactNode
-}) {
+/** redraws whatever calls it every frame (only the rings do, not the rest of the screen) */
+function useEveryFrame() {
   const [, setFrame] = useState(0)
   useEffect(() => {
     let raf = 0
@@ -156,21 +146,46 @@ function Rings(p: {
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
   }, [])
-  const t = p.live.start ? Math.round(p.now() - p.live.start) : -FIRST_MS
-  const { me_, shown, theirTaps } = p.runsAt(t)
+}
+
+type RunsAt = (t: number) => { me_: Run; shown: Run; theirTaps: number[] }
+const runTime = (live: RingLive, now: () => number) => (live.start ? Math.round(now() - live.start) : -FIRST_MS)
+
+/** your ring */
+function MyRing(p: { live: RingLive; now: () => number; runsAt: RunsAt; myTaps: { current: { taps: number[] } }; mine: Seat; children?: ReactNode }) {
+  useEveryFrame()
+  const t = runTime(p.live, p.now)
+  const { me_ } = p.runsAt(t)
+  // the background changes colour every few laps of your run (and starts again each game)
+  const at = me_.crash !== null ? Math.min(t, me_.crash) : t
+  const bg = BACKGROUNDS[Math.floor(where(Math.max(0, at)).lap / LAPS_PER_COLOUR) % BACKGROUNDS.length]
+  useEffect(() => {
+    document.documentElement.style.setProperty('--ring-bg', bg)
+  }, [bg])
+  useEffect(() => () => void document.documentElement.style.removeProperty('--ring-bg'), [])
   return (
-    <>
-      <div className="ring-board" data-ult-board>
-        <RingView seed={p.live.seed} taps={p.myTaps.current.taps} run={me_} t={t} seat={p.mine} label="Your ring" />
-        {p.children}
-      </div>
-      <div className="ring-opp" aria-label={`${p.oppName}’s ring`}>
-        <RingView seed={p.live.seed} taps={theirTaps} run={shown} t={t - p.lag} seat={p.theirs} mini />
-        <span className="ring-opp__name">{p.oppName}</span>
-      </div>
-    </>
+    <div className="ring-board" data-ult-board>
+      <RingView seed={p.live.seed} taps={p.myTaps.current.taps} run={me_} t={t} seat={p.mine} label="Your ring" />
+      {p.children}
+    </div>
   )
 }
+
+/** theirs, small, in the middle of the score bar */
+function TheirRing(p: { live: RingLive; now: () => number; runsAt: RunsAt; theirs: Seat; oppName: string; lag: number }) {
+  useEveryFrame()
+  const t = runTime(p.live, p.now)
+  const { shown, theirTaps } = p.runsAt(t)
+  return (
+    <div className="ring-opp" aria-label={`${p.oppName}’s ring`}>
+      <RingView seed={p.live.seed} taps={theirTaps} run={shown} t={t - p.lag} seat={p.theirs} mini />
+    </div>
+  )
+}
+
+/** the stage's colours, in turn: soft enough for the ink ring to stand out on each */
+const BACKGROUNDS = ['#f3ead8', '#d9ead0', '#d3e3f4', '#f6dac6', '#e4daf2', '#f4e7a8', '#cfe9e6', '#f2d3dc']
+const LAPS_PER_COLOUR = 3
 
 /* ── the match ── */
 
@@ -357,8 +372,8 @@ export function RingMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
       <div className="mt-hud">
         {card(0)}
         <div className="ring-to">
-          <span className="label">{st.need > 1 ? 'Game' : 'One game'}</span>
-          <span className="ring-to__n">{st.need > 1 ? live.g : '1'}</span>
+          <TheirRing live={live} now={now} runsAt={runsAt} theirs={theirs} oppName={oppName} lag={online ? SHOWN_LAG : 0} />
+          <span className="label">{st.need > 1 ? `Game ${live.g}` : 'One game'}</span>
         </div>
         {card(1)}
       </div>
@@ -366,7 +381,7 @@ export function RingMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         {status}
       </p>
 
-      {/* the whole page is the button; the rings sit over it and let taps through */}
+      {/* the whole page is the button (the rings sit over it and let taps through); the pad at the bottom keeps thumbs off the ring */}
       <div
         className="ring-stage"
         onPointerDown={(e) => {
@@ -374,15 +389,18 @@ export function RingMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           tap()
         }}
       >
-        {live.g === 1 && t < 6000 && !over && <p className="ring-hint">Tap anywhere: in and out of the ring · white squares score</p>}
+        <div className="ring-pad" aria-hidden="true">
+          <span className="ring-pad__word">Tap</span>
+          {live.g === 1 && t < 6000 && !over && <p className="ring-hint">Tap here to dash in and out of the ring · white squares score</p>}
+        </div>
       </div>
-      <Rings live={live} now={now} runsAt={runsAt} myTaps={myTaps} mine={mine} theirs={theirs} oppName={oppName} lag={online ? SHOWN_LAG : 0}>
+      <MyRing live={live} now={now} runsAt={runsAt} myTaps={myTaps} mine={mine}>
         {banner && (
           <div key={banner.n} className={`ring-banner${banner.mine ? ' ring-banner--mine' : ''}`} aria-hidden="true">
             {banner.text}
           </div>
         )}
-      </Rings>
+      </MyRing>
       {awaySecs !== null && opp && (
         <p className="mt-banner" role="status">
           {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back
