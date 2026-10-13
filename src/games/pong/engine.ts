@@ -73,20 +73,29 @@ export function returnOf(d: number, lane: Lane, rand: () => number = Math.random
 
 /* ── Ops ── */
 
-const SKILL: Record<Level, { keep: number; smash: number }> = {
-  easy: { keep: 0.8, smash: 0.05 },
-  medium: { keep: 0.88, smash: 0.11 },
-  hard: { keep: 0.94, smash: 0.2 },
+const SKILL: Record<Level, { keep: number; smash: number; vsSmash: number; wrongFoot: number }> = {
+  easy: { keep: 0.8, smash: 0.05, vsSmash: 0.22, wrongFoot: 0 },
+  medium: { keep: 0.88, smash: 0.11, vsSmash: 0.22, wrongFoot: 0 },
+  // hard gets almost everything back (your smashes too), and plays it away from you
+  hard: { keep: 0.97, smash: 0.2, vsSmash: 0.1, wrongFoot: 0.85 },
 }
 
 /**
  * Ops' answer to a ball coming at her, decided as it's hit: she gets to it and plays it at timing d,
- * swings and makes a mess of it, or doesn't reach it at all.
+ * swings and makes a mess of it, or doesn't reach it at all. On hard she aims for the side you're
+ * not on (you're where you hit it from): across if you went down the line, down the line if you
+ * went across, and when across is the way, she often smashes it.
  */
 export function opsPlan(level: Level, f: Flight, rand: () => number = Math.random): { d: number } | { swingFault: 'net' | 'long' } | 'miss' {
   const k = SKILL[level]
-  const keep = k.keep - (f.smash ? 0.22 : 0) - Math.max(0, f.hits - 8) * 0.012
+  const keep = k.keep - (f.smash ? k.vsSmash : 0) - Math.max(0, f.hits - 8) * (level === 'hard' ? 0.006 : 0.012)
   if (rand() < keep) {
+    if (rand() < k.wrongFoot) {
+      // her early hits go across (to the side opposite her), her late ones down the line
+      const across = f.from === f.to
+      if (across) return rand() < 0.45 ? { d: 0 } : { d: -(0.25 + rand() * 0.15) }
+      return { d: 0.2 + rand() * 0.15 }
+    }
     if (rand() < k.smash) return { d: 0 }
     // early or late, never quite at the edges
     const sign = rand() < 0.5 ? -1 : 1
