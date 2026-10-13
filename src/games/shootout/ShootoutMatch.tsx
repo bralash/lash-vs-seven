@@ -46,6 +46,10 @@ import {
   type ShootoutLive,
   type Spot,
 } from './engine'
+import keeperOrange from './sprites/keeper.png'
+import keeperBlue from './sprites/keeper-blue.png'
+import shooterOrange from './sprites/shooter.png'
+import shooterBlue from './sprites/shooter-blue.png'
 import '../../styles/shootout.css'
 
 const GAME = 'shootout'
@@ -120,72 +124,79 @@ function ballOf(k: Kick, t: number): { x: number; y: number; z: number } {
   return { x: lerp(T.x, E.x, v), y: lerp(T.y, E.y, v), z: lerp(0, E.z, v) }
 }
 
-/* ── stick figures (the art comes later) ── */
+/* ── the figures: noodle sprites cut from ChatGPT sheets (art/shootout-chatgpt, scripts/sprite-sheet.mjs);
+   every dive and lean on them goes to the left, mirrored for the right ── */
 
-type Arms = 'ready' | 'up' | 'down' | 'run' | 'head' | 'cheer'
-type Legs = 'stand' | 'run' | 'kick' | 'crouch'
+const SHEET = {
+  keeper: { img: [keeperOrange, keeperBlue], rows: 3, w: 256, h: 256, foot: [128, 242] },
+  shooter: { img: [shooterOrange, shooterBlue], rows: 4, w: 256, h: 232, foot: [128, 220] },
+} as const
+/** sprite pixels to a metre on the pitch */
+const PX_PER_M = 100
 
-/** a figure in its own metres (hips at 0, up the body is −y on screen), turned about the hips */
-function Stick({ arms, legs, phase = 0, kit, gloves, back }: { arms: Arms; legs: Legs; phase?: number; kit: string; gloves?: boolean; back?: boolean }) {
-  const swing = Math.sin(phase) * 0.28
-  const hand: [number, number][] =
-    arms === 'up'
-      ? [[-0.22, -1.12], [0.22, -1.12]]
-      : arms === 'ready'
-        ? [[-0.48, -0.32], [0.48, -0.32]]
-        : arms === 'down'
-          ? [[-0.3, 0.12], [0.3, 0.12]]
-          : arms === 'head'
-            ? [[-0.14, -0.86], [0.14, -0.86]]
-            : arms === 'cheer'
-              ? [[-0.45, -1.05], [0.45, -1.05]]
-              : [[-0.28, -0.18 + swing], [0.28, -0.18 - swing]]
-  const foot: [number, number][] =
-    legs === 'run'
-      ? [[-0.12 + swing * 0.5, 0.92 - Math.max(0, swing) * 0.6], [0.12 - swing * 0.5, 0.92 - Math.max(0, -swing) * 0.6]]
-      : legs === 'kick'
-        ? [[-0.2, 0.92], [0.18, 0.45]]
-        : legs === 'crouch'
-          ? [[-0.34, 0.8], [0.34, 0.8]]
-          : [[-0.2, 0.93], [0.2, 0.93]]
+/** [row, column] on the keeper's sheet */
+const K = {
+  ready: [0, 0],
+  shuffle: [0, 1],
+  bounce: [0, 2],
+  wave: [0, 3],
+  armsUp: [0, 4],
+  stand: [0, 5],
+  lowDive: [1, 0],
+  highDive: [1, 1],
+  lying: [1, 2],
+  jump: [1, 3],
+  gather: [1, 4],
+  caught: [1, 5],
+  cheer: [2, 0],
+  fist: [2, 1],
+  ohNo: [2, 2],
+  sat: [2, 3],
+  flat: [2, 4],
+  kneel: [2, 5],
+} as const
+/** [row, column] on the shooter's sheet */
+const S = {
+  stand: [0, 0],
+  hips: [0, 1],
+  breath: [0, 2],
+  run: [[0, 3], [0, 4], [0, 5], [1, 0]],
+  plant: [1, 1],
+  strike: [1, 2],
+  follow: [1, 3],
+  /** after a goal: jump, knee slide, aeroplane, cupped ear, fist pump, pointing up */
+  scored: [[2, 0], [2, 1], [2, 2], [2, 3], [2, 4], [2, 5]],
+  /** after a miss or a save: hands on head, hands on knees, walking off, kicking the grass, flat on his back */
+  missed: [[3, 0], [3, 1], [3, 4], [3, 5], [3, 2]],
+  sat: [3, 3],
+} as const
+type Cell = readonly [number, number]
+
+interface Fig {
+  /** where the shadow sits on the pitch */
+  x: number
+  z: number
+  cell: Cell
+  /** mirrored: a dive or lean to the right */
+  flip?: boolean
+}
+
+function Sprite({ cam, fig, sheet, seat, boost = 1, dolly = 0 }: { cam: Cam; fig: Fig; sheet: keyof typeof SHEET; seat: Seat; boost?: number; dolly?: number }) {
+  const sh = SHEET[sheet]
+  const [sx, sy, k] = project(cam, fig.x, 0, fig.z, dolly)
+  const s = (k * boost) / PX_PER_M
+  const [r, c] = fig.cell
   return (
-    <g className="so-stick">
-      {foot.map(([x, y], i) => (
-        <line key={`l${i}`} className="so-stick__limb" x1={i ? 0.09 : -0.09} y1={0} x2={x} y2={y} />
-      ))}
-      <rect className="so-stick__shorts" x={-0.17} y={-0.05} width={0.34} height={0.2} />
-      {hand.map(([x, y], i) => (
-        <line key={`a${i}`} className="so-stick__limb" x1={i ? 0.17 : -0.17} y1={-0.47} x2={x} y2={y} />
-      ))}
-      <line className="so-stick__body" x1={0} y1={-0.04} x2={0} y2={-0.5} style={{ stroke: kit }} />
-      <circle className={back ? 'so-stick__head so-stick__head--back' : 'so-stick__head'} cx={0} cy={-0.74} r={0.15} />
-      {gloves && hand.map(([x, y], i) => <circle key={`g${i}`} className="so-stick__glove" cx={x} cy={y} r={0.1} />)}
+    <g transform={`translate(${sx} ${sy}) scale(${fig.flip ? -s : s} ${s}) translate(${-sh.foot[0]} ${-sh.foot[1]})`}>
+      <svg width={sh.w} height={sh.h} viewBox={`${c * sh.w} ${r * sh.h} ${sh.w} ${sh.h}`} overflow="hidden">
+        <image href={sh.img[seat]} width={6 * sh.w} height={sh.rows * sh.h} />
+      </svg>
     </g>
   )
 }
 
-/** put a figure on the pitch: feet at (x, 0, z), hips lifted/shifted by (hx, hy) in metres, turned rot° about the hips */
-function Placed({ cam, x, z, hx = 0, hy = 0.95, rot = 0, boost = 1, dolly = 0, children }: { cam: Cam; x: number; z: number; hx?: number; hy?: number; rot?: number; boost?: number; dolly?: number; children: ReactNode }) {
-  const [sx, sy, k] = project(cam, x, 0, z, dolly)
-  const flip = cam === 'shooter' ? -1 : 1
-  return <g transform={`translate(${sx} ${sy}) scale(${k * boost * flip} ${k * boost}) translate(${hx} ${-hy}) rotate(${rot})`}>{children}</g>
-}
-
-/** the keeper reaching for a glove point g (metres, from his feet): standing if it's close, diving if it isn't */
-function keeperBody(g: { x: number; y: number }): { hx: number; hy: number; rot: number; stretched: boolean } {
-  const dx = g.x
-  const dy = g.y - 0.95
-  const dist = Math.hypot(dx, dy)
-  const reach = 1.15
-  // close by: crouched, leaning a little toward it
-  if (dist <= reach) return { hx: dx * 0.25, hy: 0.87, rot: dx * 18, stretched: false }
-  const hx = dx - (dx / dist) * reach
-  const hy = 0.95 + dy - (dy / dist) * reach
-  return { hx, hy, rot: (Math.atan2(dx, dy) * 180) / Math.PI, stretched: true }
-}
-
-/** the middle of a spot, where the keeper's gloves go */
-const spotGlove = (s: Spot) => ({ x: colOf(s) * 2.5, y: colOf(s) === 0 ? (isHigh(s) ? 2.35 : 0.6) : isHigh(s) ? 2.0 : 0.35 })
+/** a pose on a loop: the one for time t, each held for ms */
+const cycle = <T,>(xs: readonly T[], t: number, ms: number) => xs[Math.floor(t / ms) % xs.length]
 
 const SAID: Record<Outcome, string> = {
   goal: 'Goal!',
@@ -465,51 +476,68 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const myDive = !last && dived && dived.n === live.n ? dived.spot : null
   const picking = !last && !over && !iShoot && !!live.start && t >= live.start && !struck
 
-  /* the keeper: gloves reaching for a point, from his ready crouch (leaning toward your pick, on your phone) */
-  let glove = { x: 0, y: 1.15 }
-  let arms: Arms = 'ready'
-  if (last) {
+  const lostMatch = (s: Seat) => over && live.result?.winner !== s
+
+  /* the keeper: shuffling on his line (leaning toward your pick, on your phone), the dive, then how it went */
+  const KEEP_Z = 0.6
+  let keeper: Fig = { x: 0, z: KEEP_Z, cell: cycle([K.ready, K.shuffle, K.bounce, K.ready], t, 420) }
+  if (!last && myDive !== null && cam === 'keeper') {
+    const c = colOf(myDive)
+    keeper = { x: c * 0.3, z: KEEP_Z, cell: isHigh(myDive) ? K.armsUp : c ? K.shuffle : K.ready, flip: c > 0 }
+  } else if (last) {
+    const dt = t - last.strike
+    const after = dt - FLIGHT_MS
+    const c = colOf(last.dive)
+    const high = isHigh(last.dive)
     const T = targetOf(last)
-    const reached = last.outcome === 'saved' ? T : last.outcome === 'tips' ? { x: T.x * 0.94, y: T.y - 0.12 } : spotGlove(last.dive)
-    const u = ease(clamp((t - last.strike) / (FLIGHT_MS * 0.85)))
-    glove = { x: lerp(0, reached.x, u), y: lerp(1.15, reached.y, u) }
-    // down on the grass after a dive
-    const fall = clamp((t - last.strike - FLIGHT_MS - 300) / 300)
-    if (Math.abs(reached.x) > 1 && fall > 0) glove = { x: glove.x, y: lerp(glove.y, 0.35, ease(fall)) }
-    arms = u > 0.15 ? 'up' : 'ready'
-  } else if (myDive !== null && cam === 'keeper') {
-    glove = { x: colOf(myDive) * 0.3, y: isHigh(myDive) ? 1.45 : 1.0 }
-    arms = isHigh(myDive) ? 'up' : 'ready'
+    const kept = last.outcome === 'saved' || last.outcome === 'tips'
+    // a save: his gloves (about a metre past his body on a dive) meet the ball
+    const to = c === 0 ? 0 : kept ? T.x - c * 1.0 : c * 1.6
+    const flip = c > 0
+    const x = lerp(0, to, ease(clamp(dt / (FLIGHT_MS * 0.9))))
+    const sat = (cell: Cell) => (lostMatch((1 - last.shooter) as Seat) && after > 1400 ? K.sat : cell)
+    if (dt < 110) keeper = { x: 0, z: KEEP_Z, cell: c ? K.shuffle : K.ready, flip }
+    else if (c === 0) {
+      // the middle: up for a high one, down to gather a low one
+      let cell: Cell = high ? K.jump : K.gather
+      if (after > 150) cell = kept ? (after > 700 ? cycle([K.cheer, K.fist], t, 380) : K.caught) : last.outcome === 'goal' || last.outcome === 'tipsIn' ? sat(after > 1100 ? K.kneel : K.ohNo) : K.fist
+      keeper = { x, z: KEEP_Z, cell }
+    } else {
+      let cell: Cell = high ? K.highDive : K.lowDive
+      if (after > 250) cell = K.lying
+      if (kept && after > 750) cell = cycle([K.cheer, K.fist], t, 380)
+      else if (!kept && (last.outcome === 'goal' || last.outcome === 'tipsIn') && after > 900) cell = sat(K.flat)
+      else if (!kept && after > 700 && last.outcome !== 'goal' && last.outcome !== 'tipsIn') cell = K.fist
+      keeper = { x, z: KEEP_Z, cell, flip: cell === K.lying || cell === K.lowDive || cell === K.highDive || cell === K.flat ? flip : false }
+    }
   }
-  const body = keeperBody(glove)
-  if (!body.stretched && last && glove.y > 1.6) arms = 'up'
-  const jump = last && colOf(last.dive) === 0 && isHigh(last.dive) && !['saved', 'tips'].includes(last.outcome) ? Math.sin(Math.PI * clamp((t - last.strike) / 700)) * 0.4 : 0
 
   /* the shooter: waiting by the ball, the run-up, the strike, then how it went */
   const runFrom = { x: -1.1, z: 13.6 }
   const runTo = { x: -0.32, z: 11.35 }
-  let sx = runFrom.x
-  let sz = runFrom.z
-  let sArms: Arms = 'down'
-  let sLegs: Legs = 'stand'
-  let phase = 0
+  let shooterFig: Fig = { x: runFrom.x, z: runFrom.z, cell: cycle([S.stand, S.hips, S.breath, S.stand], t, 1400) }
   if (last) {
-    sx = runTo.x
-    sz = runTo.z
-    const after = t - last.strike - FLIGHT_MS
-    sLegs = after < 200 ? 'kick' : 'stand'
-    if (after > 150) sArms = scored(last.outcome) ? 'cheer' : 'head'
+    const dt = t - last.strike
+    const after = dt - FLIGHT_MS
+    let cell: Cell = dt < 260 ? S.strike : S.follow
+    if (after > 150) {
+      if (scored(last.outcome)) cell = S.scored[last.n % S.scored.length]
+      else cell = lostMatch(last.shooter) && after > 1200 ? S.sat : S.missed[last.n % S.missed.length]
+      // the jump celebration bounces
+      if (cell === S.scored[0]) cell = cycle([S.scored[0], S.stand], t, 300)
+    }
+    shooterFig = { x: runTo.x, z: runTo.z, cell }
   } else if (live.strike) {
     const u = clamp((t - (live.strike - RUN_MS)) / RUN_MS)
-    sx = lerp(runFrom.x, runTo.x, u)
-    sz = lerp(runFrom.z, runTo.z, u)
-    if (u >= 1) sLegs = 'kick'
-    else if (u > 0) {
-      sLegs = 'run'
-      sArms = 'run'
-      phase = u * Math.PI * 5
+    shooterFig = {
+      x: lerp(runFrom.x, runTo.x, u),
+      z: lerp(runFrom.z, runTo.z, u),
+      cell: u >= 1 ? S.strike : u > 0.86 ? S.plant : u > 0 ? S.run[Math.floor(u * 9) % S.run.length] : S.stand,
     }
   }
+
+  /* their keeper, seen from the spot: shuffling, waving his arms at you */
+  const facing: Fig = { x: 0, z: KEEP_Z, cell: cycle([K.ready, K.wave, K.ready, K.shuffle, K.bounce, K.ready], t, 450) }
 
   const ball = last ? ballOf(last, t) : { x: 0, y: BALL_R, z: SPOT_Z }
   const dolly = cam === 'shooter' && live.strike ? 2.2 * ease(clamp((t - (live.strike - RUN_MS)) / RUN_MS)) : 0
@@ -543,27 +571,15 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
             {cam === 'keeper' ? (
               <KeeperView
                 ball={ball}
-                keeper={
-                  <Placed cam="keeper" x={0} z={0.6} hx={body.hx} hy={body.hy + jump} rot={body.rot}>
-                    <Stick arms={arms} legs={body.stretched ? 'stand' : 'crouch'} kit={kitOf(keeperSeat)} gloves back />
-                  </Placed>
-                }
-                shooter={
-                  <Placed cam="keeper" x={sx} z={sz} boost={1.5}>
-                    <Stick arms={sArms} legs={sLegs} phase={phase} kit={kitOf(shooterSeat)} />
-                  </Placed>
-                }
+                keeper={<Sprite cam="keeper" fig={keeper} sheet="keeper" seat={keeperSeat} boost={1.25} />}
+                shooter={<Sprite cam="keeper" fig={shooterFig} sheet="shooter" seat={shooterSeat} boost={2.1} />}
                 zones={!last && !iShoot ? { picked: myDive, open: picking } : null}
               />
             ) : (
               <ShooterView
                 dolly={dolly}
                 aim={aimNow}
-                keeper={
-                  <Placed cam="shooter" x={0} z={0.6} hy={0.87} boost={1.15} dolly={dolly}>
-                    <Stick arms="ready" legs="crouch" kit={kitOf(keeperSeat)} gloves />
-                  </Placed>
-                }
+                keeper={<Sprite cam="shooter" fig={facing} sheet="keeper" seat={keeperSeat} boost={1.1} dolly={dolly} />}
               />
             )}
           </svg>
@@ -612,8 +628,6 @@ function Pitch({ cam, dolly = 0 }: { cam: Cam; dolly?: number }) {
   const [spX, spY, spK] = p(0, 0, SPOT_Z)
   return (
     <g>
-      <rect className="so-crowd" x={-50} y={hy - 16} width={200} height={16} />
-      <rect className="so-board" x={-50} y={hy - 4} width={200} height={4} />
       <rect className="so-pitch" x={-50} y={hy} width={200} height={H} />
       {stripes}
       {cam === 'keeper' ? (
@@ -632,7 +646,7 @@ function Pitch({ cam, dolly = 0 }: { cam: Cam; dolly?: number }) {
           {line(9.16, 0, 9.16, 5.5, 'sixr')}
         </>
       )}
-      <ellipse className="so-pitch__spot" cx={spX} cy={spY} rx={0.18 * spK} ry={0.07 * spK} />
+      <ellipse className="so-pitch__spot" cx={spX} cy={spY} rx={0.11 * spK} ry={0.04 * spK} />
     </g>
   )
 }
@@ -645,7 +659,6 @@ function Ball({ cam, at, dolly = 0, boost = 1 }: { cam: Cam; at: { x: number; y:
     <g>
       <ellipse className="so-ball__shadow" cx={gx} cy={gy} rx={BALL_R * gk * boost * 1.1} ry={BALL_R * gk * boost * 0.4} />
       <circle className="so-ball" cx={x} cy={y} r={r} />
-      <circle className="so-ball__patch" cx={x - r * 0.2} cy={y - r * 0.15} r={r * 0.35} />
     </g>
   )
 }

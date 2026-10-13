@@ -65,33 +65,25 @@ html:has(.so-stage) .lobby > .topbar { position: relative; z-index: 2; }
 }
 .so-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-.so-crowd { fill: var(--board); }
-.so-board { fill: var(--seven); }
-.so-pitch { fill: #3f9a4b; }
-.so-pitch__stripe { fill: #48a955; }
-.so-pitch__line { stroke: #fff; stroke-width: .45; opacity: .9; }
+/* Ping Pong's look: the pitch is the flat yellow page, its lines painted on in white */
+.so-pitch { fill: none; }
+.so-pitch__stripe { fill: rgb(255 255 255 / .16); }
+.so-pitch__line { stroke: #fff; stroke-width: .5; stroke-linecap: round; }
 .so-pitch__spot { fill: #fff; }
 
-.so-frame { stroke: #fff; stroke-width: 1.7; stroke-linecap: square; filter: drop-shadow(.5px .5px 0 var(--ink)); }
-.so-frame__back { stroke: #fff; stroke-width: .5; opacity: .55; }
-.so-net { opacity: .55; }
-.so-net__mesh { stroke: #fff; stroke-width: .18; }
+/* the goal: white posts and bar with an ink edge, the net a faint ink mesh */
+.so-frame { stroke: #fff; stroke-width: 1.5; stroke-linecap: square; filter: drop-shadow(.45px .45px 0 var(--ink)) drop-shadow(-.3px -.3px 0 var(--ink)); }
+.so-frame__back { stroke: var(--ink); stroke-width: .3; opacity: .35; }
+.so-net { opacity: .3; }
+.so-net__mesh { stroke: var(--ink); stroke-width: .12; }
 
-.so-ball { fill: #fff; stroke: var(--ink); stroke-width: .35; }
-.so-ball__patch { fill: var(--ink); }
-.so-ball__shadow { fill: rgb(0 0 0 / .25); }
-
-.so-stick__limb { stroke: var(--ink); stroke-width: .1; stroke-linecap: round; }
-.so-stick__body { stroke-width: .3; stroke-linecap: round; }
-.so-stick__shorts { fill: var(--ink); }
-.so-stick__head { fill: var(--paper); stroke: var(--ink); stroke-width: .05; }
-.so-stick__head--back { fill: var(--ink); }
-.so-stick__glove { fill: var(--hit); stroke: var(--ink); stroke-width: .04; }
+.so-ball { fill: #fff; stroke: var(--ink); stroke-width: .4; }
+.so-ball__shadow { fill: rgb(0 0 0 / .18); }
 
 /* in goal: the six spots on the goal mouth, yours filled */
-.so-zone { fill: transparent; stroke: #fff; stroke-width: .25; stroke-dasharray: 1 1; opacity: 0; transition: opacity .2s; }
+.so-zone { fill: transparent; stroke: var(--ink); stroke-width: .25; stroke-dasharray: 1 1; opacity: 0; transition: opacity .2s; }
 .so-zones--open .so-zone { opacity: .5; }
-.so-zone--on { fill: rgb(255 210 63 / .32); stroke: var(--hit); stroke-dasharray: none; stroke-width: .5; opacity: 1 !important; }
+.so-zone--on { fill: rgb(255 255 255 / .45); stroke: var(--ink); stroke-dasharray: none; stroke-width: .5; opacity: 1 !important; }
 
 /* shooting: the aim on the goal, red once it's off target */
 .so-aim circle { fill: rgb(255 255 255 / .25); stroke: var(--ink); stroke-width: .5; }

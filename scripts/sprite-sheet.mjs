@@ -3,6 +3,8 @@
 // colour on the figure (the bat, the shorts) turned seat 2's blue.
 //   node scripts/sprite-sheet.mjs pong
 //   node scripts/sprite-sheet.mjs ampe
+//   node scripts/sprite-sheet.mjs keeper     (Shootout)
+//   node scripts/sprite-sheet.mjs shooter    (Shootout)
 import { readFileSync, writeFileSync } from 'node:fs'
 import { deflateSync, inflateSync } from 'node:zlib'
 
@@ -32,6 +34,30 @@ const SHEETS = {
     cell: { w: 256, h: 256 },
     foot: { x: 128, y: 242 },
     footX: {},
+  },
+  // Shootout: the shadows on these sheets are solid light grey, not half see-through
+  keeper: {
+    src: 'art/shootout-chatgpt/keeper.png',
+    out: 'src/games/shootout/sprites/keeper.png',
+    blue: 'src/games/shootout/sprites/keeper-blue.png',
+    cols: 6,
+    rows: [[0, 335], [335, 655], [655, 1024]],
+    cell: { w: 256, h: 256 },
+    foot: { x: 128, y: 242 },
+    // the dives and lying poses reach out to the left of their shadow
+    footX: { '1,0': 142, '1,2': 156 },
+    solidShadow: true,
+  },
+  shooter: {
+    src: 'art/shootout-chatgpt/shooter.png',
+    out: 'src/games/shootout/sprites/shooter.png',
+    blue: 'src/games/shootout/sprites/shooter-blue.png',
+    cols: 6,
+    rows: [[0, 270], [270, 512], [512, 785], [785, 1024]],
+    cell: { w: 256, h: 232 },
+    foot: { x: 128, y: 220 },
+    footX: {},
+    solidShadow: true,
   },
 }
 
@@ -129,6 +155,7 @@ function cut(cfg) {
   /** the ground shadow: half see-through grey (the lines are dark and solid, the body solid white) */
   const isShadow = (o) => {
     const [r, g, b, a] = src.px.subarray(o, o + 4)
+    if (cfg.solidShadow) return a > 150 && r > 150 && r < 238 && Math.max(r, g, b) - Math.min(r, g, b) < 14
     return a > 40 && a < 170 && r > 60 && Math.max(r, g, b) - Math.min(r, g, b) < 14
   }
   const { w: CW, h: CH } = cfg.cell
