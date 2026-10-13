@@ -23,7 +23,7 @@ import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
 import { POINTS, RESULT_MS, awardPoint, callOf, freshLive, nextGame, pointKey, serverOf, type Live, type Side, type Why } from '../pingpong/engine'
-import { LATE, ON_TIME, mirror, opsPlan, opsServeLane, plan, rebase, returnOf, timing, windowOf, type Flight, type Lane, type ShotMsg } from './engine'
+import { LATE, ON_TIME, mirror, opsPace, opsPlan, opsServeLane, plan, rebase, returnOf, timing, windowOf, type Flight, type Lane, type ShotMsg } from './engine'
 import { pongFeats } from './feats'
 import orangeSheet from './sprites/player.png'
 import blueSheet from './sprites/player-blue.png'
@@ -425,7 +425,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
       if (vsOps && r.phase === 'serve-them' && t >= r.serveAt) {
         r.act[1] = { kind: 'swing', side: r.lane[1], at: t, smash: false }
-        launch(plan(1, r.lane[1], opsServeLane(), t, 1, { serve: true }))
+        launch(plan(1, r.lane[1], opsServeLane(), t, 1, { serve: true, pace: opsPace(level) }))
         setPrompt('')
       }
 
@@ -458,7 +458,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           if (ops && ops !== 'miss' && 'd' in ops && t >= f.t1 + ops.d * w) {
             const ret = returnOf(ops.d, f.to, () => 1)
             r.act[1] = { kind: 'swing', side: f.to, at: t, smash: ret.smash }
-            launch(plan(1, f.to, ret.to, t, f.hits + 1, { smash: ret.smash }))
+            launch(plan(1, f.to, ret.to, t, f.hits + 1, { smash: ret.smash, pace: opsPace(level) }))
           } else if (ops && ops !== 'miss' && 'swingFault' in ops && t >= f.t1) {
             r.act[1] = { kind: 'swing', side: f.to, at: t, smash: false }
             launch(plan(1, f.to, (-f.to) as Lane, t, f.hits + 1, { fault: ops.swingFault }))

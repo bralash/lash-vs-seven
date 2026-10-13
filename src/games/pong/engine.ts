@@ -31,6 +31,8 @@ export interface Flight {
 const FLIGHT_MS = 1400
 const MIN_MS = 650
 const SPEEDUP = 0.965
+/** the quickest a paced shot (hard Ops') crosses */
+const MIN_PACED_MS = 360
 /** a smash crosses this much quicker */
 const SMASH_K = 0.62
 
@@ -39,8 +41,9 @@ export function flightMs(hits: number, smash: boolean) {
   return smash ? Math.max(400, base * SMASH_K) : base
 }
 
-export function plan(by: Side, from: Lane, to: Lane, t0: number, hits: number, opts: { smash?: boolean; serve?: boolean; fault?: 'net' | 'long' } = {}): Flight {
-  const ms = flightMs(hits, !!opts.smash) * (opts.serve ? 1.08 : 1)
+export function plan(by: Side, from: Lane, to: Lane, t0: number, hits: number, opts: { smash?: boolean; serve?: boolean; fault?: 'net' | 'long'; pace?: number } = {}): Flight {
+  // pace: hard Ops hits it quicker than anyone else (never quicker than MIN_PACED_MS)
+  const ms = Math.max(opts.pace ? MIN_PACED_MS : 0, flightMs(hits, !!opts.smash) * (opts.serve ? 1.08 : 1) * (opts.pace ?? 1))
   // a ball into the net stops there; one that goes long never comes down on the table
   const tb = t0 + ms * (opts.fault === 'net' ? 0.42 : 0.7)
   return { by, from, to, t0, tb, t1: t0 + ms, smash: !!opts.smash, serve: !!opts.serve, hits, ...(opts.fault ? { fault: opts.fault } : {}) }
@@ -73,12 +76,16 @@ export function returnOf(d: number, lane: Lane, rand: () => number = Math.random
 
 /* ── Ops ── */
 
-const SKILL: Record<Level, { keep: number; smash: number; vsSmash: number; wrongFoot: number }> = {
-  easy: { keep: 0.8, smash: 0.05, vsSmash: 0.22, wrongFoot: 0 },
-  medium: { keep: 0.88, smash: 0.11, vsSmash: 0.22, wrongFoot: 0 },
-  // hard gets almost everything back (your smashes too), and plays it away from you
-  hard: { keep: 0.97, smash: 0.2, vsSmash: 0.1, wrongFoot: 0.85 },
+const SKILL: Record<Level, { keep: number; smash: number; vsSmash: number; wrongFoot: number; tire: number; pace: number }> = {
+  easy: { keep: 0.8, smash: 0.05, vsSmash: 0.22, wrongFoot: 0, tire: 0.012, pace: 1 },
+  medium: { keep: 0.88, smash: 0.11, vsSmash: 0.22, wrongFoot: 0, tire: 0.012, pace: 1 },
+  // hard: she hits it quicker than anyone, smashes a lot, gets nearly everything back (most of your
+  // smashes too) and never tires, so beating her takes timing your own smashes
+  hard: { keep: 0.985, smash: 0.35, vsSmash: 0.1, wrongFoot: 0.85, tire: 0, pace: 0.82 },
 }
+
+/** how quick Ops' shots are against everyone else's (hard is quicker) */
+export const opsPace = (level: Level) => SKILL[level].pace
 
 /**
  * Ops' answer to a ball coming at her, decided as it's hit: she gets to it and plays it at timing d,
@@ -88,12 +95,12 @@ const SKILL: Record<Level, { keep: number; smash: number; vsSmash: number; wrong
  */
 export function opsPlan(level: Level, f: Flight, rand: () => number = Math.random): { d: number } | { swingFault: 'net' | 'long' } | 'miss' {
   const k = SKILL[level]
-  const keep = k.keep - (f.smash ? k.vsSmash : 0) - Math.max(0, f.hits - 8) * (level === 'hard' ? 0.006 : 0.012)
+  const keep = k.keep - (f.smash ? k.vsSmash : 0) - Math.max(0, f.hits - 8) * k.tire
   if (rand() < keep) {
     if (rand() < k.wrongFoot) {
       // her early hits go across (to the side opposite her), her late ones down the line
       const across = f.from === f.to
-      if (across) return rand() < 0.45 ? { d: 0 } : { d: -(0.25 + rand() * 0.15) }
+      if (across) return rand() < 0.6 ? { d: 0 } : { d: -(0.25 + rand() * 0.15) }
       return { d: 0.2 + rand() * 0.15 }
     }
     if (rand() < k.smash) return { d: 0 }
