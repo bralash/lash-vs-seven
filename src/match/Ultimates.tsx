@@ -309,6 +309,18 @@ interface Geo {
 
 const centre = (r: DOMRect): Spot => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
 
+/** the part of a box that's on screen (a board scrolled half away lands in its visible half) */
+function onScreen(r: DOMRect): DOMRect | null {
+  const left = Math.max(r.left, 0)
+  const top = Math.max(r.top, 0)
+  const w = Math.min(r.right, innerWidth) - left
+  const h = Math.min(r.bottom, innerHeight) - top
+  return w > 40 && h > 40 ? new DOMRect(left, top, w, h) : null
+}
+
+/** a result is up (every game's score screen has the result actions): the board's no longer the point */
+const resultUp = () => [...document.querySelectorAll('.mt-result-actions')].some((el) => el.getBoundingClientRect().height > 0)
+
 function Play({ s }: { s: Show }) {
   const { play } = useSound()
   const [geo, setGeo] = useState<Geo | null>(null)
@@ -317,8 +329,10 @@ function Play({ s }: { s: Show }) {
   useLayoutEffect(() => {
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches
     const found = findBoard()
-    const br = found?.board.getBoundingClientRect()
-    const at = br && br.width > 40 ? centre(br) : { x: innerWidth / 2, y: innerHeight / 2 }
+    // on the score screen, the middle of the screen; mid-game, the middle of the board's visible part
+    const shown = found ? onScreen(found.board.getBoundingClientRect()) : null
+    const br = resultUp() ? null : shown
+    const at = br ? centre(br) : { x: innerWidth / 2, y: innerHeight / 2 }
     const fe = faceEl(s.from)
     const from = fe ? centre(fe.getBoundingClientRect()) : null
     const timers: ReturnType<typeof setTimeout>[] = []
@@ -454,7 +468,7 @@ function Play({ s }: { s: Show }) {
       if (!calm) app?.classList.add('ult-glitch')
       later(1000, () => app?.classList.remove('ult-glitch'))
     }
-    const span = Math.min(Math.max(br && br.width > 40 ? Math.max(br.width, br.height) * 1.15 : 0, 220), Math.max(innerWidth, innerHeight) * 1.1)
+    const span = Math.min(Math.max(br ? Math.max(br.width, br.height) * 1.15 : Math.min(innerWidth, innerHeight) * 0.85, 220), Math.max(innerWidth, innerHeight) * 1.1)
     setGeo({ at, from, bits, span })
 
     return () => {
