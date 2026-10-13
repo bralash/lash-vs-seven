@@ -29,16 +29,21 @@ html:has(.ring-stage) .lobby > .topbar { position: relative; z-index: 2; }
 .ring-to .label { font-size: 10px; white-space: nowrap; }
 .ring-opp { width: 64px; aspect-ratio: 1; }
 
+/* one line, fixed height: whatever it says, the ring under it never moves */
 .ring-status {
-  min-height: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   margin: 0;
-  padding: 6px 14px;
+  padding: 0 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: var(--edge) solid var(--ink);
   background: var(--slot);
   font-family: var(--display);
   font-size: clamp(14px, 4vw, 20px);
+  line-height: 1;
   text-transform: uppercase;
   text-align: center;
 }

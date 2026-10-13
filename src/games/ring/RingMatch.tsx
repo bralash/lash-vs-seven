@@ -359,13 +359,14 @@ export function RingMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
   const running = live.start > 0 && t >= 0 && !over
   const imOut = me_.crash !== null
   const theyreOut = them.crash !== null
+  // (one short line, always: a status that wrapped onto two would nudge the ring)
   let status: string
   if (over) status = ''
   else if (!live.start || t < 0) status = live.g === 1 ? 'Get ready' : `Game ${live.g}`
   else if (imOut && theyreOut) status = 'Both out'
-  else if (imOut) status = `You’re out on ${me_.score} · ${oppName} needs ${me_.score + 1}`
-  else if (theyreOut) status = `${oppName} is out on ${them.score} · get ${them.score + 1} to win`
-  else status = 'Tap to dash across · dodge the walls'
+  else if (imOut) status = `You’re out · ${oppName} needs ${me_.score + 1}`
+  else if (theyreOut) status = `${oppName}’s out · get ${them.score + 1}`
+  else status = 'Dodge the walls'
 
   return (
     <main className="ring">
