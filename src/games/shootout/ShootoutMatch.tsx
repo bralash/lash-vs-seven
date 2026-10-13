@@ -674,7 +674,7 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       </p>
 
       <div className={`so-stage${slowMo ? ' so-stage--slow' : ''}`} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
-        <div ref={worldEl} className="so-world" style={{ aspectRatio: `100 / ${H}` }}>
+        <div ref={worldEl} className="so-world" style={{ aspectRatio: `100 / ${H}` }} data-ult-board>
           <svg className="so-scene" viewBox={`0 0 100 ${H}`} aria-label={cam === 'keeper' ? 'The goal, from behind the keeper' : 'The goal, from behind the ball'}>
             {cam === 'keeper' ? (
               <KeeperView

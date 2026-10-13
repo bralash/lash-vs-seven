@@ -597,7 +597,7 @@ export function PongMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
           tap(e.clientX < window.innerWidth / 2 ? -1 : 1)
         }}
       >
-        <div className="pong-world" style={{ aspectRatio: `100 / ${H}` }}>
+        <div className="pong-world" style={{ aspectRatio: `100 / ${H}` }} data-ult-board>
           <span ref={(el) => void (sideEls.current[0] = el)} className="pong-side pong-side--l" aria-hidden="true">L</span>
           <span ref={(el) => void (sideEls.current[1] = el)} className="pong-side pong-side--r" aria-hidden="true">R</span>
           {figure(1)}

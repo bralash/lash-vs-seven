@@ -325,7 +325,7 @@ export function AmpeMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
         }}
       >
         <p ref={wordEl} className="ampe-word" aria-live="off" />
-        <div className="ampe-floor">
+        <div className="ampe-floor" data-ult-board>
           {figure(mine)}
           {figure(theirs)}
         </div>
