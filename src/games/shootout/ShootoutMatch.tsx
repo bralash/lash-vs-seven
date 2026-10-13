@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useServerOffset } from '../../lib/serverTime'
+import { load, save } from '../../lib/storage'
 import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
 import { useScrollLock } from '../../lib/useScrollLock'
@@ -46,6 +47,7 @@ import {
   type ShootoutLive,
   type Spot,
 } from './engine'
+import { HowTo } from './HowTo'
 import keeperOrange from './sprites/keeper.png'
 import keeperBlue from './sprites/keeper-blue.png'
 import shooterOrange from './sprites/shooter.png'
@@ -53,6 +55,8 @@ import shooterBlue from './sprites/shooter-blue.png'
 import '../../styles/shootout.css'
 
 const GAME = 'shootout'
+/** How to play shows before your first shootout against Ops on this device */
+const HOWTO_KEY = 'lvs_shootout_howto'
 
 export interface ShootoutState {
   match: number
@@ -269,11 +273,13 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     return () => cancelAnimationFrame(raf)
   }, [showResults, now])
 
-  // the first whistle: the host (or this phone, against Ops) sets it going
+  const [howTo, setHowTo] = useState(() => vsOps && load(HOWTO_KEY) !== 'seen')
+
+  // the first whistle: the host (or this phone, against Ops) sets it going (once How to play is closed)
   useEffect(() => {
-    if (live.start || over || !(me.isHost || vsOps || session.local)) return
+    if (howTo || live.start || over || !(me.isHost || vsOps || session.local)) return
     session.move<ShootoutLive>((cur) => (cur.start || cur.result ? undefined : { ...cur, start: now() + 1500 })).catch(() => {})
-  }, [live.start, over, me.isHost, vsOps, session, now])
+  }, [howTo, live.start, over, me.isHost, vsOps, session, now])
 
   /** you let go: the aim (with its sway) is the shot, and the run-up starts */
   const release = useCallback(
@@ -417,22 +423,35 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     else if (k.reveal?.[key(mine)]?.spot !== undefined) yourDives.current.push(k.dive)
   }, [live.last, mine])
 
-  // sounds: the whistle, the strike, the ball arriving
-  const heard = useRef({ whistle: -1, strike: 0, land: -1 })
+  // sounds: the whistle, the boot on the ball, the ball arriving (net, gloves, woodwork) and the crowd, full time
+  const heard = useRef({ whistle: -1, strike: live.last?.strike ?? 0, land: live.last?.n ?? -1, over: over })
   useEffect(() => {
     const h = heard.current
     const k = live.last
     if (live.start && t >= live.start && h.whistle !== live.n && !over) {
       h.whistle = live.n
-      sound('tick')
+      sound('whistle')
     }
-    if (live.strike && t >= live.strike && h.strike !== live.strike) {
-      h.strike = live.strike
-      sound('pot')
+    // the strike may already be settled into the last kick by the time a frame sees it
+    const strike = live.strike || k?.strike || 0
+    if (strike && t >= strike && h.strike !== strike) {
+      h.strike = strike
+      sound('kick')
     }
     if (k && t >= k.strike + FLIGHT_MS && h.land !== k.n) {
       h.land = k.n
-      sound(scored(k.outcome) ? 'boom' : k.outcome === 'saved' || k.outcome === 'tips' ? 'smash' : k.outcome === 'post' || k.outcome === 'bar' ? 'clink' : 'whoosh')
+      const o = k.outcome
+      if (scored(o)) {
+        sound('net')
+        sound('roar')
+      } else {
+        sound(o === 'saved' || o === 'tips' ? 'glove' : o === 'post' || o === 'bar' ? 'post' : 'whoosh')
+        sound('ooh')
+      }
+    }
+    if (over && !h.over && k && t >= k.strike + FLIGHT_MS + 900) {
+      h.over = true
+      sound('fullTime')
     }
   }, [t, live.start, live.strike, live.n, live.last, over, sound])
 
@@ -598,6 +617,14 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           </p>
         )}
       </div>
+      {howTo && (
+        <HowTo
+          onDone={() => {
+            save(HOWTO_KEY, 'seen')
+            setHowTo(false)
+          }}
+        />
+      )}
       {awaySecs !== null && opp && (
         <p className="mt-banner" role="status">
           {opp.name} disconnected · ending the match in {awaySecs}s unless they’re back

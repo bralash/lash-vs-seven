@@ -1,10 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { KEYS, load, save } from './storage'
 
-export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack' | 'pong' | 'ping' | 'smash' | 'cue' | 'clink' | 'pot'
+export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack' | 'pong' | 'ping' | 'smash' | 'cue' | 'clink' | 'pot' | 'whistle' | 'fullTime' | 'kick' | 'net' | 'post' | 'glove' | 'roar' | 'ooh'
+
+/** football: sounds that aren't beeps or knocks (a whistle, washes of noise) */
+type Special = 'whistle' | 'fullTime' | 'net' | 'roar' | 'ooh'
 
 // Short synthesized cues — no audio files to load.
-const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; len: number; vol: number }> = {
+const CUES: Record<Exclude<Cue, Special>, { type: OscillatorType; notes: number[]; gap: number; len: number; vol: number }> = {
   tap: { type: 'square', notes: [660], gap: 0, len: 0.05, vol: 0.04 },
   find: { type: 'sine', notes: [659.25, 880], gap: 0.06, len: 0.16, vol: 0.12 },
   findBig: { type: 'sine', notes: [523.25, 659.25, 783.99, 1046.5], gap: 0.06, len: 0.2, vol: 0.13 },
@@ -31,6 +34,10 @@ const CUES: Record<Cue, { type: OscillatorType; notes: number[]; gap: number; le
   // a chip landing on the pile
   clack: { type: 'square', notes: [1900, 1300], gap: 0.012, len: 0.025, vol: 0.05 },
   error: { type: 'sawtooth', notes: [180, 140], gap: 0.09, len: 0.14, vol: 0.06 },
+  // football: the boot, the post and the gloves are knocks (below); these beeps stand in where knocks can't play
+  kick: { type: 'triangle', notes: [140, 90], gap: 0.03, len: 0.08, vol: 0.12 },
+  post: { type: 'sine', notes: [1180, 2950], gap: 0, len: 0.4, vol: 0.05 },
+  glove: { type: 'square', notes: [300, 200], gap: 0.02, len: 0.05, vol: 0.06 },
 }
 
 /*
@@ -54,6 +61,93 @@ const KNOCKS: Partial<Record<Cue, Knock>> = {
   ping: { modes: [[3100, 0.03, 0.035], [5200, 0.015, 0.015], [190, 0.06, 0.04]], click: { freqs: [3600, 6500], q: 3, len: 0.012, vol: 0.45 }, room: 0.2 },
   // a smash: a hard crack off the bat
   smash: { modes: [[900, 0.04, 0.09], [2100, 0.025, 0.05], [300, 0.07, 0.06]], click: { freqs: [1800, 4200], q: 1.2, len: 0.025, vol: 0.9 }, room: 0.24 },
+  // the boot on the ball: a deep leather thump
+  kick: { modes: [[120, 0.1, 0.16], [260, 0.06, 0.08], [520, 0.03, 0.03]], click: { freqs: [500, 1600], q: 0.9, len: 0.03, vol: 1 }, room: 0.2 },
+  // the ball off the woodwork: a clang that rings on
+  post: { modes: [[1180, 0.7, 0.05], [2950, 0.45, 0.03], [4700, 0.25, 0.015], [610, 0.5, 0.03]], click: { freqs: [2500, 5200], q: 2, len: 0.02, vol: 0.8 }, room: 0.35 },
+  // the ball into the gloves: a dull slap
+  glove: { modes: [[220, 0.05, 0.08], [700, 0.03, 0.03]], click: { freqs: [900, 2400], q: 0.7, len: 0.045, vol: 1.1 }, room: 0.2 },
+}
+
+let longNoise: AudioBuffer | null = null
+/** two seconds of noise, for the net and the crowd */
+function noiseOf(ctx: BaseAudioContext) {
+  if (!longNoise || longNoise.sampleRate !== ctx.sampleRate) {
+    longNoise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate)
+    const ch = longNoise.getChannelData(0)
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1
+  }
+  return longNoise
+}
+
+/** a wash of noise through a filter that slides from one pitch to another, swelling in and dying away */
+function wash(ctx: BaseAudioContext, w: { type: BiquadFilterType; from: number; to: number; q: number; len: number; vol: number; attack: number; delay?: number }) {
+  const t = ctx.currentTime + (w.delay ?? 0)
+  const src = ctx.createBufferSource()
+  src.buffer = noiseOf(ctx)
+  const f = ctx.createBiquadFilter()
+  f.type = w.type
+  f.Q.value = w.q
+  f.frequency.setValueAtTime(w.from, t)
+  f.frequency.exponentialRampToValueAtTime(w.to, t + w.len)
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.exponentialRampToValueAtTime(w.vol, t + w.attack)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + w.len)
+  src.connect(f).connect(g).connect(ctx.destination)
+  src.start(t, Math.random())
+  src.stop(t + w.len + 0.05)
+}
+
+/** a referee's whistle: a high note trilled by the pea inside it */
+function whistle(ctx: BaseAudioContext, len: number, delay = 0) {
+  const t = ctx.currentTime + delay
+  const osc = ctx.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.value = 2850
+  const lfo = ctx.createOscillator()
+  lfo.frequency.value = 28
+  const depth = ctx.createGain()
+  depth.gain.value = 160
+  lfo.connect(depth).connect(osc.frequency)
+  // the trill wobbles the loudness too
+  const trem = ctx.createGain()
+  trem.gain.value = 0.7
+  const wobble = ctx.createGain()
+  wobble.gain.value = 0.3
+  lfo.connect(wobble).connect(trem.gain)
+  const amp = ctx.createGain()
+  amp.gain.setValueAtTime(0.0001, t)
+  amp.gain.exponentialRampToValueAtTime(0.06, t + 0.02)
+  amp.gain.setValueAtTime(0.06, t + len - 0.06)
+  amp.gain.exponentialRampToValueAtTime(0.0001, t + len)
+  osc.connect(trem).connect(amp).connect(ctx.destination)
+  osc.start(t)
+  lfo.start(t)
+  osc.stop(t + len + 0.05)
+  lfo.stop(t + len + 0.05)
+}
+
+const SPECIAL: Record<Special, (ctx: BaseAudioContext) => void> = {
+  whistle: (ctx) => whistle(ctx, 0.32),
+  // full time: two short blasts and a long one
+  fullTime: (ctx) => {
+    whistle(ctx, 0.22)
+    whistle(ctx, 0.22, 0.32)
+    whistle(ctx, 0.75, 0.64)
+  },
+  // the ball into the net: a soft swish
+  net: (ctx) => wash(ctx, { type: 'bandpass', from: 2600, to: 900, q: 0.9, len: 0.32, vol: 0.12, attack: 0.012 }),
+  // the crowd up on its feet
+  roar: (ctx) => {
+    wash(ctx, { type: 'lowpass', from: 650, to: 1150, q: 0.6, len: 1.9, vol: 0.2, attack: 0.3 })
+    wash(ctx, { type: 'bandpass', from: 1700, to: 2300, q: 0.8, len: 1.6, vol: 0.05, attack: 0.35 })
+  },
+  // the crowd's "ooh": a vowel that falls away
+  ooh: (ctx) => {
+    wash(ctx, { type: 'bandpass', from: 560, to: 330, q: 5, len: 1.1, vol: 0.32, attack: 0.18 })
+    wash(ctx, { type: 'lowpass', from: 500, to: 350, q: 0.5, len: 1.0, vol: 0.06, attack: 0.2 })
+  },
 }
 
 let noiseBuf: AudioBuffer | null = null
@@ -230,7 +324,8 @@ export function SoundProvider({ children }: { children: ReactNode }) {
         const ctx = wake()
         const k = KNOCKS[cue]
         if (k) return knock(ctx, k)
-        const { type, notes, gap, len, vol } = CUES[cue]
+        if (cue in SPECIAL) return SPECIAL[cue as Special](ctx)
+        const { type, notes, gap, len, vol } = CUES[cue as Exclude<Cue, Special>]
         notes.forEach((freq, i) => {
           const osc = ctx.createOscillator()
           const gain = ctx.createGain()
