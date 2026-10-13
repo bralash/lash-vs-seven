@@ -159,7 +159,7 @@ The same shape as Ampe (`src/games/ampe/engine.ts`), at `matches/shootout/{code}
    *Status: look done 2026-10-13 (2 sheets, not 4: no faces, so one keeper sheet serves both cameras; Ping Pong's flat yellow look; reactions after every kick). Sounds, How to play, slow motion and easy tells done 2026-10-13 (step 2 complete).*
 3. **Online and the rest.** Shared `lockin.ts`, rooms, reveal checks, disconnects, rivalry,
    feats, Results strip and share card, Ops reactions `sense`; registry `live`. Two-tab test
-   (full shootout incl. sudden death, rematch). Deploy. *Status: not started*
+   (full shootout incl. sudden death, rematch). Deploy. *Status: built 2026-10-13, committed, not deployed. Two-tab test passed (full shootout ending early, fingertips, rematch, rivalry); sudden death covered by engine tests only; a phone going quiet not tested live.*
 
 ---
 

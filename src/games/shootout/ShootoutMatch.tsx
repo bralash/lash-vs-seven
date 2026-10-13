@@ -24,8 +24,17 @@ import {
   FLIGHT_MS,
   KICKS,
   RUN_MS,
+  CLAIM_MS,
+  CLAIMED,
+  NONE,
+  REVEAL_WAIT_MS,
   closeCall,
   colOf,
+  diveCommit,
+  honest,
+  lockIn,
+  round as toKept,
+  shotCommit,
   freshLive,
   isHigh,
   key,
@@ -50,6 +59,7 @@ import {
   type Spot,
 } from './engine'
 import { HowTo } from './HowTo'
+import { shootoutFeats } from './feats'
 import keeperOrange from './sprites/keeper.png'
 import keeperBlue from './sprites/keeper-blue.png'
 import shooterOrange from './sprites/shooter.png'
@@ -250,6 +260,12 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const shooter = shooterOf(live.n, live.first)
   const iShoot = shooter === mine
 
+  /**
+   * Online: the pick actually locked in (the last lock-in that landed). Lock-ins go one after another,
+   * and the strike waits for any still on its way, so the pick shown is always the one locked in.
+   */
+  const locked = useRef<{ n: number; x?: number; y?: number; spot?: Spot; salt: string } | null>(null)
+  const sending = useRef<Promise<unknown>>(Promise.resolve())
   /** your dive for this kick (you can change it until the strike) */
   const dive = useRef<{ n: number; spot: Spot; salt: string } | null>(null)
   const [dived, setDived] = useState<{ n: number; spot: Spot } | null>(null)
@@ -294,11 +310,23 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const l = liveRef.current
       if (l.result || !l.start || l.strike || shooterOf(l.n, l.first) !== mine) return
       const n = l.n
-      shot.current = { n, x, y, salt: newSalt() }
+      // rounded as the database keeps it, so the lock-in can be checked against what's shown
+      const s = { n, x: toKept(x), y: toKept(y), salt: newSalt() }
+      shot.current = s
       sound('tap')
-      session.move<ShootoutLive>((cur) => shoot(cur, n, now() + RUN_MS)).catch(() => {})
+      if (!online) {
+        session.move<ShootoutLive>((cur) => shoot(cur, n, now() + RUN_MS)).catch(() => {})
+        return
+      }
+      // online the shot goes as a lock-in with the strike; it only counts once that has landed
+      sending.current = sending.current
+        .then(async () => {
+          const c = await shotCommit(n, s.x, s.y, s.salt)
+          if (await session.move<ShootoutLive>((cur) => shoot(cur, n, now() + RUN_MS, c))) locked.current = s
+        })
+        .catch(() => {})
     },
-    [mine, now, session, sound],
+    [mine, now, session, sound, online],
   )
 
   /** your dive (changeable until the strike) */
@@ -308,11 +336,20 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
       const tt = now()
       if (l.result || !l.start || tt < l.start || shooterOf(l.n, l.first) === mine) return
       if (l.strike && tt >= l.strike) return
-      dive.current = { n: l.n, spot, salt: newSalt() }
+      const d = { n: l.n, spot, salt: newSalt() }
+      dive.current = d
       setDived({ n: l.n, spot })
       sound('tap')
+      // online every change is a new lock-in, one after another; the last one to land is the dive
+      if (online)
+        sending.current = sending.current
+          .then(async () => {
+            const c = await diveCommit(d.n, d.spot, d.salt)
+            if (await session.move<ShootoutLive>((cur) => lockIn(cur, d.n, mine, c))) locked.current = d
+          })
+          .catch(() => {})
     },
-    [mine, now, sound],
+    [mine, now, sound, online, session],
   )
 
   const canAim = () => {
@@ -390,7 +427,8 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     if (!live.start || live.strike || over) return
     const n = live.n
     const opsShoots = vsOps && shooter === theirs
-    const wait = opsShoots ? live.start + opsWait() - now() : live.start + AIM_MS - now()
+    // online, if the shooter's phone has gone quiet, the other phone sets the scuff going a little later
+    const wait = opsShoots ? live.start + opsWait() - now() : live.start + AIM_MS + (shooter === mine ? 0 : CLAIM_MS) - now()
     const timer = setTimeout(() => {
       if (opsShoots) {
         opsShotRef.current = { n, ...opsShot(level, yourDives.current), salt: newSalt() }
@@ -398,8 +436,9 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
         aim.current = null
         setAiming(false)
         shot.current = null
-      } else return
-      session.move<ShootoutLive>((cur) => shoot(cur, n, now() + RUN_MS)).catch(() => {})
+      } else if (!online) return
+      // (refused if the shot went in meanwhile)
+      sending.current = sending.current.then(() => session.move<ShootoutLive>((cur) => shoot(cur, n, now() + RUN_MS))).catch(() => {})
     }, Math.max(0, wait))
     return () => clearTimeout(timer)
   }, [live.n, live.start, live.strike, over, vsOps, shooter, mine, theirs, level, session, now])
@@ -408,18 +447,34 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   useEffect(() => {
     if (!live.strike || over) return
     const n = live.n
+    /** what you show: your shot or your dive, or nothing (a scuff, standing still) */
+    const shown = (p: { n: number; x?: number; y?: number; spot?: Spot; salt: string } | null): Reveal =>
+      !p || p.n !== n ? NONE : shooter === mine ? { x: p.x, y: p.y, salt: p.salt } : { spot: p.spot, salt: p.salt }
     const timer = setTimeout(() => {
-      const myShot = shot.current?.n === n ? shot.current : null
-      const myDive = dive.current?.n === n ? dive.current : null
-      const mineR: Reveal = shooter === mine ? (myShot ? { x: myShot.x, y: myShot.y, salt: myShot.salt } : {}) : myDive ? { spot: myDive.spot, salt: myDive.salt } : {}
-      if (!vsOps) return
+      if (online) {
+        // show what's locked in, once any lock-in on its way has landed (or been turned away)
+        sending.current = sending.current
+          .then(() => session.move<ShootoutLive>((cur) => revealIn(cur, n, { [key(mine)]: shown(locked.current) })))
+          .catch(() => {})
+        return
+      }
+      const mineR = shown(shooter === mine ? shot.current : dive.current)
       const o = opsShotRef.current?.n === n ? opsShotRef.current : null
       const early = opsKeep.current?.n === n ? opsKeep.current.spot : null
-      const opsR: Reveal = shooter === theirs ? (o ? { x: o.x, y: o.y, salt: o.salt } : {}) : { spot: early ?? opsDive(level, yourShots.current), salt: newSalt() }
+      const opsR: Reveal = shooter === theirs ? (o ? { x: o.x, y: o.y, salt: o.salt } : NONE) : { spot: early ?? opsDive(level, yourShots.current), salt: newSalt() }
       session.move<ShootoutLive>((cur) => revealIn(cur, n, { [key(mine)]: mineR, [key(theirs)]: opsR })).catch(() => {})
     }, Math.max(0, live.strike - now()))
-    return () => clearTimeout(timer)
-  }, [live.n, live.strike, over, vsOps, shooter, mine, theirs, level, session, now])
+    // online, a phone that never shows its pick counts as showing nothing
+    const claim = online
+      ? setTimeout(() => {
+          session.move<ShootoutLive>((cur) => (cur.n === n && !cur.reveal?.[key(theirs)] ? revealIn(cur, n, { [key(theirs)]: CLAIMED }) : undefined)).catch(() => {})
+        }, Math.max(0, live.strike - now()) + REVEAL_WAIT_MS)
+      : undefined
+    return () => {
+      clearTimeout(timer)
+      if (claim) clearTimeout(claim)
+    }
+  }, [live.n, live.strike, over, vsOps, online, shooter, mine, theirs, level, session, now])
 
   // on easy, Ops in goal makes up her mind at the whistle (so her keeper can give it away)
   useEffect(() => {
@@ -435,7 +490,12 @@ export function ShootoutMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     seen.current = k.n
     if (k.shooter === mine) yourShots.current.push(landing(k.x, k.y).spot)
     else if (k.reveal?.[key(mine)]?.spot !== undefined) yourDives.current.push(k.dive)
-  }, [live.last, mine])
+    // online: the other phone's pick has to be the one it locked in, and the outcome has to follow
+    if (online)
+      honest(k, theirs).then((ok) => {
+        if (!ok) session.move<ShootoutLive>((cur) => (cur.result ? undefined : { ...cur, result: { winner: mine, why: 'foul' } })).catch(() => {})
+      })
+  }, [live.last, mine, theirs, online, session])
 
   // sounds: the whistle, the boot on the ball, the ball arriving (net, gloves, woodwork) and the crowd, full time
   const heard = useRef({ whistle: -1, strike: live.last?.strike ?? 0, land: live.last?.n ?? -1, over: over })
@@ -833,7 +893,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Shooto
   }, [session, me.isHost, imReady, oppReady, st.match])
 
   const names: [string, string] = [seats[0]?.name ?? 'You', seats[1]?.name ?? 'Ops']
-  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match)
+  const rivalry = useRivalry(GAME, room, me, seats, winner, st.match, shootoutFeats(st.live))
   const scoreLine = `${goals[0]} — ${goals[1]}${sudden ? ' (sudden death)' : ''}`
   const marks = (s: Seat) => kicks[s].map((o) => (scored(o) ? '●' : '✕')).join(' ')
   const card: CardInput = {

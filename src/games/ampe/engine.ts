@@ -1,4 +1,7 @@
 import type { Level } from '../../match/bot'
+import { hashOf, newSalt } from '../../match/lockin'
+
+export { newSalt }
 
 /*
  * Ampe, two players. Every exchange both jump, clap and kick a foot out, left or right. The leader
@@ -111,11 +114,7 @@ export function revealIn(l: AmpeLive, n: number, given: BySeat<Reveal>, target: 
   }
 }
 
-export async function commitOf(n: number, foot: Foot, salt: string) {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${n}:${foot}:${salt}`))
-  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-export const newSalt = () => [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, '0')).join('')
+export const commitOf = (n: number, foot: Foot, salt: string) => hashOf(`${n}:${foot}:${salt}`)
 
 /** does a settled exchange hold up: each foot shown was locked in before, and the point is right? */
 export async function honest(last: NonNullable<AmpeLive['last']>, seat: Seat): Promise<boolean> {

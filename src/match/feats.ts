@@ -15,6 +15,7 @@ import { PONG_FEATS } from '../games/pong/feats'
 import { AMPE_FEATS } from '../games/ampe/feats'
 import { POOL_FEATS } from '../games/pool/feats'
 import { QUORIDOR_FEATS } from '../games/quoridor/feats'
+import { SHOOTOUT_FEATS } from '../games/shootout/feats'
 import { SPAR_FEATS } from '../games/spar/feats'
 import { SUDOKU_FEATS } from '../games/sudoku/feats'
 import { TICTACTOE_FEATS } from '../games/tictactoe/feats'
@@ -53,6 +54,7 @@ const ALL: FeatDef[] = [
   ...PONG_FEATS,
   ...POOL_FEATS,
   ...QUORIDOR_FEATS,
+  ...SHOOTOUT_FEATS,
   ...SPAR_FEATS,
   ...SUDOKU_FEATS,
   ...TICTACTOE_FEATS,

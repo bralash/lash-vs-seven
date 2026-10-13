@@ -1,4 +1,7 @@
 import type { Level } from '../../match/bot'
+import { hashOf, newSalt } from '../../match/lockin'
+
+export { newSalt }
 
 /*
  * Shootout: a penalty shootout, two players. Kicks go in turns (one shoots, the other keeps), five
@@ -58,6 +61,11 @@ export function replayMs(k: { outcome: Outcome; dive: Spot }, dt: number): numbe
 /** a shooter out of time: a soft one down the middle, gathered by the keeper */
 export const SCUFF = { x: 0, y: 0.12 }
 
+/** online: past the strike with no pick shown from the other phone, it counts as nothing shown */
+export const REVEAL_WAIT_MS = 3500
+/** online: past the shooter's time with no shot, the other phone sets the scuff going this much later */
+export const CLAIM_MS = 2500
+
 /** per-seat entries are keyed s0 / s1: the database would turn 0 / 1 keys into a list */
 export type SeatKey = 's0' | 's1'
 export const key = (s: Seat): SeatKey => (s === 0 ? 's0' : 's1')
@@ -69,7 +77,15 @@ export interface Reveal {
   y?: number
   spot?: Spot
   salt?: string
+  /** nothing to show (the database drops an empty entry) */
+  none?: true
+  /** shown for a phone that went quiet, by the other phone */
+  claimed?: true
 }
+/** no shot (out of time) or no dive (standing still) */
+export const NONE: Reveal = { none: true }
+/** a quiet phone's pick, filled in by the other: nothing (it doesn't count against its lock-in) */
+export const CLAIMED: Reveal = { none: true, claimed: true }
 
 export interface Kick {
   n: number
@@ -99,6 +115,8 @@ export interface ShootoutLive {
   reveal?: BySeat<Reveal>
   /** the kick just taken */
   last?: Kick | null
+  /** who has scored a Panenka (for the feat) */
+  panenka?: BySeat<true>
   result?: { winner: Seat; why?: 'foul' } | null
 }
 
@@ -169,19 +187,30 @@ export function sway(x: number, y: number, t: number): { x: number; y: number } 
   return { x: x + a * Math.sin((t / 900) * 2 * Math.PI), y: y + 0.6 * a * Math.sin((t / 1300) * 2 * Math.PI + 1) }
 }
 
-const round = (v: number) => Math.round(v * 1000) / 1000
+export const round = (v: number) => Math.round(v * 1000) / 1000
 
 /** the shooter lets go: the strike is set (and, online, their lock-in goes with it) */
 export function shoot(l: ShootoutLive, n: number, strike: number, commit?: string): ShootoutLive | undefined {
   if (l.result || l.n !== n || l.strike) return undefined
   const s = shooterOf(n, l.first)
-  return { ...l, strike, commit: commit ? { ...l.commit, [key(s)]: commit } : l.commit }
+  // (never an undefined field: the database refuses the whole write)
+  return { ...l, strike, commit: commit ? { ...l.commit, [key(s)]: commit } : (l.commit ?? {}) }
 }
 
 /** the keeper's lock-in for this kick (they can change it), refused once anyone has revealed */
 export function lockIn(l: ShootoutLive, n: number, seat: Seat, commit: string): ShootoutLive | undefined {
   if (l.result || l.n !== n || Object.keys(l.reveal ?? {}).length) return undefined
   return { ...l, commit: { ...l.commit, [key(seat)]: commit } }
+}
+
+/** a kick's outcome from the two picks shown */
+export function settle(shot: Reveal, keep: Reveal): { x: number; y: number; dive: Spot; outcome: Outcome } {
+  const x = round(shot.x ?? SCUFF.x)
+  const y = round(shot.y ?? SCUFF.y)
+  const dive = keep.spot ?? STAND
+  // a scuff (out of time) rolls gently to the keeper, wherever they went
+  const outcome = shot.x === undefined ? 'saved' : judge(x, y, dive, coin(shot.salt, keep.salt))
+  return { x, y, dive, outcome }
 }
 
 /**
@@ -194,13 +223,9 @@ export function revealIn(l: ShootoutLive, n: number, given: BySeat<Reveal>): Sho
   for (const k of ['s0', 's1'] as SeatKey[]) if (given[k] && !reveal[k]) reveal[k] = given[k]
   if (!reveal.s0 || !reveal.s1) return { ...l, reveal }
   const shooter = shooterOf(n, l.first)
-  const shot = reveal[key(shooter)]!
-  const keep = reveal[key((1 - shooter) as Seat)]!
-  const x = round(shot.x ?? SCUFF.x)
-  const y = round(shot.y ?? SCUFF.y)
-  const dive = keep.spot ?? STAND
-  // a scuff (out of time) rolls gently to the keeper, wherever they went
-  const outcome = shot.x === undefined ? 'saved' : judge(x, y, dive, coin(shot.salt, keep.salt))
+  const { x, y, dive, outcome } = settle(reveal[key(shooter)]!, reveal[key((1 - shooter) as Seat)]!)
+  // the Panenka: a goal chipped high down the middle while the keeper dives to a side
+  const panenka = outcome === 'goal' && landing(x, y).spot === 4 && colOf(dive) !== 0
   const log = [...(l.log ?? []), outcome]
   const winner = decided(log, l.first)
   return {
@@ -213,6 +238,8 @@ export function revealIn(l: ShootoutLive, n: number, given: BySeat<Reveal>): Sho
     reveal: {},
     last: { n, shooter, x, y, dive, outcome, strike: l.strike, commit: l.commit ?? {}, reveal },
     result: winner === null ? null : { winner },
+    // (left out until someone scores one: the database refuses an undefined field)
+    ...(panenka || l.panenka ? { panenka: { ...l.panenka, ...(panenka ? { [key(shooter)]: true } : {}) } } : {}),
   }
 }
 
@@ -262,4 +289,29 @@ export function opsShot(level: Level, yourDives: Spot[], rand: () => number = Ma
 /** when Ops lets go, from the whistle (ms) */
 export const opsWait = (rand: () => number = Math.random) => 1300 + rand() * 2000
 
-export const newSalt = () => [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, '0')).join('')
+/* ── online: lock-ins and checks ── */
+
+export const shotCommit = (n: number, x: number, y: number, salt: string) => hashOf(`${n}:shot:${x}:${y}:${salt}`)
+export const diveCommit = (n: number, spot: Spot, salt: string) => hashOf(`${n}:dive:${spot}:${salt}`)
+
+/**
+ * Does a kick hold up? The seat's pick shown at the strike is the one it locked in (no lock-in, no
+ * pick: a scuff or standing still), and the outcome follows from both picks.
+ */
+export async function honest(k: Kick, seat: Seat): Promise<boolean> {
+  const r = k.reveal?.[key(seat)]
+  const c = k.commit?.[key(seat)]
+  if (!r) return false
+  const shown = seat === k.shooter ? r.x !== undefined : r.spot !== undefined
+  if (!shown) {
+    // a phone that went quiet (filled in by the other) isn't a cheat; one hiding its lock-in is
+    if (c && !r.claimed) return false
+  } else {
+    if (!c || !r.salt) return false
+    const want = seat === k.shooter ? await shotCommit(k.n, r.x!, r.y ?? 0, r.salt) : await diveCommit(k.n, r.spot!, r.salt)
+    if (want !== c) return false
+  }
+  const shooter = k.reveal?.[key(k.shooter)]
+  const keeper = k.reveal?.[key((1 - k.shooter) as Seat)]
+  return !!shooter && !!keeper && settle(shooter, keeper).outcome === k.outcome
+}
