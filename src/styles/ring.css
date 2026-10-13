@@ -1,0 +1,140 @@
+/* ── Ring Dash: one ink ring on paper, your dot round it; theirs on a small ring in the corner ── */
+.ring {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+.ring > * { width: 100%; }
+.ring > :not(.ring-stage) { position: relative; z-index: 1; }
+/* the top bar (leave, reactions, voice, sound) stays above the stage */
+html:has(.ring-stage) .lobby > .topbar { position: relative; z-index: 2; }
+
+.ring-to {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 76px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+}
+.ring-to .label { color: var(--paper-2); font-size: 10px; }
+.ring-to__n { font-family: var(--display); font-size: 22px; color: var(--paper); }
+
+.ring-status {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 6px 14px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(14px, 4vw, 20px);
+  text-transform: uppercase;
+  text-align: center;
+}
+.ring-status--out { background: var(--ink); color: var(--hit); }
+
+/* the whole page is the button: a tap anywhere dashes */
+.ring-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: var(--paper);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+/* the ring sits in the page under the scores, as big as the space left; taps go through it to the stage */
+.ring .ring-board {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 480px, calc(100svh - 330px));
+  min-width: 220px;
+  aspect-ratio: 1;
+  margin-top: 8px;
+  pointer-events: none;
+}
+.ring-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.ring-line { fill: none; stroke: var(--ink); stroke-width: 7; }
+.ring-wall { stroke: var(--ink); stroke-width: 7; stroke-linecap: square; }
+.ring-wall--hit { stroke: var(--strike, #e8291c); }
+.ring-square { fill: #fff; stroke: var(--ink); stroke-width: 2.5; }
+.ring-dot { stroke: var(--ink); stroke-width: 3; }
+.ring-dot--s0 { fill: var(--lash); }
+.ring-dot--s1 { fill: var(--seven); }
+.ring-trail { stroke: none; }
+.ring-dot--out { fill: var(--slot); stroke-dasharray: 3 3; }
+.ring-score { font: 400 64px/1 var(--display); fill: var(--ink); }
+.ring-chain { font: 500 12px/1 var(--mono); fill: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+
+/* the other player's run, small, in the corner */
+.ring .ring-opp {
+  position: fixed;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: min(26vw, 15svh, 130px);
+  padding: 8px 6px 4px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+}
+.ring-svg--mini .ring-line, .ring-svg--mini .ring-wall { stroke-width: 9; }
+.ring-svg--mini .ring-score { font-size: 72px; }
+.ring-svg--mini .ring-dot { r: 13; }
+.ring-svg--mini .ring-square { stroke-width: 4; }
+.ring-opp__name { font: 500 11px/1.2 var(--mono); text-transform: uppercase; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ring-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 6px 14px 4px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow);
+  font: 400 clamp(16px, 4.6vw, 24px)/1.15 var(--display);
+  text-align: center;
+  text-transform: uppercase;
+  pointer-events: none;
+  rotate: -2deg;
+  z-index: 2;
+  animation: stamp-in .3s var(--ease-snap) both;
+}
+.ring-banner--mine { background: var(--lash); color: var(--slot); }
+.ring-hint {
+  position: absolute;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 12px;
+  width: min(calc(100% - 170px), 340px);
+  margin: 0;
+  padding: 6px 10px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font: 500 12px/1.35 var(--mono);
+  pointer-events: none;
+}
+
+/* results */
+.ring-results { gap: 16px; padding-top: 8px; }
+.ring-results__head { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.ring-results__title { margin: 0; font: 400 clamp(32px, 9vw, 48px)/1 var(--display); text-transform: uppercase; }
+.ring-results__title--win { color: var(--lash); }
+.ring-results__line { margin: 0; font: 400 clamp(28px, 8vw, 40px)/1 var(--display); }
+.ring-results__line span { color: var(--dim); }

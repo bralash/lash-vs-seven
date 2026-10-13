@@ -264,7 +264,9 @@ export function OpsReactions({ sense, state, level, as }: { sense: OpsSense; sta
 
     const end = sense.ended(state)
     if (end) {
-      if (!sense.ended(was.state)) {
+      // a new ending: none before, or (states that keep the last game's end) a different game's
+      const before = sense.ended(was.state)
+      if (!before || (end.tag !== undefined && end.tag !== before.tag)) {
         const s = endSay(end.winner, end.final, level)
         if (s) say(s) // always worth a word
       }
