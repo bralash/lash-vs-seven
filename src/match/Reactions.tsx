@@ -271,8 +271,10 @@ export function ReactionButton({ onPick, me, faces = true }: { onPick: (k: React
   const recents = recent.filter(canSend).map((k) => BY_KEY[k])
   const [tab, setTab] = useState<Tab>(() => lastTab ?? (recents.length ? 'recent' : 'base'))
   const face = me ?? myFace()
+  // Recent only with the strip of tabs to leave it by: without packs (or before the wallet has loaded)
+  // the tray is the classics, never a stray one or two recent ones and nothing else
   const tabs: { id: Tab; name: string; icon: React.ReactNode }[] = [
-    ...(recents.length ? [{ id: 'recent' as const, name: 'Recent', icon: '🕘' }] : []),
+    ...(recents.length && packs.length ? [{ id: 'recent' as const, name: 'Recent', icon: '🕘' }] : []),
     { id: 'base', name: 'Classic', icon: '🔥' },
     ...packs.map((p) => ({ id: p.id, name: p.name.replace(' pack', ''), icon: 'faces' in p && hasOwnReactions(face.look) ? <OpsFace look={face.look} mood="smug" size={22} wear={face.wear} /> : p.icon })),
   ]
