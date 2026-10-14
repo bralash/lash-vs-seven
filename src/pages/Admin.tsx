@@ -336,7 +336,8 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
   /* players & activity */
   const active = (ms: number) => players.filter((p) => p.w.seen && now - p.w.seen < ms).length
   const newThisWeek = players.filter((p) => p.w.first && now - p.w.first < 7 * DAY).length
-  const named = players.filter((p) => p.name).length
+  // of the players who've played (the headline number), how many have a name
+  const named = players.filter((p) => p.name && hasPlayed(p.w)).length
   const played = players.filter((p) => hasPlayed(p.w)).length
 
   /* tower */
@@ -389,7 +390,7 @@ function Stats({ data, onSent }: { data: Data; onSent: () => void }) {
       <section className="admin-sec">
         <h2>Players</h2>
         <div className="admin-tiles">
-          <Tile label="Players" value={played} note={`${named} with a name · ${players.length - played} more opened the app and never played`} />
+          <Tile label="Players" value={played} note={`${named} of them with a name · ${players.length - played} more opened the app and never played`} />
           <Tile label="Active today" value={active(DAY)} />
           <Tile label="Active this week" value={active(7 * DAY)} />
           <Tile label="New this week" value={newThisWeek} />
