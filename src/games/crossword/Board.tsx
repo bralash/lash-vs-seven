@@ -1,16 +1,18 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { layout, squares, type Puzzle } from './engine'
 
 /**
  * The grid. `colours` says who claimed each square ('.' open, '#' blacked out); claimed squares show
  * their letter. The selected word is lit, with the draft being spelled pencilled into its open squares.
  * `reveal` (the end of a game cut short) shows the letters nobody claimed, greyed.
+ * On phones the grid can be taller than its space, so it scrolls to keep the selected word in view.
  */
 export function Grid({
   puzzle,
   colours,
   selected,
   draft,
+  cursor = -1,
   fresh,
   reveal,
   onTap,
@@ -19,6 +21,8 @@ export function Grid({
   colours: string
   selected: number
   draft: string
+  /** the next letter to type, as a place in the selected word */
+  cursor?: number
   /** squares of the word just claimed, for the stamp-in */
   fresh?: number[]
   reveal?: boolean
@@ -26,8 +30,17 @@ export function Grid({
 }) {
   const sqs = layout(puzzle)
   const lit = selected >= 0 ? squares(puzzle, selected) : []
+  const ref = useRef<HTMLDivElement>(null)
+  const mid = lit.length ? lit[Math.floor(lit.length / 2)] : -1
+  useEffect(() => {
+    const stage = ref.current?.parentElement
+    const sq = ref.current?.children[mid] as HTMLElement | undefined
+    if (!stage || !sq || stage.scrollHeight <= stage.clientHeight) return
+    stage.scrollTo({ top: sq.offsetTop - (stage.clientHeight - sq.offsetHeight) / 2, behavior: 'smooth' })
+  }, [mid])
   return (
     <div
+      ref={ref}
       className="cw-grid"
       style={{ '--cols': puzzle.cols, '--rows': puzzle.rows } as CSSProperties}
       role="grid"
@@ -47,6 +60,7 @@ export function Grid({
               'cw-sq',
               who === '0' || who === '1' ? `cw-sq--${who}` : '',
               k >= 0 ? 'cw-sq--lit' : '',
+              k >= 0 && k === cursor ? 'cw-sq--cursor' : '',
               pencil ? 'cw-sq--pencil' : '',
               reveal && who === '.' ? 'cw-sq--missed' : '',
               fresh?.includes(i) ? 'cw-sq--new' : '',
@@ -83,7 +97,7 @@ export function AnswerTiles({ known, draft, cursor, shake }: { known: string; dr
 
 const ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
 
-/** Tap to spell; ⌫ takes the last letter back. Pass and Submit sit underneath. */
+/** Tap to spell; ⌫ takes the last letter back. Submit ends the middle row and Pass starts the bottom one, like a phone keyboard. */
 export function Keys({
   canType,
   canAct,
@@ -105,11 +119,21 @@ export function Keys({
     <div className="cw-keys" role="group" aria-label="Letters">
       {ROWS.map((row, r) => (
         <div key={row} className="cw-keys__row">
+          {r === 2 && (
+            <button type="button" className="cw-key cw-key--act" disabled={!canAct} onClick={onPass}>
+              Pass
+            </button>
+          )}
           {row.split('').map((l) => (
             <button key={l} type="button" className="cw-key" disabled={!canType} onClick={() => onKey(l)}>
               {l}
             </button>
           ))}
+          {r === 1 && (
+            <button type="button" className="cw-key cw-key--act cw-key--go" disabled={!canAct || !full} onClick={onSubmit}>
+              Submit
+            </button>
+          )}
           {r === 2 && (
             <button type="button" className="cw-key cw-key--back" disabled={!canType} onClick={onBack} aria-label="Delete letter">
               ⌫
@@ -117,14 +141,6 @@ export function Keys({
           )}
         </div>
       ))}
-      <div className="cw-keys__row cw-keys__row--act">
-        <button type="button" className="btn cw-act cw-act--pass" disabled={!canAct} onClick={onPass}>
-          Pass
-        </button>
-        <button type="button" className="btn btn--primary cw-act" disabled={!canAct || !full} onClick={onSubmit}>
-          Submit <span className="keycap">↵</span>
-        </button>
-      </div>
     </div>
   )
 }

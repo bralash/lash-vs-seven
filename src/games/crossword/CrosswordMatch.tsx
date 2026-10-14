@@ -272,7 +272,7 @@ export function CrosswordMatch({ room, me, exit }: { room: Room; me: Me; exit: M
 
       <div className="cw-play">
         <div className="cw-stage">
-          <Grid puzzle={puzzle} colours={painted} selected={inMatch ? selected : -1} draft={spelled} fresh={fresh} reveal={over} onTap={inMatch ? tapSquare : undefined} />
+          <Grid puzzle={puzzle} colours={painted} selected={inMatch ? selected : -1} draft={spelled} cursor={cursor} fresh={fresh} reveal={over} onTap={inMatch ? tapSquare : undefined} />
         </div>
 
         <div className="cw-side">
