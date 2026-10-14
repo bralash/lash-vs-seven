@@ -45,8 +45,8 @@ export function UnoCard({ k, size = 'md', named, className = '' }: { k: number; 
 }
 
 /** Face down. */
-export function UnoBack({ size = 'md', className = '' }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
-  return <span className={`uno-card uno-card--back uno-card--${size} ${className}`} aria-hidden="true" />
+export function UnoBack({ size = 'md', className = '', style }: { size?: 'sm' | 'md' | 'lg'; className?: string; style?: CSSProperties }) {
+  return <span className={`uno-card uno-card--back uno-card--${size} ${className}`} style={style} aria-hidden="true" />
 }
 
 /* ── Your hand: tap to lift, tap again to play ───────────────────────── */

@@ -1,5 +1,5 @@
 import { ref, runTransaction, set, update } from 'firebase/database'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { db } from '../../lib/firebase'
 import { useSound } from '../../lib/sound'
 import { useBeforeUnload } from '../../lib/useBeforeUnload'
@@ -527,7 +527,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
         {status}
       </p>
 
-      <section className="sp-table uno-table" aria-label="Table">
+      <section className="sp-table uno-table" aria-label="Table" data-ult-board>
         {g.phase === 'deal' && !open ? (
           <DealSteps g={g} piles={piles} name={name} slow={slow} blocking={blocking} />
         ) : (
@@ -645,14 +645,20 @@ function DealSteps({ g, piles, name, slow, blocking }: { g: Live; piles: Pile[];
 /** Someone else's hand, face down (a watcher sees every hand like this, seat 0's too). */
 function Backs({ g, s, name }: { g: Live; s: number; name: string }) {
   const n = countOf(g, s)
+  // a fan of backs (up to 10, or 7 when three fans share the row; the count says the rest)
+  const many = g.seats.length > 2
+  const shown = Math.min(n, many ? 7 : 10)
+  // the bigger the fan, the less each card turns, so it never curls round
+  const fan = `${Math.min(many ? 3.5 : 7, (many ? 24 : 48) / shown)}deg`
   return (
     <div className={`uno-opp uno-opp--${s}${g.turn === s && g.phase === 'play' ? ' is-turn' : ''}`}>
-      <span className="uno-opp__who">{name}</span>
+      <span className="uno-opp__who">
+        {name} <b className="uno-opp__n">{n}</b>
+      </span>
       <div className="uno-opp__backs" aria-label={`${name}: ${n} card${n === 1 ? '' : 's'}`}>
-        {Array.from({ length: Math.min(n, 8) }, (_, i) => (
-          <UnoBack key={i} size="sm" />
+        {Array.from({ length: shown }, (_, i) => (
+          <UnoBack key={i} size="sm" className="uno-opp__back" style={{ '--t': i - (shown - 1) / 2, '--fan': fan } as CSSProperties} />
         ))}
-        {n > 8 && <span className="uno-opp__more">+{n - 8}</span>}
       </div>
       {n === 1 && <span className={`uno-opp__uno${g.uno === s ? ' uno-opp__uno--open' : ''}`}>{g.uno === s ? 'No Uno!' : 'Uno'}</span>}
     </div>

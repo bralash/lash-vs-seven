@@ -84,24 +84,36 @@
 /* ── The table ─────────────────────────────────────────── */
 .uno-table { gap: 12px; }
 .uno-opps { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; min-height: 44px; }
+/* each other player: a name tag in their colour over a fan of their backs, straight on the table */
 .uno-opp {
+  --bw: clamp(34px, 10vw, 44px);
+  --pc: var(--dim);
   display: grid;
   justify-items: center;
-  gap: 4px;
-  padding: 4px 8px 6px;
-  border-top: 4px solid var(--dim);
-  background: var(--tile);
-  min-width: 84px;
+  gap: 6px;
 }
-.uno-opp--0 { border-top-color: var(--lash); }
-.uno-opp--1 { border-top-color: var(--seven); }
-.uno-opp--2 { border-top-color: var(--p3); }
-.uno-opp--3 { border-top-color: var(--p4); }
-.uno-opp.is-turn { outline: 2px solid var(--hit); outline-offset: 2px; }
-.uno-opp__who { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
-.uno-opp__backs { display: flex; align-items: center; padding-left: 8px; min-height: 30px; }
-.uno-opp__backs .uno-card { margin-left: -8px; }
-.uno-opp__more { margin-left: 6px; font-size: 12px; color: var(--paper-2); }
+/* three or four players: a smaller, tighter fan each, so they fit side by side */
+.spm--many .uno-opps { gap: 8px 10px; }
+.spm--many .uno-opp { --bw: clamp(22px, 6vw, 34px); }
+.spm--many .uno-opp__backs { padding-inline: calc(var(--bw) * .5); }
+.spm--many .uno-opp__back + .uno-opp__back { margin-left: calc(var(--bw) * -.72); }
+.uno-opp--0 { --pc: var(--lash); }
+.uno-opp--1 { --pc: var(--seven); }
+.uno-opp--2 { --pc: var(--p3); }
+.uno-opp--3 { --pc: var(--p4); }
+.uno-opp__who { max-width: 140px; padding: 3px 8px; border-top: 4px solid var(--pc); background: var(--tile); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.uno-opp.is-turn .uno-opp__who { background: var(--hit); color: var(--ink); }
+.uno-opp__n { margin-left: 4px; padding: 0 5px; background: var(--paper); color: var(--ink); font-family: var(--display); font-weight: 400; }
+/* the backs fan out round a point well below them, so the outer ones dip */
+.uno-opp__backs { display: flex; justify-content: center; padding: 4px calc(var(--bw) * .3) calc(var(--bw) * .25); min-height: calc(var(--bw) * 1.4 + 8px); }
+.uno-opp__back.uno-card--sm {
+  --w: var(--bw);
+  transform: rotate(calc(var(--t) * var(--fan)));
+  transform-origin: 50% 260%;
+  box-shadow: 2px 2px 0 var(--ink);
+  border-color: var(--paper-2);
+}
+.uno-opp__back + .uno-opp__back { margin-left: calc(var(--bw) * -.62); }
 .uno-opp__uno { padding: 1px 6px; background: var(--hit); color: var(--ink); font-family: var(--display); font-size: 12px; text-transform: uppercase; }
 .uno-opp__uno--open { background: var(--strike); color: var(--paper); animation: uno-pulse .9s ease-in-out infinite alternate; }
 
@@ -113,6 +125,8 @@
   gap: clamp(14px, 5vw, 32px);
   padding: 6px 0;
 }
+/* the deck and the pile are the table's centrepiece: bigger than the cards in your hand */
+.uno-centre .uno-card--lg { --w: clamp(76px, 22vw, 108px); }
 .uno-deck {
   position: relative;
   display: grid;
@@ -128,7 +142,7 @@
 .uno-deck--go { cursor: pointer; color: var(--hit); }
 .uno-deck--go .uno-card { outline: 3px solid var(--hit); outline-offset: 3px; }
 .uno-deck--go:active .uno-card { transform: translate(2px, 2px); }
-.uno-deck__n { position: absolute; top: 34%; font-family: var(--display); font-size: 18px; color: var(--paper); text-shadow: 2px 2px 0 var(--ink); }
+.uno-deck__n { position: absolute; top: 34%; font-family: var(--display); font-size: 22px; color: var(--paper); text-shadow: 2px 2px 0 var(--ink); }
 .uno-deck__label { font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
 
 .uno-pile { position: relative; display: grid; place-items: center; }
