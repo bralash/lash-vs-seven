@@ -549,7 +549,7 @@ export const GAMES: GameMeta[] = [
     ops: true,
     tagline: 'Pull back a disc · let go · first to 3',
     rules: [
-      { title: 'Flick', body: 'Put your finger on one of your discs, pull back away from where you want it to go, and let go. The further you pull, the harder it goes (the ring round it turns red at full power). A short pull is a change of mind: nothing happens.' },
+      { title: 'Flick', body: 'Put your finger on one of your discs, pull back away from where you want it to go, and let go. The further you pull, the harder it goes (the ring round it turns red at full power). Changed your mind? Slide back onto the disc and let go, then pick another.' },
       { title: 'Turns', body: 'One flick each, turn about. Everything slides, knocks into everything else and off the sides, and stops; then it’s the other player’s flick. You can use your discs to block as well as to shoot.' },
       { title: 'Goals', body: 'Knock the ball over their goal line, between the posts, to score. The discs can’t go in the goal, only the ball. Put it in your own goal and it counts for them. After a goal everyone lines up again and the side that let it in kicks off.' },
       { title: 'Winning', body: 'First to 3 goals wins the match. Online, you always attack up the screen.' },

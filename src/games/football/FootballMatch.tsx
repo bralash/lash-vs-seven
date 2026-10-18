@@ -39,8 +39,10 @@ export function initialFootballState(target = 3, match = 1): FootballState {
   return { target, match, live: freshLive((match % 2 === 1 ? 0 : 1) as Seat) }
 }
 
-/** how far back a full-power pull goes (pitch widths) */
+/** how far back a full-power pull goes (pitch widths), beyond the disc's own edge */
 const PULL = 0.3
+/** let go this close to the disc's middle and nothing happens: the pull is called off */
+const CANCEL = R
 const COLOUR = ['Orange', 'Blue']
 
 export function FootballMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchExit }) {
@@ -181,15 +183,15 @@ export function FootballMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
     const dx = live.pos[a.disc * 2] - a.x
     const dy = live.pos[a.disc * 2 + 1] - a.y
     const d = Math.hypot(dx, dy)
-    return { angle: Math.atan2(dy, dx), power: Math.min(d, PULL) / PULL }
+    // the finger back on the disc is a change of mind: the pull counts from its edge
+    return { angle: Math.atan2(dy, dx), power: Math.max(0, Math.min(d - CANCEL, PULL)) / PULL, off: d < CANCEL }
   }
   const onUp = () => {
     const a = aimRef.current
     setAim(null)
     if (!a || !myTurn) return
-    const { angle, power } = pullOf(a)
-    // a short pull is a change of mind
-    if (power < 0.1) return
+    const { angle, power, off } = pullOf(a)
+    if (off) return
     const by = live.turn
     session.move<Live>((cur) => playFlick(cur, by, { disc: a.disc, angle, power }, st.target)).catch(() => {})
   }
@@ -225,7 +227,11 @@ export function FootballMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
   const aimer = aim && { x: live.pos[aim.disc * 2], y: live.pos[aim.disc * 2 + 1] }
   const hint = rolling || !inMatch
     ? null
-    : myTurn
+    : aiming
+      ? aiming.off
+        ? 'Let go here to cancel'
+        : 'Back onto the disc to cancel'
+      : myTurn
       ? session.local
         ? `${name(live.turn)}’s flick · ${COLOUR[live.turn].toLowerCase()}`
         : 'Your flick · pull a disc back, let go'
@@ -259,7 +265,7 @@ export function FootballMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
           <PitchArt />
 
           {/* the pull: a ring round the disc that grows, and a dotted line the way it'll go */}
-          {aimer && aiming && ad && aiming.power >= 0.1 && (
+          {aimer && aiming && ad && !aiming.off && (
             <g pointerEvents="none" className="fbm-aim">
               <line
                 x1={X(vx(aimer.x))}
@@ -283,8 +289,8 @@ export function FootballMatch({ room, me, exit }: { room: Room; me: Me; exit: Ma
             {flash}
           </p>
         )}
-        {/* what to do now, over the near end of the pitch; out of the way while you pull */}
-        {hint && !aim && (
+        {/* what to do now, over the near end of the pitch; while you pull, how to call it off */}
+        {hint && (
           <p key={hint} className="fbm-hint" role="status">
             {hint}
           </p>
@@ -349,22 +355,7 @@ function Results({ room, me, st, seats, exit }: { room: Room; me: Me; st: Footba
       {iWon && <Confetti />}
       <div className="fbm-results__head">
         <ResultMark winner={winner} />
-        <p className="label">
-          Match {st.match} · {seriesLabel(st.target).toLowerCase()}
-        </p>
         <h1 className={`fbm-results__title${iWon ? ' fbm-results__title--win' : ''}`}>{iWon && !noYou ? 'You win' : `${seats[winner]?.name ?? 'They'} wins`}</h1>
-        <p className="fbm-results__line">
-          {s[0]} <span>—</span> {s[1]}
-        </p>
-        {goals.length > 0 && (
-          <ol className="fbm-results__goals">
-            {goals.map((g, i) => (
-              <li key={i}>
-                {g.score[0]}–{g.score[1]} · {note(g)}
-              </li>
-            ))}
-          </ol>
-        )}
       </div>
       <div className="mt-hud">
         <ScoreCard p={seats[0]} you={!noYou && me.seat === 0} value={s[0]} meta="Goals" />
