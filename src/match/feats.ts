@@ -18,6 +18,7 @@ import { FOOTBALL_FEATS } from '../games/football/feats'
 import { QUORIDOR_FEATS } from '../games/quoridor/feats'
 import { SHOOTOUT_FEATS } from '../games/shootout/feats'
 import { RING_FEATS } from '../games/ring/feats'
+import { DASH_FEATS } from '../games/dash/feats'
 import { DOTRUSH_FEATS } from '../games/dotrush/feats'
 import { SPAR_FEATS } from '../games/spar/feats'
 import { SUDOKU_FEATS } from '../games/sudoku/feats'
@@ -60,6 +61,7 @@ const ALL: FeatDef[] = [
   ...QUORIDOR_FEATS,
   ...SHOOTOUT_FEATS,
   ...RING_FEATS,
+  ...DASH_FEATS,
   ...DOTRUSH_FEATS,
   ...SPAR_FEATS,
   ...SUDOKU_FEATS,

@@ -1,0 +1,132 @@
+/* ── Flag Dash: the scene on a canvas, your runner and theirs as a ghost; tap anywhere to jump ── */
+.dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+.dash > * { width: 100%; }
+.dash > :not(.dash-stage) { position: relative; z-index: 1; }
+/* the top bar stays above the stage */
+html:has(.dash-stage) .lobby > .topbar { position: relative; z-index: 2; }
+/* on the dark scene the top bar's words need to show */
+html:has(.dash-stage) .topbar__title { color: var(--dash-ink, var(--ink-soft)); }
+
+/* the score bar's middle: which race, which scene */
+.dash-to {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  min-width: 76px;
+  padding: 6px 8px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+}
+.dash-to .label { font-size: 10px; white-space: nowrap; }
+.dash-to__scene { font: 400 14px/1 var(--display); text-transform: uppercase; }
+
+/* one line, fixed height: whatever it says, the board under it never moves */
+.dash-status {
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font-family: var(--display);
+  font-size: clamp(14px, 4vw, 20px);
+  line-height: 1;
+  text-transform: uppercase;
+  text-align: center;
+}
+.dash-status--down { background: var(--ink); color: var(--hit); }
+
+/* the whole page is the button: a tap anywhere jumps */
+.dash-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  --pad: max(110px, 18svh);
+  background: var(--dash-bg, var(--paper));
+  transition: background-color .8s ease;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: pointer;
+}
+/* the board under the scores, as big as the space left; taps go through it to the stage */
+.dash .dash-board {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 560px, calc((100svh - 260px - max(110px, 18svh)) * 1.2));
+  min-width: 260px;
+  aspect-ratio: 360 / 300;
+  border: var(--edge) solid var(--ink);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.dash-canvas { display: block; width: 100%; height: 100%; }
+
+.dash-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 6px 14px 4px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow);
+  font: 400 clamp(16px, 4.6vw, 24px)/1.15 var(--display);
+  text-align: center;
+  text-transform: uppercase;
+  pointer-events: none;
+  rotate: -2deg;
+  z-index: 2;
+  animation: stamp-in .3s var(--ease-snap) both;
+}
+.dash-banner--mine { background: var(--lash); color: var(--slot); }
+
+/* where the thumb goes: the bottom of the screen, under the board (taps anywhere still count) */
+.dash-pad {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--pad);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: var(--edge) dashed color-mix(in srgb, var(--dash-ink, var(--ink)) 30%, transparent);
+  background: color-mix(in srgb, var(--dash-ink, var(--ink)) 6%, transparent);
+  pointer-events: none;
+}
+.dash-pad__word { font: 400 clamp(28px, 9vw, 44px)/1 var(--display); text-transform: uppercase; color: color-mix(in srgb, var(--dash-ink, var(--ink)) 24%, transparent); }
+.dash-hint {
+  max-width: min(92vw, 420px);
+  margin: 0;
+  padding: 5px 10px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  font: 500 12px/1.35 var(--mono);
+  text-align: center;
+}
+
+/* results */
+.dash-results { gap: 16px; padding-top: 8px; }
+.dash-results__head { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.dash-results__title { margin: 0; font: 400 clamp(32px, 9vw, 48px)/1 var(--display); text-transform: uppercase; }
+.dash-results__title--win { color: var(--lash); }

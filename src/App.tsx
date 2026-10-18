@@ -9,6 +9,7 @@ import { Shootout } from './games/shootout/Shootout'
 import { Ring } from './games/ring/Ring'
 import { DotRush } from './games/dotrush/DotRush'
 import { Pool } from './games/pool/Pool'
+import { Dash } from './games/dash/Dash'
 import { Football } from './games/football/Football'
 import { Crossword } from './games/crossword/Crossword'
 import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
@@ -72,6 +73,7 @@ const routes: RouteObject[] = [
   { path: '/ring', element: <Ring /> },
   { path: '/dotrush', element: <DotRush /> },
   { path: '/pool', element: <Pool /> },
+  { path: '/dash', element: <Dash /> },
   { path: '/football', element: <Football /> },
   { path: '/dots', element: <DotsAndBoxes /> },
   { path: '/othello', element: <Othello /> },
