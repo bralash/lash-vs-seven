@@ -226,11 +226,12 @@ interface SoundApi {
 const SoundContext = createContext<SoundApi | null>(null)
 
 /**
- * What kind of audio this page makes, on an iPhone (Safari 17+). By default the silent switch mutes
- * the game's sounds (they're made in code, not played from a file); 'playback' plays them through
- * it, like a video. The mic needs 'play-and-record' while a voice note is being recorded.
+ * What kind of audio this page makes, on an iPhone (Safari 17+). 'ambient' is plain sound effects:
+ * they mix with music from other apps, follow the silent switch, and never show on the lock screen
+ * as something playing ('playback' did all three the other way, like a video). The mic needs
+ * 'play-and-record' while a voice note is being recorded.
  */
-export function setAudioSession(type: 'playback' | 'play-and-record') {
+export function setAudioSession(type: 'ambient' | 'play-and-record') {
   const s = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
   if (!s || s.type === type) return
   try {
@@ -268,7 +269,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   const unlocked = useRef<AudioContext | null>(null)
   /** a tap's wake: also a silent blip, which is what actually unlocks the audio on an iPhone */
   const unlock = useCallback(() => {
-    setAudioSession('playback')
+    setAudioSession('ambient')
     const old = ctxRef.current
     if (stale.current && old) {
       stale.current = false

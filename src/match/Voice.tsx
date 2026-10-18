@@ -42,20 +42,55 @@ function recordType() {
   return ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find((t) => MediaRecorder.isTypeSupported(t)) ?? ''
 }
 
-/* ── Playback: one audio element for the page, unlocked by the first tap so later clips can play by themselves ── */
+/*
+ * ── Playback: through Web Audio like the game's sounds, unlocked by the first tap so later clips can
+ * play by themselves. Not an <audio> element: a phone treats that as media and puts it on the lock screen.
+ */
 
-let player: HTMLAudioElement | null = null
-const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='
-function unlock() {
-  if (player) return
-  player = new Audio()
-  player.src = SILENCE
-  player.play().catch(() => {})
+let ctx: AudioContext | null = null
+let playing: AudioBufferSourceNode | null = null
+function wake() {
+  if (!ctx || ctx.state === 'closed') ctx = new AudioContext()
+  if (ctx.state !== 'running') ctx.resume().catch(() => {})
+  return ctx
 }
-function play(c: Clip) {
-  player ??= new Audio()
-  player.src = `data:${c.t};base64,${c.a}`
-  return player.play()
+function unlock() {
+  const c = wake()
+  const blip = c.createBufferSource()
+  blip.buffer = c.createBuffer(1, 1, 22050)
+  blip.connect(c.destination)
+  blip.start(0)
+}
+function stopClip() {
+  const p = playing
+  playing = null
+  if (p) {
+    p.onended = null
+    try {
+      p.stop()
+    } catch {
+      /* already over */
+    }
+  }
+}
+/** Plays a clip; resolves once it has started (rejects if the phone won't let it), `onEnd` when it's over. */
+async function play(clip: Clip, onEnd: () => void) {
+  // waking it first, while still inside the tap that asked for it
+  const c = wake()
+  const bytes = Uint8Array.from(atob(clip.a), (ch) => ch.charCodeAt(0))
+  const buf = await c.decodeAudioData(bytes.buffer)
+  if (c.state !== 'running') await c.resume()
+  if (c.state !== 'running') throw new Error('blocked')
+  stopClip()
+  const src = c.createBufferSource()
+  src.buffer = buf
+  src.connect(c.destination)
+  src.onended = () => {
+    if (playing === src) playing = null
+    onEnd()
+  }
+  playing = src
+  src.start()
 }
 
 /** Who to wipe after a match: my own clip, and (from the host) the whole room's. */
@@ -119,11 +154,7 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
 
   const start = (h: Heard) => {
     setHeard({ ...h, playing: true, blocked: false })
-    play(h.clip)
-      .then(() => {
-        player!.onended = () => setHeard((x) => (x?.id === h.id ? { ...x, playing: false } : x))
-      })
-      .catch(() => setHeard((x) => (x?.id === h.id ? { ...x, playing: false, blocked: true } : x)))
+    play(h.clip, () => setHeard((x) => (x?.id === h.id ? { ...x, playing: false } : x))).catch(() => setHeard((x) => (x?.id === h.id ? { ...x, playing: false, blocked: true } : x)))
   }
 
   // the sticker goes a few seconds after the clip ends
@@ -150,7 +181,7 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
         l.rec.onstop = null
         if (l.rec.state !== 'inactive') l.rec.stop()
         l.stream.getTracks().forEach((t) => t.stop())
-        setAudioSession('playback')
+        setAudioSession('ambient')
       }
       clearTimeout(wipe.current)
       remove(ref(db, `${base}/${pid}`)).catch(() => {})
@@ -177,10 +208,10 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
     reader.readAsDataURL(blob)
   }
 
-  /** the mic off, and the game's sounds back through the silent switch */
+  /** the mic off, and the game's sounds back to plain sound effects */
   const stopMic = (stream: MediaStream) => {
     stream.getTracks().forEach((t) => t.stop())
-    setAudioSession('playback')
+    setAudioSession('ambient')
   }
 
   const begin = async () => {
@@ -195,7 +226,7 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
     } catch {
       want.current = false
-      setAudioSession('playback')
+      setAudioSession('ambient')
       return say('Allow the mic to send voice notes')
     }
     // let go while the phone was asking for the mic: nothing to record yet
@@ -302,7 +333,7 @@ export function VoiceNotes({ game, code, pid, names, listen }: { game: string; c
                   const next = !auto
                   setAuto(next)
                   save(KEYS.voice, next ? 'on' : 'off')
-                  if (!next) player?.pause()
+                  if (!next) stopClip()
                 }}
               >
                 {auto ? 'Mute notes' : 'Auto-play'}
