@@ -14,6 +14,7 @@ import { PINGPONG_FEATS } from '../games/pingpong/feats'
 import { PONG_FEATS } from '../games/pong/feats'
 import { AMPE_FEATS } from '../games/ampe/feats'
 import { POOL_FEATS } from '../games/pool/feats'
+import { FOOTBALL_FEATS } from '../games/football/feats'
 import { QUORIDOR_FEATS } from '../games/quoridor/feats'
 import { SHOOTOUT_FEATS } from '../games/shootout/feats'
 import { RING_FEATS } from '../games/ring/feats'
@@ -55,6 +56,7 @@ const ALL: FeatDef[] = [
   ...PINGPONG_FEATS,
   ...PONG_FEATS,
   ...POOL_FEATS,
+  ...FOOTBALL_FEATS,
   ...QUORIDOR_FEATS,
   ...SHOOTOUT_FEATS,
   ...RING_FEATS,

@@ -1,0 +1,111 @@
+/* ── Football: the HUD, the pitch as big as the screen allows, a hint under it ── */
+.fbm {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 10px;
+  width: min(620px, 100%);
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+.fbm > * { width: 100%; }
+
+.fbm-to {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 76px;
+  padding: 6px 10px;
+  background: var(--board);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  font: 500 10px/1.2 var(--mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.fbm-to .label { color: var(--paper-2); font-size: 10px; }
+
+.fbm-stage {
+  position: relative;
+  display: grid;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.fbm-pitch {
+  display: block;
+  /* boards use svh, not dvh: an iPad's bar coming and going mustn't resize the pitch mid-flick */
+  height: min(calc(100svh - 195px), calc((100vw - 24px) * 1.65), 880px);
+  min-height: 320px;
+  width: auto;
+  max-width: 100%;
+  border: var(--edge) solid var(--ink);
+  box-shadow: var(--shadow);
+  touch-action: none;
+}
+.fbm-disc--go { cursor: grab; }
+.fbm-ready { fill: none; stroke: var(--hit); stroke-width: 3; stroke-dasharray: 5 5; pointer-events: none; }
+.fbm-aim line { stroke: #fff; stroke-width: 4; stroke-dasharray: 2 9; stroke-linecap: round; }
+.fbm-aim circle { fill: none; stroke: var(--hit); stroke-width: 4; }
+.fbm-aim circle.fbm-aim__full { stroke: var(--strike); }
+
+/* GOAL! over the middle of the pitch */
+.fbm-goal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  translate: -50% -50%;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 6px 18px 4px;
+  border: var(--edge) solid var(--ink);
+  background: var(--hit);
+  box-shadow: var(--shadow);
+  font-family: var(--display);
+  font-size: clamp(26px, 8vw, 44px);
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-align: center;
+  rotate: -4deg;
+  pointer-events: none;
+  animation: stamp-in .3s var(--ease-snap) both;
+}
+
+.fbm-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  width: max-content;
+  max-width: calc(100% - 40px);
+  margin: 0;
+  padding: 5px 10px;
+  border: var(--edge) solid var(--ink);
+  background: var(--slot);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  font: 500 11px/1.3 var(--mono);
+  letter-spacing: .03em;
+  text-align: center;
+}
+
+.fbm-results { gap: 22px; padding-top: clamp(8px, 4vh, 40px); }
+.fbm-results__head { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.fbm-results__title { font-size: clamp(48px, 12vw, 100px); animation: stamp-in .5s var(--ease-snap) both; }
+.fbm-results__title--win { justify-self: center; width: auto; padding: 0 .15em; border: var(--edge) solid var(--ink); background: var(--hit); box-shadow: var(--shadow-lg); transform: rotate(-2deg); }
+.fbm-results__line { margin: 0; font-family: var(--display); font-size: clamp(24px, 5vw, 32px); }
+.fbm-results__line span { color: var(--dim); }
+.fbm-results__goals { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; font: 500 12px var(--mono); letter-spacing: .04em; color: var(--ink-soft); }
+
+html.is-fullscreen .fbm-pitch { height: min(calc(100svh - 150px), calc((100vw - 24px) * 1.65)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fbm-goal, .fbm-results__title { animation: none; }
+}

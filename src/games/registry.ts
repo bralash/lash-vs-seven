@@ -535,6 +535,26 @@ export const GAMES: GameMeta[] = [
       { title: 'The 8', body: 'Once your group is cleared, shoot at the 8 and call its pocket: it picks the pocket you’re aiming at, tap another to change it. Pot the 8 there cleanly to win the frame. Pot it in another pocket, with a foul, or before your group is cleared, and you lose the frame. Win a single frame, or the best of 3 or 5.' },
     ],
   },
+  {
+    watch: true,
+    slug: 'football',
+    fullscreen: true,
+    tiles: 'GOAL',
+    name: 'Football',
+    blurb: 'Flick football from above. Five discs a side and a ball: pull back on one of your discs and let go to knock the ball into their goal. One flick a turn.',
+    category: 'sport',
+    length: '~5 min',
+    modes: 'online + local',
+    status: 'live',
+    ops: true,
+    tagline: 'Pull back a disc · let go · first to 2',
+    rules: [
+      { title: 'Flick', body: 'Put your finger on one of your discs, pull back away from where you want it to go, and let go. The further you pull, the harder it goes (the ring round it turns red at full power). A short pull is a change of mind: nothing happens.' },
+      { title: 'Turns', body: 'One flick each, turn about. Everything slides, knocks into everything else and off the sides, and stops; then it’s the other player’s flick. You can use your discs to block as well as to shoot.' },
+      { title: 'Goals', body: 'Knock the ball over their goal line, between the posts, to score. The discs can’t go in the goal, only the ball. Put it in your own goal and it counts for them. After a goal everyone lines up again and the side that let it in kicks off.' },
+      { title: 'Winning', body: 'First to 1, 2 or 3 goals wins the match. Online, you always attack up the screen.' },
+    ],
+  },
 ]
 
 export const CATEGORY_LABEL: Record<Category, string> = {
