@@ -35,7 +35,7 @@ export interface FootballState {
   ready?: Record<string, boolean>
 }
 
-export function initialFootballState(target = 2, match = 1): FootballState {
+export function initialFootballState(target = 3, match = 1): FootballState {
   return { target, match, live: freshLive((match % 2 === 1 ? 0 : 1) as Seat) }
 }
 

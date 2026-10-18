@@ -3,7 +3,7 @@ import type { FeatDef } from '../../match/feats'
 import type { Live } from './rules'
 
 export const FOOTBALL_FEATS: FeatDef[] = [
-  { id: 'football:clean', game: 'football', name: 'Clean sheet', blurb: 'Won a match of two goals or more without letting one in.' },
+  { id: 'football:clean', game: 'football', name: 'Clean sheet', blurb: 'Won a match without letting a goal in.' },
   { id: 'football:long', game: 'football', name: 'From your own half', blurb: 'Scored with the ball starting in your own half.' },
 ]
 
