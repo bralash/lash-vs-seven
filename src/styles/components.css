@@ -54,6 +54,9 @@
   text-transform: uppercase;
   text-decoration: none;
   transition: transform .12s var(--ease-out), box-shadow .12s var(--ease-out);
+  /* a crowded bar must never squeeze a button until its label spills out or wraps */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .icon-btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
 .icon-btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
@@ -68,7 +71,12 @@
   padding: 20px 0;
 }
 .topbar__side { display: flex; align-items: center; gap: 12px; }
-.topbar__title { font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+/* the title side is the one that gives way: the name gets cut short (…) before any button moves */
+.topbar__side:first-child { min-width: 0; }
+.topbar__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+/* in a match the bar fills up (mic, reactions, full screen, rules, sound, Leave): the words on
+   How to play and Leave only come back where there's plenty of room */
+@media (width <= 900px) { .topbar:has(.icon-btn--leave) .icon-btn .hide-sm { display: none; } }
 /* phones: the mic and reactions need the room, and fullscreen is for big boards on tablets and desktops */
 /* …and with the mic there too, the game's name gives up its space (the board says what game it is) */
 /* (a watcher has no mic, but Stop watching takes the same room) */
