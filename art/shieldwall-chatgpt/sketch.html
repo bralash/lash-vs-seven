@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shield Wall sketch</title>
+<style>
+body{margin:0;background:#f3ead8;font-family:'DM Mono',monospace;display:flex;flex-direction:column;align-items:center;padding:16px;gap:10px}
+canvas{width:min(960px,100%);border:3px solid #1a1a1a;box-shadow:6px 6px 0 #1a1a1a;cursor:pointer;display:block}
+.row{display:flex;gap:10px;align-items:center;width:min(960px,100%);flex-wrap:wrap}
+button{font:inherit;border:2px solid #1a1a1a;background:#ffd23f;padding:6px 12px;box-shadow:3px 3px 0 #1a1a1a;cursor:pointer}
+#msg{font-size:13px}
+</style>
+<canvas id="cv" width="1536" height="1024"></canvas>
+<div class="row"><button id="rs">Restart</button><span id="msg"></span></div>
+<script>
+// Throwaway sketch: ChatGPT island + house under the code-drawn soldiers. Coordinates are the island image's pixels.
+const cv=document.getElementById('cv'),c=cv.getContext('2d'),msg=document.getElementById('msg')
+const W=1536,H=1024,OR='#ff5a1f',BL='#2d5bff',INK='#1a1a1a',K=2.4 // soldier scale
+const isl=[[330,250],[480,150],[650,140],[800,160],[880,190],[1000,290],[1150,380],[1250,440],[1295,510],[1285,650],[1200,780],[1050,840],[850,860],[700,850],[500,790],[330,690],[280,600],[300,470]]
+const houses=[[690,470],[860,560],[720,660]]
+const HW=150 // house draw width
+const island=new Image();island.src='island-1.webp'
+const houseRaw=new Image();houseRaw.src='house.webp'
+let house=null
+houseRaw.onload=()=>{ // key out the magenta and crop to the house
+  const o=document.createElement('canvas');o.width=houseRaw.width;o.height=houseRaw.height
+  const x=o.getContext('2d');x.drawImage(houseRaw,0,0)
+  const d=x.getImageData(0,0,o.width,o.height),p=d.data
+  let x0=1e9,y0=1e9,x1=0,y1=0
+  for(let i=0;i<p.length;i+=4){const r=p[i],g=p[i+1],b=p[i+2],m=Math.min(r,b)-g
+    if(m>120){p[i+3]=0;continue}
+    if(m>30){p[i+3]=255*(1-(m-30)/90);p[i]=Math.min(r,g+40);p[i+2]=Math.min(b,g+30)}
+    const k=i/4,px=k%o.width,py=(k/o.width)|0;if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py}
+  x.putImageData(d,0,0)
+  house=document.createElement('canvas');house.width=x1-x0;house.height=y1-y0
+  house.getContext('2d').drawImage(o,-x0,-y0)
+}
+let U,S,arrows,sel,over
+function mk(){U=[];arrows=[];sel=null;over=false;S=[]
+  const def=[['sword',470,330],['bow',430,560],['pike',560,720]]
+  const foe=[['sword',1080,420],['pike',1150,600],['bow',1000,760]]
+  ;[[def,0],[foe,1]].forEach(([l,t])=>l.forEach(([k,x,y])=>{const s={t,k,x,y,tx:x,ty:y};S.push(s)
+    for(let i=0;i<6;i++){const ox=((i%3)-1)*30,oy=(Math.floor(i/3)-.5)*30
+      U.push({s,t,k,x:x+ox,y:y+oy,ox,oy,hp:k=='pike'?4:3,cd:Math.random()*30,sw:0,dead:0,face:t?-1:1})}}))
+  msg.textContent='Tap an orange squad, then tap where it should go'}
+function inIsl(x,y){let ins=false;for(let i=0,j=isl.length-1;i<isl.length;j=i++){const[a,b]=isl[i],[p,q]=isl[j];if((b>y)!=(q>y)&&x<(p-a)*(y-b)/(q-b)+a)ins=!ins}return ins}
+function ctr(s){const m=U.filter(u=>u.s==s&&!u.dead);if(!m.length)return null;return[m.reduce((a,u)=>a+u.x,0)/m.length,m.reduce((a,u)=>a+u.y,0)/m.length]}
+cv.onclick=e=>{const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height
+  if(over)return
+  const hit=S.filter(s=>s.t==0&&ctr(s)).find(s=>{const[cx,cy]=ctr(s);return Math.hypot(cx-x,cy-y)<70})
+  if(hit){sel=hit;msg.textContent='Squad picked: '+{sword:'swords',bow:'archers',pike:'pikes'}[hit.k]+'. Tap the island to send it';return}
+  if(sel&&inIsl(x,y)){sel.tx=x;sel.ty=y;sel=null;msg.textContent='Tap an orange squad, then tap where it should go'}}
+document.getElementById('rs').onclick=mk
+function near(u,R){let b=null,d=R;for(const v of U)if(!v.dead&&v.t!=u.t){const q=Math.hypot(v.x-u.x,v.y-u.y);if(q<d){d=q;b=v}}return b}
+let tick=0
+function step(){tick++
+  if(tick%90==0)S.filter(s=>s.t==1&&ctr(s)).forEach(s=>{let best=null,bd=1e9;S.filter(o=>o.t==0&&ctr(o)).forEach(o=>{const[a,b]=ctr(o),[p,q]=ctr(s),d=Math.hypot(a-p,b-q);if(d<bd){bd=d;best=[a,b]}});if(best){const[p,q]=ctr(s),k=s.k=='bow'?.25:.7;s.tx=p+(best[0]-p)*k;s.ty=q+(best[1]-q)*k}})
+  for(const u of U){if(u.dead){u.dead++;continue}
+    u.sw=Math.max(0,u.sw-1);u.cd--
+    const rng=u.k=='bow'?380:u.k=='pike'?60:40,f=near(u,rng)
+    if(f){u.face=f.x>u.x?1:-1
+      if(u.cd<=0){if(u.k=='bow'){arrows.push({x:u.x,y:u.y-20,sx:u.x,sy:u.y-20,ex:f.x,ey:f.y,t:0,tg:f});u.cd=70}else{u.sw=10;u.cd=u.k=='pike'?40:32;if(Math.random()<.6){f.hp--;if(f.hp<=0)f.dead=1}}}
+      if(u.k!='bow'&&Math.hypot(f.x-u.x,f.y-u.y)>rng-10){u.x+=(f.x-u.x)*.02;u.y+=(f.y-u.y)*.02}}
+    else{const gx=u.s.tx+u.ox,gy=u.s.ty+u.oy,dx=gx-u.x,dy=gy-u.y,d=Math.hypot(dx,dy);if(d>1){const sp=u.k=='pike'?1.5:2.1;u.x+=dx/d*Math.min(sp,d);u.y+=dy/d*Math.min(sp,d);if(Math.abs(dx)>1)u.face=dx>0?1:-1}}
+    for(const v of U)if(v!=u&&!v.dead){const dx=u.x-v.x,dy=u.y-v.y,d=Math.hypot(dx,dy);if(d<20&&d>0){u.x+=dx/d;u.y+=dy/d}}
+    for(const[hx,hy]of houses){const dx=u.x-hx,dy=(u.y-hy)*1.6,d=Math.hypot(dx,dy);if(d<70&&d>0){u.x+=dx/d*2;u.y+=dy/d*2}}}
+  arrows=arrows.filter(a=>{a.t+=.03;a.x=a.sx+(a.ex-a.sx)*a.t;a.y=a.sy+(a.ey-a.sy)*a.t-Math.sin(a.t*Math.PI)*80;if(a.t>=1){if(!a.tg.dead&&Math.random()<.5&&a.tg.k!='sword'){a.tg.hp--;if(a.tg.hp<=0)a.tg.dead=1}return false}return true})
+  const a0=U.some(u=>u.t==0&&!u.dead),a1=U.some(u=>u.t==1&&!u.dead)
+  if(!over&&(!a0||!a1)){over=true;msg.textContent=a0?'Orange holds the island. Tap Restart':'Blue takes the island. Tap Restart'}}
+function soldier(u){c.save();c.translate(u.x,u.y);c.scale(K,K);const x=0,y=0,f=u.face,col=u.t?BL:OR
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x,y+1,6,2.5,0,0,7);c.fill()
+  if(u.dead){c.fillStyle=INK;c.fillRect(x-6,y-3,11,4);c.fillStyle='#9a9a9a';c.beginPath();c.arc(x+6*f,y-1,2.5,0,7);c.fill();c.restore();return}
+  const bob=Math.sin(tick*.3+u.x)*.6
+  c.fillStyle=INK;c.beginPath();c.moveTo(x-4,y);c.lineTo(x-3,y-10+bob);c.lineTo(x+3,y-10+bob);c.lineTo(x+4,y);c.fill()
+  c.fillStyle='#b8b8b8';c.beginPath();c.arc(x,y-12+bob,3.2,Math.PI,0);c.fill();c.fillStyle=INK;c.fillRect(x-2.5,y-12+bob,5,2.5)
+  c.strokeStyle='#e8e2d2';c.lineWidth=1.5;c.lineCap='round';c.beginPath()
+  const sw=u.sw/10
+  if(u.k=='sword'){const a=-1.2+sw*1.8;c.moveTo(x+3*f,y-6);c.lineTo(x+3*f+Math.cos(a)*9*f,y-6+Math.sin(a)*9)}
+  if(u.k=='pike'){const p=sw*6;c.moveTo(x-4*f,y-3);c.lineTo(x+(16+p)*f,y-9)}
+  if(u.k=='bow'){c.strokeStyle='#c9a46a';c.arc(x+4*f,y-7,6,f>0?-1.3:1.84,f>0?1.3:4.44)}
+  c.stroke()
+  if(u.k!='bow'){c.fillStyle=col;c.strokeStyle=INK;c.lineWidth=1;c.beginPath()
+    if(u.k=='sword')c.arc(x-f,y-5+bob,3.6,0,7);else c.rect(x-3.5*f-2,y-8+bob,4,6);c.fill();c.stroke()}
+  else{c.fillStyle=col;c.fillRect(x-4*f-1.5,y-9+bob,3,5)}
+  c.restore()}
+function drawHouse([x,y]){if(!house)return;const h=HW*house.height/house.width
+  c.fillStyle='rgba(0,0,0,.18)';c.beginPath();c.ellipse(x+8,y+4,HW*.45,HW*.16,-.45,0,7);c.fill()
+  c.drawImage(house,x-HW/2,y-h*.82,HW,h)}
+function draw(){c.fillStyle='#4a6178';c.fillRect(0,0,W,H)
+  if(island.complete)c.drawImage(island,0,0,W,H)
+  S.forEach(s=>{const p=ctr(s);if(!p)return
+    if(s==sel){c.strokeStyle='#ffd23f';c.lineWidth=4;c.setLineDash([10,8]);c.beginPath();c.ellipse(p[0],p[1],70,38,0,0,7);c.stroke();c.setLineDash([])}
+    if(s.t==0&&Math.hypot(s.tx-p[0],s.ty-p[1])>30){c.strokeStyle='rgba(255,210,63,.9)';c.lineWidth=4;c.beginPath();c.moveTo(s.tx-12,s.ty);c.lineTo(s.tx+12,s.ty);c.moveTo(s.tx,s.ty-12);c.lineTo(s.tx,s.ty+12);c.stroke()}})
+  U.filter(u=>u.dead).forEach(soldier)
+  const things=[...U.filter(u=>!u.dead).map(u=>({y:u.y,f:()=>soldier(u)})),...houses.map(h=>({y:h[1],f:()=>drawHouse(h)}))]
+  things.sort((a,b)=>a.y-b.y).forEach(t=>t.f())
+  c.strokeStyle='#e8e2d2';c.lineWidth=3;arrows.forEach(a=>{c.beginPath();c.moveTo(a.x,a.y);c.lineTo(a.x-(a.ex-a.sx)*.03,a.y-(a.ey-a.sy)*.03+5);c.stroke()})
+  c.font='28px monospace'
+  ;[[0,OR,'You'],[1,BL,'Seven']].forEach(([t,col,n],i)=>{const left=U.filter(u=>u.t==t&&!u.dead).length,x=i?W-250:30
+    c.fillStyle=col;c.fillRect(x,28,28,28);c.strokeStyle=INK;c.lineWidth=3;c.strokeRect(x,28,28,28);c.fillStyle='#f3ead8';c.fillText(n+' '+left+'/18',x+40,52)})}
+function loop(){step();draw();requestAnimationFrame(loop)}
+mk();loop()
+</script>
