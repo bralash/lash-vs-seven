@@ -21,6 +21,8 @@ export interface GameMeta {
   /** 'vs Ops': only against the computer for now (no room, no pass & play); 'online + Ops': rooms and Ops, no pass & play (a real-time game needs a screen each) */
   modes: 'online' | 'online + local' | 'local' | 'vs Ops' | 'online + Ops'
   status: 'live' | 'soon'
+  /** kept off the homepage for now (its page still works by its link) */
+  hidden?: boolean
   /** has a computer opponent (Ops) in the lobby — shown on the homepage card */
   ops?: boolean
   /** how many can play, [fewest, most] — missing means exactly two */
@@ -473,6 +475,7 @@ export const GAMES: GameMeta[] = [
   },
   {
     slug: 'dash',
+    hidden: true,
     fullscreen: true,
     quiet: true,
     tiles: 'FLAG',

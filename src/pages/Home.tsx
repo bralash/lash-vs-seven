@@ -14,8 +14,9 @@ import '../styles/home.css'
 type Filter = 'all' | Category
 
 // Occasions, not instructions — one line under the title. Phones show as many as fit on one row.
-// Playable games first; within each group, registry order is kept (Array.sort is stable).
-const ORDERED = [...GAMES].sort((a, b) => Number(a.status !== 'live') - Number(b.status !== 'live'))
+// Playable games first; within each group, registry order is kept (Array.sort is stable). Hidden ones aren't listed.
+const SHOWN = GAMES.filter((g) => !g.hidden)
+const ORDERED = [...SHOWN].sort((a, b) => Number(a.status !== 'live') - Number(b.status !== 'live'))
 
 const MODES = ['Date nights', 'Friendly battles', 'Long-distance rivals', 'Family game night']
 const FILTERS: Filter[] = ['all', 'word', 'board', 'card', 'puzzle', 'sport']
@@ -32,8 +33,8 @@ export function Home() {
   const wear = useWear()
 
   const counts = useMemo(() => {
-    const c: Record<Filter, number> = { all: GAMES.length, word: 0, board: 0, card: 0, puzzle: 0, sport: 0 }
-    GAMES.forEach((g) => c[g.category]++)
+    const c: Record<Filter, number> = { all: SHOWN.length, word: 0, board: 0, card: 0, puzzle: 0, sport: 0 }
+    SHOWN.forEach((g) => c[g.category]++)
     return c
   }, [])
 
