@@ -28,12 +28,34 @@ export interface Saw {
   /** goes up and down this far */
   bob?: number
 }
+/** a big ring turning on the path, spikes across its rim: go through it between them */
+export interface Ring {
+  x: number
+  y: number
+  r: number
+  spikes: number
+  /** turns this fast (radians a second; less than 0 the other way) */
+  spin: number
+}
+/** sits on a platform facing you and fires balls back down it at a steady beat; the cannon itself is deadly too */
+export interface Cannon {
+  x: number
+  /** the top of the platform it stands on */
+  y: number
+  /** a ball every this many seconds, the first at `phase` */
+  every: number
+  phase: number
+  /** the balls go this far, then they're gone */
+  range: number
+}
 export interface Scene {
   name: string
   /** paper, lines, the accent (portals, posts, flag), the saws, and the faint grain */
   theme: { bg: string; ink: string; accent: string; saw: string; grain: string }
   plats: Plat[]
   saws: Saw[]
+  rings?: Ring[]
+  cannons?: Cannon[]
   portals: { a: { x: number; y: number }; b: { x: number; y: number } }[]
   /** the posts: where a restart puts you (the first is the start) */
   checks: number[]
@@ -65,6 +87,8 @@ export const SCENES: Scene[] = [
     ],
     portals: [{ a: { x: 1772, y: 220 }, b: { x: 2060, y: 130 } }],
     checks: [0, 960, 2020, 2640],
+    rings: [{ x: 760, y: 290, r: 46, spikes: 4, spin: 1.6 }],
+    cannons: [{ x: 2540, y: 260, every: 1.5, phase: 0.4, range: 420 }],
     stars: [
       { x: 760, y: 214 },
       { x: 1365, y: 200 },
@@ -97,6 +121,8 @@ export const SCENES: Scene[] = [
     ],
     portals: [],
     checks: [0, 900, 2000, 3100],
+    rings: [{ x: 660, y: 290, r: 44, spikes: 4, spin: -1.7 }],
+    cannons: [{ x: 380, y: 300, every: 1.4, phase: 0.6, range: 300 }],
     stars: [
       { x: 480, y: 220 },
       { x: 1590, y: 140 },
@@ -123,12 +149,14 @@ export const SCENES: Scene[] = [
     saws: [
       { x: 1450, y: 282, r: 18 },
       { x: 1600, y: 282, r: 18 },
-      { x: 2175, y: 224, r: 16, bob: 60 },
+      { x: 2205, y: 224, r: 16, bob: 60 },
       { x: 2520, y: 282, r: 18 },
       { x: 3200, y: 234, r: 16 },
     ],
     portals: [{ a: { x: 1672, y: 280 }, b: { x: 1850, y: 200 } }],
     checks: [0, 1300, 2100, 3050],
+    rings: [{ x: 300, y: 290, r: 44, spikes: 3, spin: 1.8 }],
+    cannons: [{ x: 3480, y: 250, every: 1.6, phase: 0.2, range: 320 }],
     stars: [
       { x: 1115, y: 80 },
       { x: 1525, y: 200 },
@@ -155,12 +183,12 @@ export const SCENES: Scene[] = [
     ],
     saws: [
       { x: 1550, y: 262, r: 18, bob: 60 },
-      { x: 2380, y: 244, r: 16 },
-      { x: 2500, y: 244, r: 16 },
       { x: 3100, y: 244, r: 16, bob: 50 },
     ],
     portals: [],
     checks: [0, 960, 2260, 2940],
+    rings: [{ x: 2440, y: 250, r: 52, spikes: 4, spin: 1.5 }],
+    cannons: [{ x: 3390, y: 260, every: 1.5, phase: 0.5, range: 300 }],
     stars: [
       { x: 680, y: 200 },
       { x: 1340, y: 160 },
@@ -194,6 +222,8 @@ export const SCENES: Scene[] = [
     ],
     portals: [{ a: { x: 2150, y: 220 }, b: { x: 2420, y: 120 } }],
     checks: [0, 1000, 1880, 2740, 3260],
+    rings: [{ x: 2010, y: 230, r: 48, spikes: 4, spin: 2 }],
+    cannons: [{ x: 3730, y: 260, every: 1.3, phase: 0.3, range: 400 }],
     stars: [
       { x: 820, y: 110 },
       { x: 1700, y: 80 },
@@ -224,6 +254,54 @@ export const MAX_MS = 45000
 const deadY = (s: Scene) => Math.max(...s.plats.map((p) => p.y)) + 50
 
 export const sawAt = (s: Saw, t: number) => ({ x: s.x, y: s.y - (s.bob ? (Math.sin(t * 3) * 0.5 + 0.5) * s.bob : 0), r: s.r })
+
+/** a ring's spikes: each reaches this far either side of the rim */
+export const SPIKE = 12
+/** a ring's spikes at time t, as the angle of each */
+export const spikesAt = (g: Ring, t: number) => Array.from({ length: g.spikes }, (_, k) => t * g.spin + (k * Math.PI * 2) / g.spikes)
+/** a cannon's size (half the width of its body) and its balls' */
+export const CANNON = 11
+export const BALL_R = 5
+const BALL_SPEED = 230
+/** where a cannon's balls are at time t */
+export function ballsAt(c: Cannon, t: number) {
+  const out: { x: number; y: number }[] = []
+  for (let k = Math.max(0, Math.floor((t - c.phase - c.range / BALL_SPEED) / c.every)); ; k++) {
+    const age = t - (c.phase + k * c.every)
+    if (age < 0) break
+    if (age * BALL_SPEED <= c.range) out.push({ x: c.x - CANNON - age * BALL_SPEED, y: c.y - PR })
+  }
+  return out
+}
+
+/** a point's distance from a line segment */
+function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const dx = bx - ax
+  const dy = by - ay
+  const u = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+  return Math.hypot(px - ax - u * dx, py - ay - u * dy)
+}
+
+/** does a runner at (x, y) touch anything deadly at time t */
+function hurt(s: Scene, x: number, y: number, t: number) {
+  for (const sw of s.saws) {
+    const q = sawAt(sw, t)
+    if (Math.hypot(x - q.x, y - q.y) < q.r + PR - 3) return true
+  }
+  for (const g of s.rings ?? []) {
+    if (Math.abs(Math.hypot(x - g.x, y - g.y) - g.r) > SPIKE + PR) continue
+    for (const a of spikesAt(g, t)) {
+      const c = Math.cos(a)
+      const n = Math.sin(a)
+      if (segDist(x, y, g.x + c * (g.r - SPIKE), g.y + n * (g.r - SPIKE), g.x + c * (g.r + SPIKE), g.y + n * (g.r + SPIKE)) < PR + 1) return true
+    }
+  }
+  for (const c of s.cannons ?? []) {
+    if (Math.abs(x - c.x) < CANNON + PR - 3 && y > c.y - CANNON * 2 - PR + 3) return true
+    for (const b of ballsAt(c, t)) if (Math.hypot(x - b.x, y - b.y) < BALL_R + PR - 2) return true
+  }
+  return false
+}
 
 export interface Run {
   x: number
@@ -297,11 +375,7 @@ export function step(s: Scene, r: Run, dt: number, t: number): 'down' | 'flag' |
   s.stars.forEach((st, i) => {
     if (!(r.stars & (1 << i)) && Math.hypot(r.x - st.x, r.y - st.y) < STAR_R + PR) r.stars |= 1 << i
   })
-  const hit = s.saws.some((sw) => {
-    const q = sawAt(sw, t)
-    return Math.hypot(r.x - q.x, r.y - q.y) < q.r + PR - 3
-  })
-  if (hit || r.y > deadY(s)) {
+  if (hurt(s, r.x, r.y, t) || r.y > deadY(s)) {
     r.down = RESPAWN_MS
     r.downAt = { x: r.x, y: Math.min(r.y, deadY(s) - 30) }
     r.restarts++

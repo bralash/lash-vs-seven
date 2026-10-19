@@ -20,7 +20,7 @@ import type { Seated } from '../../match/types'
 import { useHold } from '../../match/useHold'
 import { useOpponentAway } from '../../match/useOpponentAway'
 import { useRivalry } from '../../match/useRivalry'
-import { FIRST_MS, MAX_MS, PR, RESPAWN_MS, SCENES, decide, fresh, freshLive, jump, opsTaps, progress, sawAt, sceneOf, settle, starCount, step, tapsOf, type DashLive, type Run, type Seat } from './engine'
+import { BALL_R, CANNON, FIRST_MS, MAX_MS, PR, RESPAWN_MS, RUN, SCENES, SPIKE, ballsAt, decide, fresh, freshLive, jump, opsTaps, progress, sawAt, sceneOf, settle, spikesAt, starCount, step, tapsOf, type DashLive, type Run, type Seat } from './engine'
 import { dashFeats } from './feats'
 import '../../styles/dash.css'
 
@@ -86,16 +86,40 @@ class LiveRun {
 
 /* ── drawing: the scene, the other runner as a ghost, you ── */
 
-const VIEW_W = 360
-const VIEW_H = 300
+/** a wide view, as in Rodha: you see what's coming */
+/** the view is always this tall; how wide follows the board (wider than tall by 1.6 on a phone, up to 2.2 on a big screen), so you see what's coming, as in Rodha */
+const VIEW_H = 280
 
-function draw(ctx: CanvasRenderingContext2D, px: number, scene: number, me: Run, ghost: Run | null, t: number, seat: Seat) {
+/** what the board remembers between frames, for the look only (the runs never depend on it) */
+interface Fx {
+  /** per runner ('me', 'ghost'): recent spots for the streak, whether it was in the air / down, when it last landed / came back */
+  trail: Record<string, { x: number; y: number }[]>
+  air: Record<string, boolean>
+  down: Record<string, boolean>
+  land: Record<string, number>
+  back: Record<string, number>
+  /** when you last went down (the shake), and when you passed each post */
+  hit: number
+  posts: (number | undefined)[]
+}
+const freshFx = (): Fx => ({ trail: {}, air: {}, down: {}, land: {}, back: {}, hit: -9, posts: [] })
+
+/** a steady pseudo-random number for particle i (so a burst looks the same every frame) */
+const rnd = (i: number) => {
+  const v = Math.sin(i * 127.1 + 311.7) * 43758.5453
+  return v - Math.floor(v)
+}
+
+function draw(ctx: CanvasRenderingContext2D, px: number, VIEW_W: number, scene: number, me: Run, ghost: Run | null, t: number, seat: Seat, fx: Fx) {
   const s = SCENES[scene]
   const th = s.theme
   const scale = px / VIEW_W
-  const camX = Math.max(0, Math.min(me.x - VIEW_W * 0.3, s.flag + 120 - VIEW_W))
-  const camY = 50
-  ctx.setTransform(scale, 0, 0, scale, -camX * scale, -camY * scale)
+  const camX = Math.max(0, Math.min(me.x - VIEW_W * 0.25, s.flag + 140 - VIEW_W))
+  // going down shakes the view for a moment
+  const since = t - fx.hit
+  const shake = since >= 0 && since < 0.3 ? (1 - since / 0.3) * 5 : 0
+  const camY = 50 + Math.sin(t * 90) * shake
+  ctx.setTransform(scale, 0, 0, scale, -(camX + Math.cos(t * 70) * shake) * scale, -camY * scale)
   ctx.fillStyle = th.bg
   ctx.fillRect(camX, camY, VIEW_W, VIEW_H)
   ctx.fillStyle = th.grain
@@ -111,36 +135,71 @@ function draw(ctx: CanvasRenderingContext2D, px: number, scene: number, me: Run,
     ctx.lineTo(p.x2, p.y)
     ctx.stroke()
   }
-  // the posts: lit once you're past them
-  ctx.lineWidth = 3
+  const colour = (k: Seat) => (k === 0 ? '#ff5a1f' : '#2d5bff')
+  /** a pennant on a pole: flat and still until it's yours, then it waves */
+  const pennant = (x: number, y: number, h: number, w: number, fill: string, waving: boolean, pop: number) => {
+    ctx.strokeStyle = th.ink
+    ctx.lineWidth = h > 40 ? 4 : 3
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x, y - h)
+    ctx.stroke()
+    const wave = waving ? Math.sin(t * 7 + x) : 0
+    const ww = w * (1 + pop * 0.5)
+    ctx.fillStyle = fill
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(x, y - h)
+    ctx.quadraticCurveTo(x + ww * 0.5, y - h - 3 + wave * 3, x + ww, y - h + ww * 0.32 + wave * 2)
+    ctx.quadraticCurveTo(x + ww * 0.5, y - h + ww * 0.62 + wave * 3, x, y - h + ww * 0.62)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+  }
+  // the posts: a little grey flag each, yours once you're past (it pops up as you go by)
   s.checks.slice(1).forEach((c, k) => {
     const p = s.plats.find((q) => q.x1 <= c + 10 && q.x2 >= c + 10)
     if (!p) return
-    ctx.strokeStyle = th.ink
-    ctx.beginPath()
-    ctx.moveTo(c + 10, p.y)
-    ctx.lineTo(c + 10, p.y - 26)
-    ctx.stroke()
-    ctx.fillStyle = me.check > k ? th.accent : th.grain
-    ctx.fillRect(c + 10, p.y - 26, 11, 8)
+    const passed = me.check > k
+    if (!passed) fx.posts[k] = undefined
+    else fx.posts[k] ??= t
+    const age = t - (fx.posts[k] ?? -9)
+    pennant(c + 10, p.y, 30, 16, passed ? th.accent : th.grain, passed, age >= 0 && age < 0.35 ? Math.sin((age / 0.35) * Math.PI) : 0)
   })
-  // the flag
+  // the flag: the first one there makes it theirs
   const fp = s.plats.find((q) => q.x1 <= s.flag && q.x2 >= s.flag)!
-  ctx.lineWidth = 4
-  ctx.strokeStyle = th.ink
-  ctx.beginPath()
-  ctx.moveTo(s.flag, fp.y)
-  ctx.lineTo(s.flag, fp.y - 64)
-  ctx.stroke()
-  ctx.fillStyle = th.accent
-  ctx.beginPath()
-  const wave = Math.sin(t * 6) * 3
-  ctx.moveTo(s.flag, fp.y - 64)
-  ctx.lineTo(s.flag + 36, fp.y - 54 + wave)
-  ctx.lineTo(s.flag, fp.y - 42)
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
+  const runs: [Run, Seat][] = ghost ? [[me, seat], [ghost, (1 - seat) as Seat]] : [[me, seat]]
+  const firstIn = runs.filter(([r]) => r.finish !== null && r.finish / 1000 <= t).sort((a, b) => a[0].finish! - b[0].finish!)[0]
+  pennant(s.flag, fp.y, 70, 38, firstIn ? colour(firstIn[1]) : th.accent, true, 0)
+  // and the moment you get there: a burst of paper from the top of it
+  if (me.finish !== null) {
+    const age = t - me.finish / 1000
+    if (age >= 0 && age < 1.6) {
+      for (let i = 0; i < 28; i++) {
+        const a = -Math.PI / 2 + (rnd(i) - 0.5) * 2.4
+        const v = 120 + rnd(i + 50) * 160
+        const x = s.flag + 12 + Math.cos(a) * v * age
+        const y = fp.y - 70 + Math.sin(a) * v * age + 260 * age * age
+        ctx.save()
+        ctx.globalAlpha = Math.max(0, 1 - age / 1.6)
+        ctx.translate(x, y)
+        ctx.rotate(age * 9 * (rnd(i + 9) - 0.5))
+        ctx.fillStyle = i % 3 === 0 ? th.accent : i % 3 === 1 ? colour(seat) : th.ink
+        ctx.fillRect(-3, -2, 6, 4)
+        ctx.restore()
+      }
+      // a ring going out round the flag
+      if (age < 0.5) {
+        ctx.globalAlpha = 1 - age / 0.5
+        ctx.strokeStyle = colour(seat)
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(s.flag + 12, fp.y - 50, 20 + age * 120, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+    }
+  }
   // portals: rings
   s.portals.forEach((q, k) => {
     for (const [p, j] of [[q.a, 0], [q.b, 1]] as const)
@@ -198,47 +257,206 @@ function draw(ctx: CanvasRenderingContext2D, px: number, scene: number, me: Run,
     ctx.stroke()
     ctx.restore()
   }
-  // the runners: theirs a ghost, then you
-  const colour = (k: Seat) => (k === 0 ? '#ff5a1f' : '#2d5bff')
-  const runner = (r: Run, c: string, alpha: number) => {
-    ctx.globalAlpha = alpha
-    ctx.fillStyle = th.ink
-    for (let i = 0; i < r.trail.length; i += 2) {
-      ctx.beginPath()
-      ctx.arc(r.trail[i].x, r.trail[i].y, 1.6 + i * 0.12, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    if (r.down > 0 && r.downAt) {
-      const p = 1 - r.down / RESPAWN_MS
-      ctx.strokeStyle = c
-      ctx.lineWidth = 3
-      for (let i = 0; i < 7; i++) {
-        const a = (i / 7) * Math.PI * 2
-        ctx.beginPath()
-        ctx.moveTo(r.downAt.x + Math.cos(a) * (6 + p * 12), r.downAt.y + Math.sin(a) * (6 + p * 12))
-        ctx.lineTo(r.downAt.x + Math.cos(a) * (10 + p * 22), r.downAt.y + Math.sin(a) * (10 + p * 22))
-        ctx.stroke()
-      }
-    } else {
-      ctx.fillStyle = c
+  // spiked rings: a faint rim to go through, the spikes across it turning
+  for (const g of s.rings ?? []) {
+    if (g.x + g.r + SPIKE < camX - 10 || g.x - g.r - SPIKE > camX + VIEW_W + 10) continue
+    ctx.strokeStyle = th.ink
+    ctx.globalAlpha = 0.3
+    ctx.lineWidth = 2
+    ctx.setLineDash([5, 6])
+    ctx.lineDashOffset = -t * g.spin * g.r
+    ctx.beginPath()
+    ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1
+    for (const a of spikesAt(g, t)) {
+      const c = Math.cos(a)
+      const n = Math.sin(a)
+      // a long diamond across the rim
+      ctx.fillStyle = th.saw
       ctx.strokeStyle = th.ink
-      ctx.lineWidth = 2.5
+      ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.arc(r.x, r.y, PR, 0, Math.PI * 2)
+      ctx.moveTo(g.x + c * (g.r - SPIKE), g.y + n * (g.r - SPIKE))
+      ctx.lineTo(g.x + c * g.r - n * 4, g.y + n * g.r + c * 4)
+      ctx.lineTo(g.x + c * (g.r + SPIKE), g.y + n * (g.r + SPIKE))
+      ctx.lineTo(g.x + c * g.r + n * 4, g.y + n * g.r - c * 4)
+      ctx.closePath()
       ctx.fill()
       ctx.stroke()
-      ctx.fillStyle = '#fff'
-      const look = r.vy > 200 ? 1.5 : r.vy < -200 ? -1.5 : 0
-      for (const ex of [0, 5]) {
+    }
+  }
+  // cannons: a block facing you, the barrel kicking back as it fires, the balls with a streak behind
+  for (const c of s.cannons ?? []) {
+    for (const b of ballsAt(c, t)) {
+      if (b.x < camX - 20 || b.x > camX + VIEW_W + 20) continue
+      ctx.strokeStyle = th.ink
+      ctx.globalAlpha = 0.35
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(b.x + BALL_R, b.y)
+      ctx.lineTo(b.x + BALL_R + 16, b.y)
+      ctx.stroke()
+      ctx.globalAlpha = 1
+      ctx.fillStyle = th.ink
+      ctx.beginPath()
+      ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    if (c.x + 30 < camX || c.x - 40 > camX + VIEW_W) continue
+    const age = (((t - c.phase) % c.every) + c.every) % c.every
+    const kick = t >= c.phase && age < 0.15 ? (1 - age / 0.15) * 5 : 0
+    ctx.fillStyle = th.ink
+    ctx.fillRect(c.x - CANNON - 9 + kick, c.y - PR - 4, 12, 8)
+    ctx.beginPath()
+    ctx.roundRect(c.x - CANNON, c.y - CANNON * 2, CANNON * 2, CANNON * 2, [6, 6, 0, 0])
+    ctx.fill()
+    ctx.fillStyle = th.saw
+    ctx.fillRect(c.x - CANNON + 3, c.y - CANNON * 2 + 5, CANNON * 2 - 6, 3)
+  }
+  // the runners: theirs a ghost, then you
+  const runner = (r: Run, k: Seat, key: string, alpha: number) => {
+    const c = colour(k)
+    ctx.globalAlpha = alpha
+    // going down: bits fly off, and a little ghost of the ball floats up with a halo
+    if (r.down > 0 && r.downAt) {
+      fx.trail[key] = []
+      if (!fx.down[key] && key === 'me') fx.hit = t
+      fx.down[key] = true
+      const p = 1 - r.down / RESPAWN_MS
+      const sec = (p * RESPAWN_MS) / 1000
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2 + rnd(i) * 0.6
+        const v = 90 + rnd(i + 20) * 90
+        ctx.fillStyle = i % 2 ? c : th.ink
         ctx.beginPath()
-        ctx.arc(r.x + ex, r.y - 2 + look, 2.6, 0, Math.PI * 2)
+        ctx.arc(r.downAt.x + Math.cos(a) * v * sec, r.downAt.y + Math.sin(a) * v * sec + 500 * sec * sec, 2.6 * (1 - p) + 0.6, 0, Math.PI * 2)
         ctx.fill()
       }
+      const gy = r.downAt.y - p * 46
+      ctx.globalAlpha = alpha * (1 - p * 0.8)
+      ctx.strokeStyle = th.ink
+      ctx.lineWidth = 2
+      ctx.fillStyle = th.bg
+      ctx.beginPath()
+      ctx.arc(r.downAt.x, gy, PR, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      for (const ex of [-1, 4]) {
+        ctx.beginPath()
+        ctx.moveTo(r.downAt.x + ex - 2, gy - 4)
+        ctx.lineTo(r.downAt.x + ex + 2, gy)
+        ctx.moveTo(r.downAt.x + ex + 2, gy - 4)
+        ctx.lineTo(r.downAt.x + ex - 2, gy)
+        ctx.stroke()
+      }
+      ctx.strokeStyle = th.accent
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.ellipse(r.downAt.x, gy - PR - 5, 7, 2.5, 0, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.globalAlpha = 1
+      return
     }
+    if (fx.down[key]) fx.back[key] = t
+    fx.down[key] = false
+    // the streak behind: where it's just been, thinning out
+    const tr = (fx.trail[key] ??= [])
+    const last = tr[tr.length - 1]
+    if (last && (Math.abs(r.x - last.x) > 60 || Math.abs(r.y - last.y) > 60)) tr.length = 0
+    if (!last || last.x !== r.x || last.y !== r.y) tr.push({ x: r.x, y: r.y })
+    if (tr.length > 10) tr.shift()
+    ctx.lineCap = 'round'
+    for (let i = 1; i < tr.length; i++) {
+      const f = i / tr.length
+      ctx.strokeStyle = c
+      ctx.globalAlpha = alpha * f * 0.45
+      ctx.lineWidth = PR * 1.5 * f
+      ctx.beginPath()
+      ctx.moveTo(tr[i - 1].x, tr[i - 1].y)
+      ctx.lineTo(tr[i].x, tr[i].y)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = alpha
+    // landing squashes it, flying stretches it along the way it's going
+    if (fx.air[key] && r.ground) fx.land[key] = t
+    fx.air[key] = !r.ground
+    const landed = t - (fx.land[key] ?? -9)
+    const done = r.finish !== null && r.finish / 1000 <= t
+    let sx = 1
+    let sy = 1
+    let rot = 0
+    if (!r.ground && !done) {
+      const k2 = Math.min(0.22, Math.abs(r.vy) / 2600)
+      sx = 1 + k2
+      sy = 1 - k2 * 0.7
+      rot = Math.atan2(r.vy, RUN)
+    } else if (landed >= 0 && landed < 0.14) {
+      const q = Math.sin((landed / 0.14) * Math.PI)
+      sx = 1 + q * 0.22
+      sy = 1 - q * 0.25
+    }
+    // at the flag it hops for joy
+    const hop = done ? Math.abs(Math.sin((t - r.finish! / 1000) * 7)) * 9 : 0
+    const cy = r.y - hop + (1 - sy) * PR
+    // coming back at the post: it pops in with a ring
+    const back = t - (fx.back[key] ?? -9)
+    const pop = back >= 0 && back < 0.25 ? 0.6 + 0.4 * Math.sin((back / 0.25) * Math.PI * 0.5) : 1
+    if (back >= 0 && back < 0.35) {
+      ctx.strokeStyle = c
+      ctx.lineWidth = 2.5
+      ctx.globalAlpha = alpha * (1 - back / 0.35)
+      ctx.beginPath()
+      ctx.arc(r.x, r.y, PR + back * 70, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.globalAlpha = alpha
+    }
+    ctx.save()
+    ctx.translate(r.x, cy)
+    ctx.rotate(rot)
+    ctx.scale(sx * pop, sy * pop)
+    ctx.rotate(-rot)
+    ctx.fillStyle = c
+    ctx.strokeStyle = th.ink
+    ctx.lineWidth = 2.5
+    ctx.beginPath()
+    ctx.arc(0, 0, PR, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    // the eyes: white with a dot, looking where it's going; a blink now and then; ^ ^ at the flag
+    const look = Math.max(-1.6, Math.min(1.6, r.vy / 300))
+    const blink = !done && (t + k * 1.3) % 3.1 < 0.11
+    for (const ex of [1, 6]) {
+      if (done || blink) {
+        ctx.strokeStyle = th.ink
+        ctx.lineWidth = 1.8
+        ctx.beginPath()
+        if (done) {
+          ctx.moveTo(ex - 2.4, -1)
+          ctx.lineTo(ex, -3.6)
+          ctx.lineTo(ex + 2.4, -1)
+        } else {
+          ctx.moveTo(ex - 2.4, -2)
+          ctx.lineTo(ex + 2.4, -2)
+        }
+        ctx.stroke()
+        continue
+      }
+      ctx.fillStyle = '#fff'
+      ctx.beginPath()
+      ctx.arc(ex, -2.2, 3.1, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = th.ink === '#f3ead8' ? '#121016' : th.ink
+      ctx.beginPath()
+      ctx.arc(ex + 1.1, -2.2 + look, 1.6, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
     ctx.globalAlpha = 1
   }
-  if (ghost) runner(ghost, colour((1 - seat) as Seat), 0.5)
-  runner(me, colour(seat), 1)
+  if (ghost) runner(ghost, (1 - seat) as Seat, 'ghost', 0.5)
+  runner(me, seat, 'me', 1)
 
   // the race along the top: both runners on a line to the flag
   ctx.setTransform(scale, 0, 0, scale, 0, 0)
@@ -265,17 +483,21 @@ function Board({ scene, seat, frame }: { scene: number; seat: Seat; frame: (draw
   useEffect(() => {
     const c = canvas.current!
     const ctx = c.getContext('2d')!
+    const fx = freshFx()
     let raf = 0
     const loop = () => {
       raf = requestAnimationFrame(loop)
       const w = c.clientWidth
+      const h = c.clientHeight || w / 2
+      const vw = Math.min(2.2, Math.max(1.6, w / h)) * VIEW_H
       const dpr = Math.min(3, window.devicePixelRatio || 1)
       const px = Math.round(w * dpr)
-      if (c.width !== px) {
+      const py = Math.round((px * VIEW_H) / vw)
+      if (c.width !== px || c.height !== py) {
         c.width = px
-        c.height = Math.round((px * VIEW_H) / VIEW_W)
+        c.height = py
       }
-      frame((me, ghost, t) => draw(ctx, px, scene, me, ghost, t, seat))
+      frame((me, ghost, t) => draw(ctx, px, vw, scene, me, ghost, t, seat, fx))
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)

@@ -64,13 +64,16 @@ html:has(.dash-stage) .topbar__title { color: var(--dash-ink, var(--ink-soft)); 
   -webkit-touch-callout: none;
   cursor: pointer;
 }
-/* the board under the scores, as big as the space left; taps go through it to the stage */
+/* the board under the scores: wide, as in Rodha (1.6 to 2.2 times as wide as tall; the view follows
+   its shape), wider than the scores when there's room, as big as the space left; taps go through it to the stage */
 .dash .dash-board {
+  --room: calc(100svh - 260px - max(110px, 18svh));
+  --bw: min(calc(100vw - 16px), 960px, calc(var(--room) * 2.2));
   position: relative;
-  justify-self: center;
-  width: min(100%, 560px, calc((100svh - 260px - max(110px, 18svh)) * 1.2));
-  min-width: 260px;
-  aspect-ratio: 360 / 300;
+  justify-self: start;
+  width: var(--bw);
+  height: max(calc(var(--bw) / 2.2), min(calc(var(--bw) / 1.6), var(--room)));
+  margin-inline: calc((100% - var(--bw)) / 2);
   border: var(--edge) solid var(--ink);
   box-shadow: var(--shadow);
   pointer-events: none;
