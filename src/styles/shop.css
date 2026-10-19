@@ -73,6 +73,15 @@
   font-variant-numeric: tabular-nums;
   rotate: -5deg;
 }
+/* wins: a small picture to tap; flair: your score card with it on */
+.shop__win-try { gap: 4px; }
+.shop__flair { display: block; width: 100%; padding: 14px 8px 4px; }
+.shop__flair .mt-score { text-align: left; }
+/* new in the shop (its first three days): top right, where Wearing / On goes once it's yours */
+.shop__new { position: absolute; top: -12px; right: -8px; rotate: 6deg; padding: 2px 8px; border: 2px solid var(--ink); background: var(--hit); box-shadow: 2px 2px 0 var(--ink); font: 500 11px/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; animation: shop-new 1.6s ease-in-out infinite; }
+@keyframes shop-new { 50% { rotate: -3deg; } }
+@media (prefers-reduced-motion: reduce) { .shop__new { animation: none; } }
+.shop__tab-new { margin-left: 6px; padding: 0 5px; border: 1.5px solid var(--ink); background: var(--hit); color: var(--ink); font-size: 10px; letter-spacing: .08em; vertical-align: 1px; }
 .shop__owned { padding: 2px 8px; background: var(--good); color: var(--paper); letter-spacing: .08em; text-transform: uppercase; }
 /* throwables: the thing, and a face to try it on */
 .shop__throw-face { display: flex; align-items: center; gap: 6px; }

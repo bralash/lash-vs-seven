@@ -14,6 +14,7 @@ import { load, save } from '../lib/storage'
 import type { Stake } from '../match/stakes'
 import { pickedCrewLook, type OpsStyle } from '../components/OpsFace'
 import { myWear, wearString } from '../components/faces/wardrobe'
+import { myFlairString } from '../match/flair'
 
 // Rooms live at matches/{game}/{code}. Each game gets its own namespace, so codes only
 // have to be unique per game. (The old site still uses rooms/, wh-rooms/ etc. — left untouched.)
@@ -40,6 +41,8 @@ export interface Player {
   look?: OpsStyle
   /** what that character has on from the wardrobe, as item ids ("crown,kente") */
   wear?: string
+  /** their flair from the shop, as ids ("fkente,tchair,goldname"): drawn on their score card */
+  flair?: string
 }
 
 export interface Room {
@@ -105,32 +108,36 @@ export const CODE_LENGTH = 4
 /** Rooms older than this get cleaned up by the browser that created them. */
 const STALE_MS = 24 * 60 * 60 * 1000
 
-/** my Crew character for my room entry, if I picked one, and what it has on */
-const myLook = (): { look?: OpsStyle; wear?: string } => {
+type MyLook = { look?: OpsStyle | null; wear?: string | null; flair?: string | null }
+
+/** my Crew character for my room entry, if I picked one, and what it has on; and my flair from the shop */
+const myLook = (withFlair: boolean): MyLook => {
   const look = pickedCrewLook()
   const wear = wearString(myWear())
-  return look ? { look, ...(wear ? { wear } : {}) } : {}
+  const flair = withFlair ? myFlairString() : ''
+  return { ...(look ? { look, ...(wear ? { wear } : {}) } : {}), ...(flair ? { flair } : {}) }
 }
 
 /**
  * Writes with my look, and if the database turns it down, again without it. A face newer than the
  * deployed rules (Hulkops before his rules went out) then just means a random face, never a room you
- * can't make or join.
+ * can't make or join. Flair goes on player entries only (watchers have no score card).
  */
-async function withMyLook(write: (look: { look?: OpsStyle | null; wear?: string | null }) => Promise<unknown>) {
-  const look = myLook()
-  try {
-    await write(look)
-  } catch (err) {
-    if (!look.look) throw err
-    // rules from before the wardrobe: keep the face, drop what it wears; then drop the face too
+async function withMyLook(write: (look: MyLook) => Promise<unknown>, withFlair = true) {
+  const look = myLook(withFlair)
+  const tries: MyLook[] = [look]
+  // rules from before flair: drop it; from before the wardrobe: keep the face, drop what it wears; then drop the face too
+  if (look.flair) tries.push({ ...look, flair: null })
+  if (look.look && look.wear) tries.push({ look: look.look, wear: null, flair: null })
+  if (look.look || look.flair) tries.push({ look: null, wear: null, flair: null })
+  let last: unknown
+  for (const t of tries)
     try {
-      if (!look.wear) throw err
-      await write({ look: look.look, wear: null })
-    } catch {
-      await write({ look: null, wear: null })
+      return await write(t)
+    } catch (err) {
+      last = err
     }
-  }
+  throw last
 }
 
 export const roomPath = (game: string, code: string) => `matches/${game}/${code}`
@@ -241,7 +248,7 @@ export async function joinRoom(game: string, code: string, name: string): Promis
 
     // already seated (refresh, or coming back after a drop): just mark ourselves present again
     if (room.players?.[pid]) {
-      await withMyLook((look) => update(at(game, code, `players/${pid}`), { name, online: true, look: look.look ?? null, wear: look.wear ?? null }))
+      await withMyLook((look) => update(at(game, code, `players/${pid}`), { name, online: true, look: look.look ?? null, wear: look.wear ?? null, flair: look.flair ?? null }))
       return { ok: true }
     }
     if (room.status !== 'waiting') return { ok: false, error: 'started', room }
@@ -309,7 +316,7 @@ export function watchRoom(game: string, code: string, name: string) {
     if (snap.val() !== true) return
     onDisconnect(mine)
       .remove()
-      .then(() => withMyLook((look) => set(mine, { name, at: serverTimestamp(), ...look })))
+      .then(() => withMyLook((look) => set(mine, { name, at: serverTimestamp(), ...look }), false))
       .catch(() => {})
   })
   return () => {

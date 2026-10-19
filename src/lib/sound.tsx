@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { KEYS, load, save } from './storage'
 
-export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack' | 'pong' | 'ping' | 'smash' | 'cue' | 'clink' | 'pot' | 'whistle' | 'fullTime' | 'kick' | 'net' | 'post' | 'glove' | 'roar' | 'ooh'
+export type Cue = 'tap' | 'join' | 'start' | 'error' | 'find' | 'findBig' | 'tick' | 'end' | 'whoosh' | 'splat' | 'boom' | 'snap' | 'buzz' | 'thwip' | 'horn' | 'taunt' | 'clack' | 'pong' | 'ping' | 'smash' | 'cue' | 'clink' | 'pot' | 'whistle' | 'fullTime' | 'kick' | 'net' | 'post' | 'glove' | 'roar' | 'ooh' | 'trumpet' | 'drums'
 
 /** football: sounds that aren't beeps or knocks (a whistle, washes of noise) */
 type Special = 'whistle' | 'fullTime' | 'net' | 'roar' | 'ooh'
@@ -31,6 +31,9 @@ const CUES: Record<Exclude<Cue, Special>, { type: OscillatorType; notes: number[
   clink: { type: 'sine', notes: [2300], gap: 0, len: 0.035, vol: 0.07 },
   pot: { type: 'triangle', notes: [190, 120], gap: 0.05, len: 0.1, vol: 0.12 },
   smash: { type: 'square', notes: [420, 210], gap: 0.02, len: 0.09, vol: 0.12 },
+  // wins from the shop: the champion banner's fanfare, the talking drums under the Ghana colours
+  trumpet: { type: 'square', notes: [523.25, 523.25, 659.25, 783.99, 1046.5], gap: 0.12, len: 0.14, vol: 0.06 },
+  drums: { type: 'sine', notes: [196, 147, 196, 131, 196, 147], gap: 0.13, len: 0.1, vol: 0.16 },
   // a chip landing on the pile
   clack: { type: 'square', notes: [1900, 1300], gap: 0.012, len: 0.025, vol: 0.05 },
   error: { type: 'sawtooth', notes: [180, 140], gap: 0.09, len: 0.14, vol: 0.06 },

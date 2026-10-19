@@ -8,12 +8,16 @@ import { TopBar } from '../components/TopBar'
 import { useSound } from '../lib/sound'
 import { buyExtra, buyItem, buyLook, chipsFor, keepWornLook, ownsExtra, ownsItem, ownsLook, useWallet, type ChipValue } from '../match/chips'
 import { PACKS, StickerArt } from '../match/Reactions'
-import { SHELVES, type ShelfId } from '../match/shop'
+import { isNew, SHELVES, type ShelfId } from '../match/shop'
 import { ItemArt, launch, ownThrow, setThrowPick, SHOP_THROWS, Splat, ThrowLayer, useHit, useThrowPick, type Item } from '../match/Throws'
 import '../styles/lobby.css'
 import '../styles/match.css'
 import '../styles/shop.css'
 import { PlayerCode } from '../components/PlayerCode'
+import { KEYS, load } from '../lib/storage'
+import { Confetti } from '../match/Confetti'
+import { asFlair, FLAIR, setFlairOn, setWinPick, useMyFlair, useWinPick, WINS, type WinId } from '../match/flair'
+import { WinArt } from '../match/WinArt'
 
 /**
  * The shop (/shop): spend chips on looks. Your pile sits at the top; each shelf is a tab. Characters
@@ -86,6 +90,26 @@ export function Shop() {
   const cardRefs = useRef<Record<string, HTMLElement | null>>({})
 
   const current = SHELVES.find((s) => s.id === shelf) ?? SHELVES[0]
+  /** a shelf's tab says New while something on it is new and not yours yet */
+  const o = wallet?.owned
+  const unownedNew: Partial<Record<ShelfId, boolean>> = {
+    characters: CREW_STYLES.some((s) => isNew(s.id) && !ownsLook(o, s.id)),
+    wardrobe: ITEMS.some((it) => !it.prize && isNew(it.id) && !ownsItem(o, it.id)),
+    throws: SHOP_THROWS.some((t) => isNew(t.id) && !ownsExtra(o, t.id)),
+    stickers: PACKS.some((p) => isNew(p.id) && !ownsExtra(o, p.id)),
+    wins: WINS.some((w) => isNew(w.id) && !ownsExtra(o, w.id)),
+    flair: FLAIR.some((f) => isNew(f.id) && !ownsExtra(o, f.id)),
+  }
+  const winPick = useWinPick()
+  const myFlair = useMyFlair()
+  /** a win being shown (Tap to see), until it's played out */
+  const [trying, setTrying] = useState<{ win: WinId | null; n: number } | null>(null)
+  useEffect(() => {
+    if (!trying) return
+    const id = setTimeout(() => setTrying(null), 4500)
+    return () => clearTimeout(id)
+  }, [trying])
+  const shelfNew = (id: ShelfId) => !!unownedNew[id]
   // the wardrobe is shown on your character (or Bot, if you haven't picked one)
   const model: OpsStyle = look ?? 'bot'
 
@@ -201,6 +225,7 @@ export function Shop() {
         </span>
       )}
       {o.mine && !o.on && <span className="shop__owned">{o.price ? 'Owned' : 'Free'}</span>}
+      {!o.mine && isNew(id) && <span className="shop__new">New</span>}
       {o.face}
       <span className="shop__name">{o.name}</span>
       <span className="shop__desc">{o.desc}</span>
@@ -360,6 +385,81 @@ export function Shop() {
     </ul>
   )
 
+  const wins = (
+    <ul className="shop__grid">
+      {[{ id: null, name: 'Confetti', price: 0, blurb: 'The burst of paper everyone gets.' }, ...WINS].map((w) => {
+        const id = w.id ?? 'confetti'
+        const on = winPick === w.id
+        const mine = w.id === null || ownsExtra(wallet?.owned, w.id) || on
+        return card(id, {
+          price: w.price,
+          mine,
+          on,
+          onLabel: 'On',
+          face: (
+            <button type="button" className="shop__try shop__win-try" aria-label={`See ${w.name}`} onClick={() => (play('tap'), setTrying({ win: w.id, n: Date.now() }))}>
+              <WinArt id={w.id} />
+              <span className="shop__try-tag">Tap to see</span>
+            </button>
+          ),
+          name: w.name,
+          desc: w.blurb,
+          act: on ? (
+            <span className="shop__note">Plays when you win</span>
+          ) : mine ? (
+            <button type="button" className="btn" onClick={() => (play('tap'), setWinPick(w.id))}>
+              Use this
+            </button>
+          ) : (
+            buyArea(id, w.price, () => buy(id, w.price, () => buyExtra(id, w.price), () => setWinPick(w.id)))
+          ),
+        })
+      })}
+    </ul>
+  )
+
+  const myName = load(KEYS.name) || 'You'
+  const flairShelf = (['frame', 'title', 'gold'] as const).map((kind) => (
+    <div key={kind} className="shop__slot">
+      <h3 className="shop__slot-h">{kind === 'frame' ? 'Frames' : kind === 'title' ? 'Titles' : 'Your name'}</h3>
+      <ul className="shop__grid">
+        {FLAIR.filter((f) => f.kind === kind).map((f) => {
+          const on = myFlair.includes(f.id)
+          const mine = ownsExtra(wallet?.owned, f.id) || on
+          const fl = asFlair(f.id)
+          return card(f.id, {
+            price: f.price,
+            mine,
+            on,
+            onLabel: 'On',
+            face: (
+              <span className="shop__flair" aria-hidden="true">
+                <span className={`mt-score mt-score--0 mt-score--you${fl.frame ? ` mt-score--frame mt-score--${fl.frame}` : ''}`}>
+                  {fl.title && <span className="mt-score__title">{fl.title}</span>}
+                  <span className={`mt-score__name${fl.gold ? ' mt-score__name--gold' : ''}`}>{myName}</span>
+                  <span className="mt-score__n">3</span>
+                </span>
+              </span>
+            ),
+            name: f.name,
+            desc: f.blurb,
+            act: on ? (
+              <button type="button" className="btn" onClick={() => (play('tap'), setFlairOn(f.id, false))}>
+                Take off
+              </button>
+            ) : mine ? (
+              <button type="button" className="btn" onClick={() => (play('tap'), setFlairOn(f.id, true))}>
+                Put on
+              </button>
+            ) : (
+              buyArea(f.id, f.price, () => buy(f.id, f.price, () => buyExtra(f.id, f.price), () => setFlairOn(f.id, true)))
+            ),
+          })
+        })}
+      </ul>
+    </div>
+  ))
+
   return (
     <div className="page screen-in">
       <TopBar
@@ -396,11 +496,16 @@ export function Shop() {
               type="button"
               role="tab"
               aria-selected={s.id === shelf}
-              aria-label={s.soon ? `${s.name} (coming soon)` : undefined}
+              aria-label={s.soon ? `${s.name} (coming soon)` : shelfNew(s.id) ? `${s.name} (something new)` : undefined}
               className={`shop__tab${s.soon ? ' shop__tab--soon' : ''}`}
               onClick={() => pickShelf(s.id)}
             >
               {s.name}
+              {shelfNew(s.id) && (
+                <span className="shop__tab-new" aria-hidden="true">
+                  New
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -416,6 +521,10 @@ export function Shop() {
             throws
           ) : current.id === 'stickers' ? (
             stickers
+          ) : current.id === 'wins' ? (
+            wins
+          ) : current.id === 'flair' ? (
+            flairShelf
           ) : (
             <ul className="shop__grid">
               {(current.soon ?? []).map((it) => (
@@ -443,6 +552,7 @@ export function Shop() {
       </main>
 
       <ThrowLayer me="shop" view />
+      {trying && <Confetti key={trying.n} win={trying.win} />}
       {flights.map((f) => (
         <span
           key={f.id}

@@ -9,6 +9,8 @@ import { useSound } from '../lib/sound'
 import { keepWornLook, ownsExtra, ownsItem, ownsLook, useWallet } from '../match/chips'
 import { PACKS, StickerArt } from '../match/Reactions'
 import { ItemArt, ownThrow, setThrowPick, SHOP_THROWS, useThrowPick } from '../match/Throws'
+import { FLAIR, setFlairOn, setWinPick, useMyFlair, useWinPick, WINS } from '../match/flair'
+import { WinArt } from '../match/WinArt'
 import '../styles/lobby.css'
 import '../styles/opsroom.css'
 
@@ -46,6 +48,10 @@ export function Locker() {
   const throws = SHOP_THROWS.filter((t) => ownsExtra(wallet?.owned, t.id) || t.id === throwPick)
   const packs = PACKS.filter((pk) => ownsExtra(wallet?.owned, pk.id))
   const own = ownThrow(look)
+  const winPick = useWinPick()
+  const myWins = WINS.filter((w) => ownsExtra(wallet?.owned, w.id) || w.id === winPick)
+  const myFlair = useMyFlair()
+  const myFlairItems = FLAIR.filter((f) => ownsExtra(wallet?.owned, f.id) || myFlair.includes(f.id))
 
   // anyone already wearing a character when they went on sale keeps it
   useEffect(() => {
@@ -201,6 +207,73 @@ export function Locker() {
           <p className="hint opsroom__note">
             {packs.length ? 'Each pack has its own tab in the reactions tray. ' : 'The six classic reactions are everyone’s. '}
             {packs.length < PACKS.length && (
+              <>
+                More in the <Link to="/shop">shop</Link>.
+              </>
+            )}
+          </p>
+        </section>
+
+        <section className="opsroom__section" aria-labelledby="win-title">
+          <h2 id="win-title" className="opsroom__h">When you win</h2>
+          <div className="opsroom__items" role="radiogroup" aria-labelledby="win-title">
+            {[{ id: null, name: 'Confetti' }, ...myWins].map((w) => {
+              const on = winPick === w.id
+              return (
+                <button
+                  key={w.id ?? 'confetti'}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  className="opsroom__look opsroom__item"
+                  onClick={() => {
+                    if (on) return
+                    play('tap')
+                    setWinPick(w.id)
+                  }}
+                >
+                  {on && <span className="stamp stamp--live opsroom__picked">On</span>}
+                  <WinArt id={w.id} size={52} />
+                  <span className="opsroom__item-name">{w.name}</span>
+                </button>
+              )
+            })}
+          </div>
+          {myWins.length < WINS.length && (
+            <p className="hint opsroom__note">
+              {WINS.length - myWins.length} more in the <Link to="/shop">shop</Link>: chip rain, fireworks, a champion banner…
+            </p>
+          )}
+        </section>
+
+        <section className="opsroom__section" aria-labelledby="flair-title">
+          <h2 id="flair-title" className="opsroom__h">Flair</h2>
+          {myFlairItems.length > 0 && (
+            <div className="opsroom__items" role="group" aria-labelledby="flair-title">
+              {myFlairItems.map((f) => {
+                const on = myFlair.includes(f.id)
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    aria-pressed={on}
+                    className="opsroom__look opsroom__item"
+                    onClick={() => {
+                      play('tap')
+                      setFlairOn(f.id, !on)
+                    }}
+                  >
+                    {on && <span className="stamp stamp--live opsroom__picked">On</span>}
+                    <span className="opsroom__item-name">{f.name}</span>
+                    <span className="opsroom__item-act">{on ? 'Take off' : 'Put on'}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <p className="hint opsroom__note">
+            {myFlairItems.length ? 'On your score card in every match, for everyone to see. ' : 'Frames, titles and a gold name for your score card. '}
+            {myFlairItems.length < FLAIR.length && (
               <>
                 More in the <Link to="/shop">shop</Link>.
               </>

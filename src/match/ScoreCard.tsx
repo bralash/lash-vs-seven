@@ -4,6 +4,7 @@ import { usePlayerLook, usePlayerWear, useScoreMood } from './looks'
 import { useTaunt } from './Taunts'
 import { Splat, useHit, useThrowAt } from './Throws'
 import { FIRE_MOOD, ULTS, ultOf, useStruck, useUlt } from './Ultimates'
+import { usePlayerFlair } from './flair'
 import type { Seated } from './types'
 
 interface Props {
@@ -37,13 +38,15 @@ export function ScoreCard({ p, you, active, turn, score, value, meta }: Props) {
   const struck = useStruck(p?.id)
   const hit = useHit(p?.id) ?? struck
   const taunt = useTaunt(p?.id, !!active)
+  const flair = usePlayerFlair(p)
   if (!p) return <div className="mt-score" />
   // what the face pulls: firing its ultimate, glaring at a visitor, just hit, or how the game's going
   const face = ult?.firing ? FIRE_MOOD[ult.firing] : taunt?.visitedBy ? 'angry' : hit ? 'ouch' : mood
   const onTap = taunt?.pick ?? throwAt
   return (
-    <div className={`mt-score mt-score--${p.seat}${you || active ? ' mt-score--you' : ''}${look ? ' mt-score--ops' : ''}`}>
-      <span className="mt-score__name">
+    <div className={`mt-score mt-score--${p.seat}${you || active ? ' mt-score--you' : ''}${look ? ' mt-score--ops' : ''}${flair.frame ? ` mt-score--frame mt-score--${flair.frame}` : ''}`}>
+      {flair.title && <span className="mt-score__title">{flair.title}</span>}
+      <span className={`mt-score__name${flair.gold ? ' mt-score__name--gold' : ''}`}>
         {p.name}
         {you && <em> · you</em>}
         {!p.online && <em> · away</em>}

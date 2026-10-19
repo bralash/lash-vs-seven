@@ -7,6 +7,7 @@ import { PokeOps } from '../components/PokeOps'
 import { LocalSessionProvider, type Session } from '../match/session'
 import { useWear } from '../components/faces/wardrobe'
 import { LooksProvider, WearsProvider, looksFor, wearsFor } from '../match/looks'
+import { FlairsProvider, useMyFlair } from '../match/flair'
 import { UltEarn } from '../match/Ultimates'
 import { OPS_LOOK, useCrewLook } from '../components/OpsFace'
 import { OptionPicker, optionList, type MatchExit, type MatchOption, type Me } from './Lobby'
@@ -333,12 +334,17 @@ export function LocalGame({
   const looks = looksFor(room, level ? { p1: guardian ?? OPS_LOOK, ...(crewLook && crewLook !== guardian ? { p0: crewLook } : {}) } : {})
   // against Ops you bring what your character has on too
   const wears = wearsFor(room, level && crewLook ? { p0: wear } : {})
+  // and your flair (pass & play is one shared phone: no flair)
+  const myFlair = useMyFlair()
+  const flairs: Record<string, string> = level ? { p0: myFlair.join(',') } : {}
 
   return (
     <LocalSessionProvider value={session}>
       <UltEarn room={room} sense={sense} />
       <LooksProvider value={looks}>
-        <WearsProvider value={wears}>{renderGame(room, me, exit)}</WearsProvider>
+        <WearsProvider value={wears}>
+          <FlairsProvider value={flairs}>{renderGame(room, me, exit)}</FlairsProvider>
+        </WearsProvider>
       </LooksProvider>
       {tower && clockSecs && !sheet && <TowerClock game={game.slug} state={state} secs={clockSecs} onOut={(m) => session.move(m as (live: unknown) => unknown)} />}
       {tower && sheet && (
