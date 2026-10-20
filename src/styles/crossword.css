@@ -245,3 +245,6 @@
 @media (prefers-reduced-motion: reduce) {
   .cw-sq--new .cw-sq__l, .cw-answer--wrong, .cw-status__event { animation: none; }
 }
+
+/* the watchers' eye chip sits fixed bottom-left: keep the keyboard above it */
+html:has(.watch__chip) .cwm:has(.cw-keys) { padding-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 44px); }
