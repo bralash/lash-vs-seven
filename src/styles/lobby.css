@@ -90,6 +90,12 @@
 .invite-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 .invite-actions .btn { font-size: 18px; padding: 12px 18px; }
 .invite-actions svg { width: 20px; height: 20px; }
+/* phones: side by side, the copy button taking what Share leaves */
+@media (width <= 480px) {
+  .invite-actions { flex-wrap: nowrap; gap: 10px; }
+  .invite-actions .btn { font-size: 16px; padding: 12px 14px; white-space: nowrap; }
+  .invite-actions .btn--primary { flex: 1; min-width: 0; }
+}
 
 /* player seats */
 .seats {
