@@ -1128,7 +1128,7 @@ function WaitingRoom({
             </>
           ) : (
             <>
-              <Copy /> Copy invite link
+              <Copy /> Copy link
             </>
           )}
         </button>
