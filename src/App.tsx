@@ -11,6 +11,7 @@ import { DotRush } from './games/dotrush/DotRush'
 import { Pool } from './games/pool/Pool'
 import { Dash } from './games/dash/Dash'
 import { Football } from './games/football/Football'
+import { Golf } from './games/golf/Golf'
 import { Crossword } from './games/crossword/Crossword'
 import { DotsAndBoxes } from './games/dots/DotsAndBoxes'
 import { Othello } from './games/othello/Othello'
@@ -75,6 +76,7 @@ const routes: RouteObject[] = [
   { path: '/pool', element: <Pool /> },
   { path: '/dash', element: <Dash /> },
   { path: '/football', element: <Football /> },
+  { path: '/golf', element: <Golf /> },
   { path: '/dots', element: <DotsAndBoxes /> },
   { path: '/othello', element: <Othello /> },
   { path: '/oware', element: <Oware /> },

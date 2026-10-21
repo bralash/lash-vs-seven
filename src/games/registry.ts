@@ -580,6 +580,26 @@ export const GAMES: GameMeta[] = [
       { title: 'Winning', body: 'First to 3 goals wins the match. Online, you always attack up the screen.' },
     ],
   },
+  {
+    watch: true,
+    slug: 'golf',
+    fullscreen: true,
+    tiles: 'PUTT',
+    name: 'Mini Golf',
+    blurb: 'Head-to-head mini golf over five holes. Drag back anywhere to aim, let go to putt, and take turns round walls, bumpers, sand, water and a moving blocker. Fewest shots wins.',
+    category: 'sport',
+    length: '~6 min',
+    modes: 'online + local',
+    status: 'live',
+    ops: true,
+    tagline: 'Drag back · let go · 5 holes · fewest shots wins',
+    rules: [
+      { title: 'Putt', body: 'Put your finger down anywhere on the course and drag back, away from where you want the ball to go. The dotted line shows the way it goes and gets longer the harder you pull (the ring turns red at full strength). Let go to putt. Changed your mind? Drag back to where you started and let go.' },
+      { title: 'Turns', body: 'Both balls are on the course and you take turns, one shot each. The balls pass through each other. Once one of you is in the hole, the other plays on alone until they’re in too. Whoever took fewer shots tees off first on the next hole.' },
+      { title: 'The course', body: 'Walls and yellow bumpers bounce the ball (bumpers give it a kick). Sand slows it right down. Water costs a shot and puts the ball back where you hit it from. Some holes have a moving bar: time your shot.' },
+      { title: 'Scoring', body: 'Each hole shows its par. Six shots at most on a hole: still out after six and the ball is picked up and scores 7. Five holes, getting harder as you go; fewest shots in total wins. Level after five? One playoff hole, fewest shots takes it, and if that’s level too it’s a draw.' },
+    ],
+  },
 ]
 
 export const CATEGORY_LABEL: Record<Category, string> = {
