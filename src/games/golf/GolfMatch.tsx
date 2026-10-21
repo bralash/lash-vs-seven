@@ -97,6 +97,12 @@ export function GolfMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchE
 
   /* ── replaying a shot ── */
   const ballEls = useRef<(SVGGElement | null)[]>([])
+  // once a shot has played out, put every ball where the match says it is: the replay moved the
+  // shooter's by hand, and after a splash that spot (in the water) isn't where it went back to
+  useEffect(() => {
+    if (rolling) return
+    for (const s of [0, 1] as Seat[]) ballEls.current[s]?.setAttribute('transform', `translate(${X(live.balls[s].x)} ${Y(live.balls[s].y)})`)
+  })
   const [nearCup, setNearCup] = useState(false)
   useEffect(() => {
     if (!shot || shot.n === settled) return
