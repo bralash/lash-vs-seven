@@ -64,6 +64,8 @@ import '../../styles/uno.css'
 const GAME = 'uno'
 /** The last card stays up this long before the results. */
 const RESULT_MS = 2600
+/** how long the deck is shuffled on the table before the cards come out */
+const SHUFFLE_MS = 1400
 
 /** Online only: each pile as the phones lock it (`d`), and each request's cards as the phones unlock them (`r`). */
 export interface Vault {
@@ -271,6 +273,18 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
     moveG((cur) => dealOpen(cur, deck)).catch(() => {})
   }, [open, g.phase, g.deal, moveG])
 
+  // every new deal opens with the deck being shuffled on the table (not when reopening a game already under way)
+  const [shuffling, setShuffling] = useState(false)
+  useEffect(() => {
+    if (g.phase === 'done' || playsOf(g).length > 0) return
+    setShuffling(true)
+    const t = setTimeout(() => setShuffling(false), SHUFFLE_MS)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId])
+  // online the shuffle carries on while the phones lock the deck
+  const showShuffle = g.phase !== 'done' && (shuffling || (g.phase === 'deal' && !open))
+
   // waiting on another phone: say so if it's slow
   const progress = `${g.deal}:${piles.map((p) => p.locked ?? 0).join('.')}:${reqs.map((r) => r.k ?? 0).join('.')}`
   const blocking = (() => {
@@ -300,7 +314,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   if (open) cards = (g.hands?.[view] ?? []).map((c) => ({ key: `c${c}`, c }))
   else if (!watching)
     for (const slot of g.held?.[sk(view)] ?? []) {
-      const memo = decoded.current.get(`${g.deal}:${slot}`)
+      const memo = decoded.current.get(`${roundId}:${slot}`)
       if (memo !== undefined) {
         cards.push({ key: slot, c: memo })
         continue
@@ -312,7 +326,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
       const c = v && key ? readCard(v, key) : undefined
       if (c === undefined) pending++
       else {
-        decoded.current.set(`${g.deal}:${slot}`, c)
+        decoded.current.set(`${roundId}:${slot}`, c)
         cards.push({ key: slot, c })
       }
     }
@@ -362,7 +376,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   }, [open, watching, g.drew, g.turn, drawnCard, view])
 
   // sounds: what just happened
-  const lastSig = `${g.deal}:${plays.length}:${JSON.stringify(g.last ?? null)}`
+  const lastSig = `${roundId}:${plays.length}:${JSON.stringify(g.last ?? null)}`
   const seenRef = useRef(lastSig)
   useEffect(() => {
     if (seenRef.current === lastSig) return
@@ -417,7 +431,7 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
 
   // pass & play: cover your hand whenever the phone changes hands
   const [holder, setHolder] = useState<string | null>(null)
-  const holdKey = `${g.deal}:${g.turn}`
+  const holdKey = `${roundId}:${g.turn}`
   const cover = local && inMatch && g.phase === 'play' && holder !== holdKey
 
   /* ── the board ── */
@@ -462,9 +476,9 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
   const lastPlay = plays.at(-1)
 
   const status = (() => {
-    if (g.phase === 'deal') {
+    if (g.phase === 'deal' || showShuffle) {
       const again = g.redeal ? `Dealing again · ${name(g.redeal.who)} ${g.redeal.why === 'left' ? 'left' : 'lost their cards'}` : null
-      return again ?? (open || watching ? 'Dealing…' : 'Shuffling…')
+      return again ?? 'Shuffling…'
     }
     if (g.phase === 'done') return g.winner === undefined ? '' : mine(g.winner) ? 'Uno — you’re out!' : `${name(g.winner)} is out!`
     if (!myTurn || local) {
@@ -528,8 +542,11 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
       </p>
 
       <section className="sp-table uno-table" aria-label="Table" data-ult-board>
-        {g.phase === 'deal' && !open ? (
-          <DealSteps g={g} piles={piles} name={name} slow={slow} blocking={blocking} />
+        {showShuffle ? (
+          <>
+            <ShuffleDeck />
+            {g.phase === 'deal' && !open && <DealSteps g={g} piles={piles} name={name} slow={slow} blocking={blocking} />}
+          </>
         ) : (
           <>
             <div className="uno-opps">
@@ -570,6 +587,8 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
               Deal again
             </button>
           </div>
+        ) : showShuffle ? (
+          <div className="sp-hand sp-hand--waiting" aria-hidden="true" />
         ) : cover ? (
           <div className="sp-pass">
             <p className="label">Pass the phone</p>
@@ -613,6 +632,17 @@ export function UnoMatch({ room, me, exit }: { room: Room; me: Me; exit: MatchEx
         </p>
       ))}
     </main>
+  )
+}
+
+/** The deck split in two and riffled back together, on a loop. */
+function ShuffleDeck() {
+  return (
+    <div className="uno-shuffle" aria-hidden="true">
+      {Array.from({ length: 8 }, (_, i) => (
+        <UnoBack key={i} size="lg" className="uno-shuffle__card" style={{ '--i': i, '--side': i % 2 ? 1 : -1 } as CSSProperties} />
+      ))}
+    </div>
   )
 }
 

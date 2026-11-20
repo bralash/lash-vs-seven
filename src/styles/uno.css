@@ -231,7 +231,21 @@
 @keyframes uno-pulse {
   to { transform: scale(1.06); }
 }
+/* the deck riffled at the start of every deal */
+.uno-shuffle { display: grid; place-items: center; justify-self: center; width: 100%; padding: 18px 0; }
+.uno-shuffle .uno-card--lg { --w: clamp(70px, 20vw, 96px); }
+.uno-shuffle__card {
+  grid-area: 1 / 1;
+  transform: translateY(calc(var(--i) * -1.5px));
+  animation: uno-riffle .7s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * 25ms);
+}
+@keyframes uno-riffle {
+  0%, 15% { transform: translateY(calc(var(--i) * -1.5px)); }
+  60%, 100% { transform: translateX(calc(var(--side) * 62%)) translateY(calc(var(--i) * -1.5px)) rotate(calc(var(--side) * 9deg)); }
+}
 @media (prefers-reduced-motion: reduce) {
+  .uno-shuffle__card { animation: none; }
   .uno-pile__top, .uno-opp__uno--open, .uno-call--now { animation: none; }
 }
 
